@@ -57,7 +57,7 @@ public sealed class UserRepository : IUserRepository
         using var conn = CreateConnection();
         await conn.ExecuteAsync(sql, new
         {
-            user.Id.Value,
+            Id = user.Id.Value,
             Email = user.Email.Value,
             Username = user.Username.Value,
             user.PasswordHash,
@@ -82,7 +82,7 @@ public sealed class UserRepository : IUserRepository
         using var conn = CreateConnection();
         await conn.ExecuteAsync(sql, new
         {
-            user.Id.Value,
+            Id = user.Id.Value,
             Email = user.Email.Value,
             Username = user.Username.Value,
             user.PasswordHash,

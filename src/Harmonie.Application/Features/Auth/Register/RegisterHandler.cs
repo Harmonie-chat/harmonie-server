@@ -31,11 +31,11 @@ public sealed class RegisterHandler
         // Create value objects with validation
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure)
-            throw new InvalidOperationException(emailResult.Error);
+            throw new DomainValidationException(emailResult.Error ?? string.Empty);
 
         var usernameResult = Username.Create(request.Username);
         if (usernameResult.IsFailure)
-            throw new InvalidOperationException(usernameResult.Error);
+            throw new DomainValidationException(usernameResult.Error ?? string.Empty);
 
         // Check for duplicates
         if (await _userRepository.ExistsByEmailAsync(emailResult.Value!, cancellationToken))
