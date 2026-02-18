@@ -42,6 +42,7 @@ jobs:
     - name: Run tests
       run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage"
       env:
+        ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
     
     - name: Upload coverage reports

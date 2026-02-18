@@ -6,7 +6,6 @@ services:
     image: postgres:18.2-alpine
     container_name: harmonie-postgres
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
       POSTGRES_USER: harmonie_user
       POSTGRES_PASSWORD: harmonie_password
       POSTGRES_DB: harmonie
