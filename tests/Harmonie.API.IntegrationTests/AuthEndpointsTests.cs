@@ -87,6 +87,33 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task Login_WithUsername_ReturnsOk()
+    {
+        // Arrange - First register a user
+        var registerRequest = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#");
+
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(
+            EmailOrUsername: registerRequest.Username,
+            Password: registerRequest.Password);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        result.Should().NotBeNull();
+        result!.Username.Should().Be(registerRequest.Username);
+        result.AccessToken.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
     public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
     {
         // Arrange
@@ -98,6 +125,6 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

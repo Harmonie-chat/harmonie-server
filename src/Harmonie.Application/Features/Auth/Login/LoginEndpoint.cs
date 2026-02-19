@@ -25,6 +25,7 @@ public static class LoginEndpoint
             })*/
             .Produces<LoginResponse>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
             .ProducesValidationProblem();
     }
 

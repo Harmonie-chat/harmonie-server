@@ -22,6 +22,7 @@ public static class RegisterEndpoint
             .WithDescription("Creates a new user with email, username, and password. Returns JWT tokens for authentication.")
             .Produces<RegisterResponse>(StatusCodes.Status201Created)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .ProducesValidationProblem();
     }
 
