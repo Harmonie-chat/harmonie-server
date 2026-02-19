@@ -29,7 +29,7 @@ public sealed class UserRepository : IUserRepository
                                        updated_at_utc as "UpdatedAtUtc",
                                        last_login_at_utc as "LastLoginAtUtc",
                                        deleted_at as "DeletedAt" 
-                           FROM users WHERE email = @Email AND deleted_at IS NULL
+                           FROM users WHERE id = @Id AND deleted_at IS NULL
                            """;
         using var conn = CreateConnection();
         var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(sql, new { Id = userId.Value });
@@ -106,7 +106,7 @@ public sealed class UserRepository : IUserRepository
                                        updated_at_utc as "UpdatedAtUtc",
                                        last_login_at_utc as "LastLoginAtUtc",
                                        deleted_at as "DeletedAt" 
-                           FROM users WHERE email = @Email AND deleted_at IS NULL
+                           FROM users WHERE esername = @Username AND deleted_at IS NULL
                            """;
         using var conn = CreateConnection();
         var userRow = await conn.QueryFirstOrDefaultAsync<User>(sql, new { Username = username.Value });
