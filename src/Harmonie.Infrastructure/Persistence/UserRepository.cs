@@ -3,6 +3,7 @@ using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
+using Harmonie.Infrastructure.Dto;
 using Npgsql;
 
 namespace Harmonie.Infrastructure.Persistence;
@@ -14,23 +15,119 @@ public sealed class UserRepository : IUserRepository
     
     public async Task<User?> GetByIdAsync(UserId userId, CancellationToken ct = default)
     {
-        const string sql = "SELECT * FROM users WHERE id = @Id AND deleted_at IS NULL";
+        const string sql = """
+                           SELECT id as "Id",
+                                        email as "Email",
+                                        username as "Username",
+                                        password_hash as "PasswordHash",
+                                        avatar_url as "AvatarUrl",
+                                        is_email_verified as "IsEmailVerified",
+                                       is_active as "IsActive",
+                                       display_name as "DisplayName",
+                                       bio as "Bio",
+                                       created_at_utc as "CreatedAtUtc",
+                                       updated_at_utc as "UpdatedAtUtc",
+                                       last_login_at_utc as "LastLoginAtUtc",
+                                       deleted_at as "DeletedAt" 
+                           FROM users WHERE email = @Email AND deleted_at IS NULL
+                           """;
         using var conn = CreateConnection();
-        return await conn.QueryFirstOrDefaultAsync<User>(sql, new { Id = userId.Value });
+        var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(sql, new { Id = userId.Value });
+        if (userRow is null) return null;
+        
+        return User.Rehydrate(
+            UserId.From(userRow.Id),
+            Email.Create(userRow.Email).Value!,
+            Username.Create(userRow.Username).Value!,
+            userRow.PasswordHash,
+            userRow.AvatarUrl,
+            userRow.IsEmailVerified,
+            userRow.IsActive,
+            userRow.LastLoginAtUtc,
+            userRow.DisplayName,
+            userRow.Bio,
+            userRow.CreatedAtUtc,
+            userRow.UpdatedAtUtc
+        );
     }
     
     public async Task<User?> GetByEmailAsync(Email email, CancellationToken ct = default)
     {
-        const string sql = "SELECT * FROM users WHERE email = @Email AND deleted_at IS NULL";
-        using var conn = CreateConnection();
-        return await conn.QueryFirstOrDefaultAsync<User>(sql, new { Email = email.Value });
+            const string sql = """
+                               SELECT id as "Id",
+                                            email as "Email",
+                                            username as "Username",
+                                            password_hash as "PasswordHash",
+                                            avatar_url as "AvatarUrl",
+                                            is_email_verified as "IsEmailVerified",
+                                           is_active as "IsActive",
+                                           display_name as "DisplayName",
+                                           bio as "Bio",
+                                           created_at_utc as "CreatedAtUtc",
+                                           updated_at_utc as "UpdatedAtUtc",
+                                           last_login_at_utc as "LastLoginAtUtc",
+                                           deleted_at as "DeletedAt" 
+                               FROM users WHERE email = @Email AND deleted_at IS NULL
+                               """;
+            using var conn = CreateConnection();
+            var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(sql, new { Email = email.Value });
+            
+            if (userRow is null) return null;
+            
+            return User.Rehydrate(
+                UserId.From(userRow.Id),
+                Email.Create(userRow.Email).Value!,
+                Username.Create(userRow.Username).Value!,
+                userRow.PasswordHash,
+                userRow.AvatarUrl,
+                userRow.IsEmailVerified,
+                userRow.IsActive,
+                userRow.LastLoginAtUtc,
+                userRow.DisplayName,
+                userRow.Bio,
+                userRow.CreatedAtUtc,
+                userRow.UpdatedAtUtc
+            );
     }
     
     public async Task<User?> GetByUsernameAsync(Username username, CancellationToken ct = default)
     {
-        const string sql = "SELECT * FROM users WHERE username = @Username AND deleted_at IS NULL";
+        const string sql = """
+                           SELECT id as "Id",
+                                        email as "Email",
+                                        username as "Username",
+                                        password_hash as "PasswordHash",
+                                        avatar_url as "AvatarUrl",
+                                        is_email_verified as "IsEmailVerified",
+                                       is_active as "IsActive",
+                                       display_name as "DisplayName",
+                                       bio as "Bio",
+                                       created_at_utc as "CreatedAtUtc",
+                                       updated_at_utc as "UpdatedAtUtc",
+                                       last_login_at_utc as "LastLoginAtUtc",
+                                       deleted_at as "DeletedAt" 
+                           FROM users WHERE email = @Email AND deleted_at IS NULL
+                           """;
         using var conn = CreateConnection();
-        return await conn.QueryFirstOrDefaultAsync<User>(sql, new { Username = username.Value });
+        var userRow = await conn.QueryFirstOrDefaultAsync<User>(sql, new { Username = username.Value });
+        
+        
+        if (userRow is null) return null;
+            
+        return User.Rehydrate(
+            UserId.From(userRow.Id),
+            Email.Create(userRow.Email).Value!,
+            Username.Create(userRow.Username).Value!,
+            userRow.PasswordHash,
+            userRow.AvatarUrl,
+            userRow.IsEmailVerified,
+            userRow.IsActive,
+            userRow.LastLoginAtUtc,
+            userRow.DisplayName,
+            userRow.Bio,
+            userRow.CreatedAtUtc,
+            userRow.UpdatedAtUtc
+        );
     }
     
     public async Task<bool> ExistsByEmailAsync(Email email, CancellationToken ct = default)

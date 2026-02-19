@@ -38,6 +38,12 @@ jobs:
     
     - name: Build
       run: dotnet build --no-restore --configuration Release
+      
+    - name: Run database migrations
+      run: dotnet run --project src/Harmonie.Migrations/Harmonie.Migrations.csproj --configuration Release
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
+        ASPNETCORE_ENVIRONMENT: Development
     
     - name: Run tests
       run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage"

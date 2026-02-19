@@ -101,6 +101,3 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
-
-// Make Program accessible to tests
-public partial class Program { }

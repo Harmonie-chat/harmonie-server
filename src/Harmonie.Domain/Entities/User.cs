@@ -85,6 +85,38 @@ public sealed class User : Entity<UserId>
 
         return Result.Success(user);
     }
+    
+    public static User Rehydrate(
+        UserId id,
+        Email email,
+        Username username,
+        string passwordHash,
+        string? avatarUrl,
+        bool isEmailVerified,
+        bool isActive,
+        DateTime? lastLoginAtUtc,
+        string? displayName,
+        string? bio,
+        DateTime createdAtUtc,
+        DateTime? updatedAtUtc
+    )
+    {
+        return new User
+        {
+            Id = id,
+            Email = email,
+            Username = username,
+            PasswordHash = passwordHash,
+            AvatarUrl = avatarUrl,
+            IsEmailVerified = isEmailVerified,
+            IsActive = isActive,
+            LastLoginAtUtc = lastLoginAtUtc,
+            DisplayName = displayName,
+            Bio = bio,
+            CreatedAtUtc = createdAtUtc,
+            UpdatedAtUtc = updatedAtUtc
+        };
+    }
 
     /// <summary>
     /// Update the user's email address
