@@ -44,7 +44,7 @@ public sealed class LoginHandler
             throw new UserInactiveException(user.Id);
 
         // Verify password
-        if (!_passwordHasher.VerifyPassword(user.PasswordHash, request.Password))
+        if (!_passwordHasher.VerifyPassword(user.Email, user.PasswordHash, request.Password))
             throw new InvalidPasswordException("Invalid email/username or password");
 
         // Record login

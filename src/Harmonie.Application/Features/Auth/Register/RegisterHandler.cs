@@ -30,33 +30,33 @@ public sealed class RegisterHandler
     {
         // Create value objects with validation
         var emailResult = Email.Create(request.Email);
-        if (emailResult.IsFailure)
+        if (emailResult.IsFailure || emailResult.Value is null)
             throw new DomainValidationException(emailResult.Error ?? string.Empty);
 
         var usernameResult = Username.Create(request.Username);
-        if (usernameResult.IsFailure)
+        if (usernameResult.IsFailure || usernameResult.Value is null)
             throw new DomainValidationException(usernameResult.Error ?? string.Empty);
 
         // Check for duplicates
-        if (await _userRepository.ExistsByEmailAsync(emailResult.Value!, cancellationToken))
-            throw new DuplicateEmailException(emailResult.Value!);
+        if (await _userRepository.ExistsByEmailAsync(emailResult.Value, cancellationToken))
+            throw new DuplicateEmailException(emailResult.Value);
 
-        if (await _userRepository.ExistsByUsernameAsync(usernameResult.Value!, cancellationToken))
-            throw new DuplicateUsernameException(usernameResult.Value!);
+        if (await _userRepository.ExistsByUsernameAsync(usernameResult.Value, cancellationToken))
+            throw new DuplicateUsernameException(usernameResult.Value);
 
         // Hash password
-        var passwordHash = _passwordHasher.HashPassword(request.Password);
+        var passwordHash = _passwordHasher.HashPassword(emailResult.Value, request.Password);
 
         // Create user entity
         var userResult = User.Create(
-            emailResult.Value!,
-            usernameResult.Value!,
+            emailResult.Value,
+            usernameResult.Value,
             passwordHash);
 
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value is null)
             throw new InvalidOperationException(userResult.Error);
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         // Persist user
         await _userRepository.AddAsync(user, cancellationToken);

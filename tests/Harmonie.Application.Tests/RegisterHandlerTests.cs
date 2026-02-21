@@ -49,7 +49,7 @@ public sealed class RegisterHandlerTests
             .ReturnsAsync(false);
 
         _passwordHasherMock
-            .Setup(x => x.HashPassword(It.IsAny<string>()))
+            .Setup(x => x.HashPassword(It.IsAny<string>(),It.IsAny<string>()))
             .Returns("hashed_password");
 
         _jwtTokenServiceMock
