@@ -80,5 +80,4 @@ Responsibilities:
 
 ## Known Gaps
 
-- Refresh token persistence/rotation/revocation is not implemented yet.
-- Only auth and health endpoints are currently available.
+- Guild and text messaging are planned; see `docs/features/guilds/README.md`.

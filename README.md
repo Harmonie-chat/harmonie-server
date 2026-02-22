@@ -106,6 +106,7 @@ docs/
 - `docs/GETTING_STARTED.md`
 - `docs/ARCHITECTURE.md`
 - `docs/VERTICAL_SLICE_ARCHITECTURE.md`
+- `docs/features/guilds/README.md` (guild feature planning package)
 - `agent.md` (AI assistant context)
 - `CONTRIBUTING.md`
 
