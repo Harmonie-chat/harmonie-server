@@ -1,6 +1,20 @@
-# Agent Context - Harmonie Server
+# AGENTS Rules - Harmonie Server
 
-Purpose: concise implementation context for AI coding assistants working in this repository.
+Scope: canonical instructions for AI coding agents working in this repository.
+
+## Mandatory Rules
+
+1. Nullable safety is required:
+- Any nullable path must be handled explicitly in code.
+- Do not assume non-null from external boundaries (HTTP, config, DB, env, deserialization).
+- Add or update tests to cover nullable paths when behavior changes.
+
+2. Null-forgiving operator is forbidden:
+- Do not use `!` to silence nullable warnings.
+- If a value can be null in type flow, use guards, pattern matching, validation, or explicit error handling.
+
+3. Build must stay warning-clean for nullable correctness:
+- Fix nullable warnings by code changes, not suppression shortcuts.
 
 ## Project Snapshot
 
@@ -56,6 +70,17 @@ Current implemented scope:
 
 - Run all tests: `dotnet test`
 - Integration tests use `WebApplicationFactory<Program>`.
+
+## Reading/Search Context Rules
+
+- Ignore build and VCS internals when reading/searching files.
+- Use `.agentignore` as the source of truth for excluded paths.
+- Do not load `.git`, `bin`, `obj`, or other generated artifacts into context.
+
+## Practical Command Guidance (PowerShell)
+
+- Prefer filtered recursive listing:
+`Get-ChildItem -Recurse -File | Where-Object { $_.FullName -notmatch '\\(bin|obj|out|artifacts|TestResults)\\' -and $_.FullName -notmatch '\\\\.git\\\\' }`
 
 ## Known Gaps
 

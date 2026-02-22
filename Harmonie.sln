@@ -36,11 +36,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E1E7A1F1-8C2E-4D3A-9F5B-1234567890D4}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
-		agent.md = agent.md
 		.gitignore = .gitignore
 		docker-compose.yml = docker-compose.yml
 		LICENSE = LICENSE
 		.github\workflows\ci.yml = .github\workflows\ci.yml
+		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B5EEC096-4D0B-4D74-9524-3573BBD619E6}"
