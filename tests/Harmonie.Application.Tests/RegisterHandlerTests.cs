@@ -96,10 +96,7 @@ public sealed class RegisterHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful register response payload.");
-
-        response.Data.Email.Should().Be("test@harmonie.chat");
+        response.Data!.Email.Should().Be("test@harmonie.chat");
         response.Data.Username.Should().Be("testuser");
         response.Data.AccessToken.Should().Be("access_token");
         response.Data.RefreshToken.Should().Be("refresh_token");
@@ -229,10 +226,7 @@ public sealed class RegisterHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected duplicate email error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateEmail);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateEmail);
     }
 
     [Fact]
@@ -259,9 +253,6 @@ public sealed class RegisterHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected duplicate username error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateUsername);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateUsername);
     }
 }

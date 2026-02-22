@@ -15,6 +15,9 @@ public sealed class SendMessageHandlerTests
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
     private readonly SendMessageHandler _handler;
 
     public SendMessageHandlerTests()
@@ -22,11 +25,30 @@ public sealed class SendMessageHandlerTests
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
+
+        _transactionMock
+            .Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _unitOfWorkMock
+            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_transactionMock.Object);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _handler = new SendMessageHandler(
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _channelMessageRepositoryMock.Object);
+            _channelMessageRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _textChannelNotifierMock.Object);
     }
 
     [Fact]
@@ -44,10 +66,8 @@ public sealed class SendMessageHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected channel not found error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -65,10 +85,8 @@ public sealed class SendMessageHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected channel not text error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -90,10 +108,8 @@ public sealed class SendMessageHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected channel access denied error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -106,14 +122,12 @@ public sealed class SendMessageHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected message content empty error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_WithValidRequest_ShouldPersistTrimmedContent()
+    public async Task HandleAsync_WithValidRequest_ShouldPersistTrimmedContentCommitAndNotify()
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var userId = UserId.New();
@@ -138,15 +152,98 @@ public sealed class SendMessageHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected send message payload.");
-
-        response.Data.Content.Should().Be("hello team");
+        response.Data!.Content.Should().Be("hello team");
         persistedMessage.Should().NotBeNull();
-        if (persistedMessage is null)
-            throw new InvalidOperationException("Expected persisted message callback.");
+        persistedMessage!.Content.Value.Should().Be("hello team");
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _transactionMock.Verify(x => x.DisposeAsync(), Times.Once);
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageCreatedAsync(
+                It.Is<TextChannelMessageCreatedNotification>(n =>
+                    n.ChannelId == channel.Id
+                    && n.AuthorUserId == userId
+                    && n.Content == "hello team"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 
-        persistedMessage.Content.Value.Should().Be("hello team");
+    [Fact]
+    public async Task HandleAsync_WhenNotifierThrows_ShouldStillSucceed()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("hello");
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(channel.GuildId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
+
+        var response = await _handler.HandleAsync(channel.Id, request, userId);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenRequestTokenCanceledAfterCommit_ShouldNotifyWithIndependentToken()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("hello");
+        using var requestCts = new CancellationTokenSource();
+        var notifierToken = CancellationToken.None;
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(channel.GuildId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _transactionMock
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => requestCts.Cancel())
+            .Returns(Task.CompletedTask);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<TextChannelMessageCreatedNotification, CancellationToken>((_, token) => notifierToken = token)
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(channel.Id, request, userId, requestCts.Token);
+
+        response.Success.Should().BeTrue();
+        notifierToken.Equals(requestCts.Token).Should().BeFalse();
+        notifierToken.IsCancellationRequested.Should().BeFalse();
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static GuildChannel CreateChannel(GuildChannelType type)
@@ -157,9 +254,9 @@ public sealed class SendMessageHandlerTests
             type,
             isDefault: true,
             position: 0);
-        if (channelResult.IsFailure || channelResult.Value is null)
+        if (channelResult.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");
 
-        return channelResult.Value;
+        return channelResult.Value!;
     }
 }

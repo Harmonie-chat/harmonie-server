@@ -37,21 +37,17 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
-        if (createGuildPayload is null)
-            throw new InvalidOperationException("Create guild payload is null.");
 
         var inviteResponse = await SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
             new InviteMemberRequest(userB.UserId),
             userA.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var invitePayload = await inviteResponse.Content.ReadFromJsonAsync<InviteMemberResponse>();
         invitePayload.Should().NotBeNull();
-        if (invitePayload is null)
-            throw new InvalidOperationException("Invite member payload is null.");
 
-        invitePayload.UserId.Should().Be(userB.UserId);
+        invitePayload!.UserId.Should().Be(userB.UserId);
         invitePayload.Role.Should().Be("Member");
 
         var channelsResponse = await SendAuthorizedGetAsync(
@@ -61,10 +57,8 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
         channelsPayload.Should().NotBeNull();
-        if (channelsPayload is null)
-            throw new InvalidOperationException("Guild channels payload is null.");
 
-        channelsPayload.Channels.Should().HaveCount(2);
+        channelsPayload!.Channels.Should().HaveCount(2);
         channelsPayload.Channels.Should().Contain(channel => channel.Name == "general" && channel.Type == "Text");
         channelsPayload.Channels.Should().Contain(channel => channel.Name == "General Voice" && channel.Type == "Voice");
 
@@ -78,10 +72,8 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var sendMessagePayload = await sendMessageResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
         sendMessagePayload.Should().NotBeNull();
-        if (sendMessagePayload is null)
-            throw new InvalidOperationException("Send message payload is null.");
 
-        sendMessagePayload.Content.Should().Be("Hello team");
+        sendMessagePayload!.Content.Should().Be("Hello team");
 
         var getMessagesResponse = await SendAuthorizedGetAsync(
             $"/api/channels/{textChannel.ChannelId}/messages",
@@ -90,10 +82,8 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var getMessagesPayload = await getMessagesResponse.Content.ReadFromJsonAsync<GetMessagesResponse>();
         getMessagesPayload.Should().NotBeNull();
-        if (getMessagesPayload is null)
-            throw new InvalidOperationException("Get messages payload is null.");
 
-        getMessagesPayload.Items.Should().Contain(item => item.MessageId == sendMessagePayload.MessageId);
+        getMessagesPayload!.Items.Should().Contain(item => item.MessageId == sendMessagePayload.MessageId);
         getMessagesPayload.Items.Should().Contain(item => item.Content == "Hello team");
     }
 
@@ -112,21 +102,17 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
-        if (createGuildPayload is null)
-            throw new InvalidOperationException("Create guild payload is null.");
 
         var inviteResponse = await SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
             new InviteMemberRequest(target.UserId),
             outsider.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var error = await inviteResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
-        if (error is null)
-            throw new InvalidOperationException("Invite forbidden payload is null.");
 
-        error.Code.Should().Be(ApplicationErrorCodes.Guild.InviteForbidden);
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.InviteForbidden);
     }
 
     [Fact]
@@ -142,20 +128,16 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
-        if (createGuildPayload is null)
-            throw new InvalidOperationException("Create guild payload is null.");
 
         var channelsResponse = await SendAuthorizedGetAsync(
-            $"/api/guilds/{createGuildPayload.GuildId}/channels",
+            $"/api/guilds/{createGuildPayload!.GuildId}/channels",
             user.AccessToken);
         channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
         channelsPayload.Should().NotBeNull();
-        if (channelsPayload is null)
-            throw new InvalidOperationException("Channels payload is null.");
 
-        var voiceChannel = channelsPayload.Channels.First(channel => channel.Type == "Voice");
+        var voiceChannel = channelsPayload!.Channels.First(channel => channel.Type == "Voice");
 
         var sendMessageResponse = await SendAuthorizedPostAsync(
             $"/api/channels/{voiceChannel.ChannelId}/messages",
@@ -165,10 +147,8 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var error = await sendMessageResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
-        if (error is null)
-            throw new InvalidOperationException("Send message error payload is null.");
 
-        error.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
+        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
     }
 
     private async Task<RegisterResponse> RegisterAsync()
@@ -183,10 +163,8 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
         payload.Should().NotBeNull();
-        if (payload is null)
-            throw new InvalidOperationException("Register payload is null.");
 
-        return payload;
+        return payload!;
     }
 
     private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(

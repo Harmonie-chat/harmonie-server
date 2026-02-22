@@ -39,10 +39,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         
         var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Register response payload is null.");
 
-        result.Email.Should().Be(request.Email);
+        result!.Email.Should().Be(request.Email);
         result.Username.Should().Be(request.Username);
         result.AccessToken.Should().NotBeNullOrEmpty();
         result.RefreshToken.Should().NotBeNullOrEmpty();
@@ -65,10 +63,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Register validation response payload is null.");
 
-        result.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        result!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
     [Fact]
@@ -94,10 +90,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         
         var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Login response payload is null.");
 
-        result.Email.Should().Be(registerRequest.Email);
+        result!.Email.Should().Be(registerRequest.Email);
         result.AccessToken.Should().NotBeNullOrEmpty();
     }
 
@@ -124,10 +118,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         
         var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Login response payload is null.");
 
-        result.Username.Should().Be(registerRequest.Username);
+        result!.Username.Should().Be(registerRequest.Username);
         result.AccessToken.Should().NotBeNullOrEmpty();
     }
 
@@ -145,10 +137,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
         registerPayload.Should().NotBeNull();
-        if (registerPayload is null)
-            throw new InvalidOperationException("Register response payload is null.");
 
-        var refreshRequest = new RefreshTokenRequest(registerPayload.RefreshToken);
+        var refreshRequest = new RefreshTokenRequest(registerPayload!.RefreshToken);
 
         // Act
         var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshRequest);
@@ -158,10 +148,8 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Refresh response payload is null.");
 
-        result.AccessToken.Should().NotBeNullOrEmpty();
+        result!.AccessToken.Should().NotBeNullOrEmpty();
         result.RefreshToken.Should().NotBeNullOrEmpty();
         result.RefreshToken.Should().NotBe(registerPayload.RefreshToken);
     }
@@ -182,9 +170,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
         result.Should().NotBeNull();
-        if (result is null)
-            throw new InvalidOperationException("Login unauthorized response payload is null.");
 
-        result.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
+        result!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
     }
 }

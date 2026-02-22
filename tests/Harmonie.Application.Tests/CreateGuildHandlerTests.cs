@@ -56,11 +56,7 @@ public sealed class CreateGuildHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful create guild payload.");
-
-        response.Data.Name.Should().Be("Harmonie Team");
+        response.Data!.Name.Should().Be("Harmonie Team");
         response.Data.OwnerUserId.Should().Be(userId.ToString());
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -88,11 +84,7 @@ public sealed class CreateGuildHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected validation failure.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

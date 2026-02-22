@@ -39,10 +39,7 @@ public sealed class GetMessagesHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected validation error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
     [Fact]
@@ -62,10 +59,7 @@ public sealed class GetMessagesHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected channel not text error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
     }
 
     [Fact]
@@ -89,10 +83,7 @@ public sealed class GetMessagesHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected access denied error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
 
     [Fact]
@@ -129,10 +120,7 @@ public sealed class GetMessagesHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected get messages payload.");
-
-        response.Data.Items.Should().HaveCount(2);
+        response.Data!.Items.Should().HaveCount(2);
         response.Data.Items[0].Content.Should().Be("First");
         response.Data.Items[1].Content.Should().Be("Second");
         response.Data.NextCursor.Should().NotBeNullOrEmpty();
@@ -146,10 +134,10 @@ public sealed class GetMessagesHandlerTests
             type,
             isDefault: true,
             position: 0);
-        if (channelResult.IsFailure || channelResult.Value is null)
+        if (channelResult.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");
 
-        return channelResult.Value;
+        return channelResult.Value!;
     }
 
     private static ChannelMessage CreateMessage(
@@ -159,14 +147,14 @@ public sealed class GetMessagesHandlerTests
         DateTime createdAtUtc)
     {
         var contentResult = ChannelMessageContent.Create(content);
-        if (contentResult.IsFailure || contentResult.Value is null)
+        if (contentResult.IsFailure)
             throw new InvalidOperationException("Failed to create message content for tests.");
 
         return ChannelMessage.Rehydrate(
             ChannelMessageId.New(),
             channelId,
             authorUserId,
-            contentResult.Value,
+            contentResult.Value!,
             createdAtUtc);
     }
 }

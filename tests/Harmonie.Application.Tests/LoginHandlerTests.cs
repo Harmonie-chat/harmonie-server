@@ -90,10 +90,7 @@ public sealed class LoginHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful login response payload.");
-
-        response.Data.Email.Should().Be(user.Email.Value);
+        response.Data!.Email.Should().Be(user.Email.Value);
         response.Data.Username.Should().Be(user.Username.Value);
         response.Data.AccessToken.Should().Be("access_token");
         response.Data.RefreshToken.Should().Be("refresh_token");
@@ -148,10 +145,7 @@ public sealed class LoginHandlerTests
         // Assert
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful login response payload.");
-
-        response.Data.Username.Should().Be("testuser");
+        response.Data!.Username.Should().Be("testuser");
         _userRepositoryMock.Verify(x => x.GetByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -172,10 +166,7 @@ public sealed class LoginHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invalid credentials error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -198,10 +189,7 @@ public sealed class LoginHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected inactive user error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.UserInactive);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.UserInactive);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -228,10 +216,7 @@ public sealed class LoginHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invalid credentials error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -295,21 +280,21 @@ public sealed class LoginHandlerTests
         var emailResult = Email.Create("test@harmonie.chat");
         var usernameResult = Username.Create("testuser");
 
-        if (emailResult.IsFailure || emailResult.Value is null)
+        if (emailResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid email for test.");
 
-        if (usernameResult.IsFailure || usernameResult.Value is null)
+        if (usernameResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid username for test.");
 
         var userResult = User.Create(
-            emailResult.Value,
-            usernameResult.Value,
+            emailResult.Value!,
+            usernameResult.Value!,
             "hashed_password");
 
-        if (userResult.IsFailure || userResult.Value is null)
+        if (userResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid user for test.");
 
-        return userResult.Value;
+        return userResult.Value!;
     }
 
     private static User CreateInactiveUser()

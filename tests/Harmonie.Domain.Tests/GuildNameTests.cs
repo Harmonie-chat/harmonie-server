@@ -16,11 +16,7 @@ public sealed class GuildNameTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-
-        if (result.Value is null)
-            throw new InvalidOperationException("Expected guild name result value.");
-
-        result.Value.Value.Should().Be(expectedName);
+        result.Value!.Value.Should().Be(expectedName);
     }
 
     [Theory]
