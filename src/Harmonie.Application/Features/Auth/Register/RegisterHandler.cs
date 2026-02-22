@@ -1,6 +1,6 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
-using Harmonie.Domain.Exceptions;
 using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Application.Features.Auth.Register;
@@ -30,25 +30,49 @@ public sealed class RegisterHandler
         _jwtTokenService = jwtTokenService;
     }
 
-    public async Task<RegisterResponse> HandleAsync(
+    public async Task<ApplicationResponse<RegisterResponse>> HandleAsync(
         RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
         // Create value objects with validation
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure || emailResult.Value is null)
-            throw new DomainValidationException(emailResult.Error ?? string.Empty);
+        {
+            var details = new Dictionary<string, string[]>
+            {
+                [nameof(request.Email)] = [emailResult.Error ?? "Email format is invalid"]
+            };
+
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request validation failed",
+                details);
+        }
 
         var usernameResult = Username.Create(request.Username);
         if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new DomainValidationException(usernameResult.Error ?? string.Empty);
+        {
+            var details = new Dictionary<string, string[]>
+            {
+                [nameof(request.Username)] = [usernameResult.Error ?? "Username format is invalid"]
+            };
+
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request validation failed",
+                details);
+        }
 
         // Check for duplicates
         if (await _userRepository.ExistsByEmailAsync(emailResult.Value, cancellationToken))
-            throw new DuplicateEmailException(emailResult.Value);
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Auth.DuplicateEmail,
+                $"A user with email '{emailResult.Value}' already exists");
 
         if (await _userRepository.ExistsByUsernameAsync(usernameResult.Value, cancellationToken))
-            throw new DuplicateUsernameException(usernameResult.Value);
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Auth.DuplicateUsername,
+                $"A user with username '{usernameResult.Value}' already exists");
 
         // Hash password
         var passwordHash = _passwordHasher.HashPassword(emailResult.Value, request.Password);
@@ -60,7 +84,9 @@ public sealed class RegisterHandler
             passwordHash);
 
         if (userResult.IsFailure || userResult.Value is null)
-            throw new InvalidOperationException(userResult.Error);
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                userResult.Error ?? "Unable to create user");
 
         var user = userResult.Value;
 
@@ -84,7 +110,7 @@ public sealed class RegisterHandler
             cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return new RegisterResponse(
+        var payload = new RegisterResponse(
             UserId: user.Id.ToString(),
             Email: user.Email,
             Username: user.Username,
@@ -92,5 +118,7 @@ public sealed class RegisterHandler
             RefreshToken: refreshToken,
             ExpiresAt: accessTokenExpiresAt
         );
+
+        return ApplicationResponse<RegisterResponse>.Ok(payload);
     }
 }

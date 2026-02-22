@@ -1,8 +1,8 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
-using Harmonie.Domain.Exceptions;
 using Harmonie.Domain.ValueObjects;
 using Moq;
 using Xunit;
@@ -86,8 +86,14 @@ public sealed class RefreshTokenHandlerTests
         var response = await _handler.HandleAsync(request);
 
         // Assert
-        response.AccessToken.Should().Be("new_access_token");
-        response.RefreshToken.Should().Be("new_refresh_token");
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Error.Should().BeNull();
+        if (response.Data is null)
+            throw new InvalidOperationException("Expected successful refresh token response payload.");
+
+        response.Data.AccessToken.Should().Be("new_access_token");
+        response.Data.RefreshToken.Should().Be("new_refresh_token");
 
         _refreshTokenRepositoryMock.Verify(x => x.RotateAsync(
                 session.Id,
@@ -100,7 +106,7 @@ public sealed class RefreshTokenHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithUnknownRefreshToken_ShouldThrowInvalidRefreshTokenException()
+    public async Task HandleAsync_WithUnknownRefreshToken_ShouldReturnInvalidRefreshTokenFailure()
     {
         // Arrange
         _jwtTokenServiceMock
@@ -113,12 +119,21 @@ public sealed class RefreshTokenHandlerTests
 
         var request = new RefreshTokenRequest("unknown_refresh_token");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidRefreshTokenException>(() => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected invalid refresh token error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
     }
 
     [Fact]
-    public async Task HandleAsync_WithExpiredRefreshToken_ShouldThrowInvalidRefreshTokenException()
+    public async Task HandleAsync_WithExpiredRefreshToken_ShouldReturnInvalidRefreshTokenFailure()
     {
         // Arrange
         var userId = UserId.New();
@@ -138,8 +153,17 @@ public sealed class RefreshTokenHandlerTests
 
         var request = new RefreshTokenRequest("expired_refresh_token");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidRefreshTokenException>(() => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected invalid refresh token error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
     }
 
     private static User CreateValidUser()

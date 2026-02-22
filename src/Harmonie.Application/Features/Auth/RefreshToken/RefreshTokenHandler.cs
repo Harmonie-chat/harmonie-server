@@ -1,5 +1,5 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces;
-using Harmonie.Domain.Exceptions;
 
 namespace Harmonie.Application.Features.Auth.RefreshToken;
 
@@ -22,7 +22,7 @@ public sealed class RefreshTokenHandler
         _jwtTokenService = jwtTokenService;
     }
 
-    public async Task<RefreshTokenResponse> HandleAsync(
+    public async Task<ApplicationResponse<RefreshTokenResponse>> HandleAsync(
         RefreshTokenRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -31,14 +31,20 @@ public sealed class RefreshTokenHandler
         var nowUtc = DateTime.UtcNow;
 
         if (session is null || session.RevokedAtUtc is not null || session.ExpiresAtUtc <= nowUtc)
-            throw new InvalidRefreshTokenException("Refresh token is invalid or expired");
+            return ApplicationResponse<RefreshTokenResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidRefreshToken,
+                "Refresh token is invalid or expired");
 
         var user = await _userRepository.GetByIdAsync(session.UserId, cancellationToken);
         if (user is null)
-            throw new InvalidRefreshTokenException("Refresh token is invalid or expired");
+            return ApplicationResponse<RefreshTokenResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidRefreshToken,
+                "Refresh token is invalid or expired");
 
         if (!user.IsActive)
-            throw new UserInactiveException(user.Id);
+            return ApplicationResponse<RefreshTokenResponse>.Fail(
+                ApplicationErrorCodes.Auth.UserInactive,
+                $"User with ID '{user.Id}' is inactive and cannot perform this operation");
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.Username);
         var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
@@ -56,11 +62,15 @@ public sealed class RefreshTokenHandler
             cancellationToken);
 
         if (!rotated)
-            throw new InvalidRefreshTokenException("Refresh token is invalid or expired");
+            return ApplicationResponse<RefreshTokenResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidRefreshToken,
+                "Refresh token is invalid or expired");
 
-        return new RefreshTokenResponse(
+        var payload = new RefreshTokenResponse(
             AccessToken: accessToken,
             RefreshToken: newRefreshToken,
             ExpiresAt: accessTokenExpiresAt);
+
+        return ApplicationResponse<RefreshTokenResponse>.Ok(payload);
     }
 }

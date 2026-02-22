@@ -1,8 +1,8 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
-using Harmonie.Domain.Exceptions;
 using Harmonie.Domain.ValueObjects;
 using Moq;
 using Xunit;
@@ -93,10 +93,16 @@ public sealed class RegisterHandlerTests
 
         // Assert
         response.Should().NotBeNull();
-        response.Email.Should().Be("test@harmonie.chat");
-        response.Username.Should().Be("testuser");
-        response.AccessToken.Should().Be("access_token");
-        response.RefreshToken.Should().Be("refresh_token");
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+        if (response.Data is null)
+            throw new InvalidOperationException("Expected successful register response payload.");
+
+        response.Data.Email.Should().Be("test@harmonie.chat");
+        response.Data.Username.Should().Be("testuser");
+        response.Data.AccessToken.Should().Be("access_token");
+        response.Data.RefreshToken.Should().Be("refresh_token");
 
         _unitOfWorkMock.Verify(
             x => x.BeginAsync(It.IsAny<CancellationToken>()),
@@ -204,7 +210,7 @@ public sealed class RegisterHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithDuplicateEmail_ShouldThrow()
+    public async Task HandleAsync_WithDuplicateEmail_ShouldReturnFailure()
     {
         // Arrange
         var request = new RegisterRequest(
@@ -216,13 +222,21 @@ public sealed class RegisterHandlerTests
             .Setup(x => x.ExistsByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<DuplicateEmailException>(
-            () => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected duplicate email error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateEmail);
     }
 
     [Fact]
-    public async Task HandleAsync_WithDuplicateUsername_ShouldThrow()
+    public async Task HandleAsync_WithDuplicateUsername_ShouldReturnFailure()
     {
         // Arrange
         var request = new RegisterRequest(
@@ -238,8 +252,16 @@ public sealed class RegisterHandlerTests
             .Setup(x => x.ExistsByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<DuplicateUsernameException>(
-            () => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected duplicate username error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.DuplicateUsername);
     }
 }

@@ -20,9 +20,10 @@ public static class RefreshTokenEndpoint
             .WithSummary("Refresh access token")
             .WithDescription("Rotates refresh token and returns a new access token without requiring a new login.")
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
-            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
-            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
-            .ProducesValidationProblem();
+            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
+            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
+            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
+            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> HandleAsync(
@@ -33,9 +34,9 @@ public static class RefreshTokenEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return validationError;
+            return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult();
 
         var response = await handler.HandleAsync(request, cancellationToken);
-        return Results.Ok(response);
+        return response.ToHttpResult();
     }
 }

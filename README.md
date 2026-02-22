@@ -52,6 +52,35 @@ dotnet run --project src/Harmonie.API
 
 In Development, OpenAPI and Scalar are enabled.
 
+## API Response Model
+
+Auth endpoints return:
+- Success: the feature response DTO (`RegisterResponse`, `LoginResponse`, `RefreshTokenResponse`)
+- Error: a standardized `ApplicationError` payload (`code`, `message`, `details`)
+
+Success example:
+
+```json
+{
+  "userId": "d8f2a3d1-3f27-4f8b-8f42-7b79f12ad7b7",
+  "email": "user@harmonie.chat",
+  "username": "user123",
+  "accessToken": "eyJ...",
+  "refreshToken": "vL...",
+  "expiresAt": "2026-02-22T12:00:00Z"
+}
+```
+
+Error example:
+
+```json
+{
+  "code": "AUTH_INVALID_CREDENTIALS",
+  "message": "Invalid email/username or password",
+  "details": null
+}
+```
+
 ## Project Structure
 
 ```text

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
@@ -61,6 +62,13 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        result.Should().NotBeNull();
+        if (result is null)
+            throw new InvalidOperationException("Register validation response payload is null.");
+
+        result.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
     [Fact]
@@ -171,5 +179,12 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        result.Should().NotBeNull();
+        if (result is null)
+            throw new InvalidOperationException("Login unauthorized response payload is null.");
+
+        result.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
     }
 }

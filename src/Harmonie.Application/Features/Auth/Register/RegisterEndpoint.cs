@@ -21,9 +21,9 @@ public static class RegisterEndpoint
             .WithSummary("Register a new user account")
             .WithDescription("Creates a new user with email, username, and password. Returns JWT tokens for authentication.")
             .Produces<RegisterResponse>(StatusCodes.Status201Created)
-            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
-            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
-            .ProducesValidationProblem();
+            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
+            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
+            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> HandleAsync(
@@ -34,13 +34,13 @@ public static class RegisterEndpoint
     {
         // Validate request
         var validationError = await request.ValidateAsync(validator, cancellationToken);
-        if (validationError != null)
-            return validationError;
+        if (validationError is not null)
+            return ApplicationResponse<RegisterResponse>.Fail(validationError).ToHttpResult();
 
         // Handle registration
         var response = await handler.HandleAsync(request, cancellationToken);
 
         // Return created response
-        return Results.Created($"/api/users/{response.UserId}", response);
+        return response.ToCreatedHttpResult(data => $"/api/users/{data.UserId}");
     }
 }

@@ -1,4 +1,5 @@
 using FluentValidation;
+using System.Net;
 using Microsoft.AspNetCore.Http;
 
 namespace Harmonie.Application.Common;
@@ -9,9 +10,9 @@ namespace Harmonie.Application.Common;
 public static class EndpointExtensions
 {
     /// <summary>
-    /// Validate a request using FluentValidation
+    /// Validate a request using FluentValidation and return a standardized error payload.
     /// </summary>
-    public static async Task<IResult?> ValidateAsync<TRequest>(
+    public static async Task<ApplicationError?> ValidateAsync<TRequest>(
         this TRequest request,
         IValidator<TRequest> validator,
         CancellationToken cancellationToken = default)
@@ -26,22 +27,76 @@ public static class EndpointExtensions
                     g => g.Key,
                     g => g.Select(e => e.ErrorMessage).ToArray()
                 );
-            
-            return Results.ValidationProblem(errors);
+
+            return new ApplicationError(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request validation failed",
+                errors);
         }
         
         return null;
     }
 
     /// <summary>
-    /// Create a success response with proper status code
+    /// Convert an application response to a standardized HTTP response.
     /// </summary>
-    public static IResult Created<T>(string uri, T value) 
-        => Results.Created(uri, value);
+    public static IResult ToHttpResult<T>(this ApplicationResponse<T> response)
+    {
+        if (response.Success)
+        {
+            if (response.Data is null)
+            {
+                var failurePayload = new ApplicationError(
+                    ApplicationErrorCodes.Common.InvalidState,
+                    "Operation succeeded but no payload was returned.");
+
+                return Results.Json(failurePayload, statusCode: StatusCodes.Status500InternalServerError);
+            }
+
+            return Results.Ok(response.Data);
+        }
+
+        var error = response.Error ?? new ApplicationError(
+            ApplicationErrorCodes.Common.Unexpected,
+            "An unexpected error occurred");
+
+        var statusCode = (int)MapStatusCode(error.Code);
+        return Results.Json(error, statusCode: statusCode);
+    }
 
     /// <summary>
-    /// Create an OK response
+    /// Convert an application response to a standardized HTTP 201 Created response.
     /// </summary>
-    public static IResult Ok<T>(T value) 
-        => Results.Ok(value);
+    public static IResult ToCreatedHttpResult<T>(
+        this ApplicationResponse<T> response,
+        Func<T, string> locationFactory)
+    {
+        if (!response.Success)
+            return response.ToHttpResult();
+
+        if (response.Data is null)
+        {
+            var payload = new ApplicationError(
+                ApplicationErrorCodes.Common.InvalidState,
+                "Operation succeeded but no payload was returned.");
+
+            return Results.Json(payload, statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        var location = locationFactory(response.Data);
+        return Results.Created(location, response.Data);
+    }
+
+    public static HttpStatusCode MapStatusCode(string errorCode)
+        => errorCode switch
+        {
+            ApplicationErrorCodes.Common.ValidationFailed => HttpStatusCode.BadRequest,
+            ApplicationErrorCodes.Common.DomainRuleViolation => HttpStatusCode.BadRequest,
+            ApplicationErrorCodes.Auth.InvalidCredentials => HttpStatusCode.Unauthorized,
+            ApplicationErrorCodes.Auth.InvalidRefreshToken => HttpStatusCode.Unauthorized,
+            ApplicationErrorCodes.Auth.UserInactive => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Auth.DuplicateEmail => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Auth.DuplicateUsername => HttpStatusCode.Conflict,
+            _ => HttpStatusCode.InternalServerError
+        };
 }

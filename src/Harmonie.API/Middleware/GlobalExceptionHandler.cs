@@ -1,8 +1,6 @@
 using System.Net;
-using System.Text.Json;
 using FluentValidation;
-using Harmonie.Domain.Common;
-using Harmonie.Domain.Exceptions;
+using Harmonie.Application.Common;
 
 namespace Harmonie.API.Middleware;
 
@@ -31,39 +29,33 @@ public sealed class GlobalExceptionHandler
 
     private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        _logger.LogError(exception, "An error occurred");
+        ApplicationError error;
 
-        var (statusCode, payload) = exception switch
+        if (exception is ValidationException validationException)
         {
-            ValidationException validationEx => (
-                HttpStatusCode.BadRequest,
-                new { errors = validationEx.Errors.Select(e => e.ErrorMessage).ToArray() }),
-            InvalidPasswordException invalidPasswordEx => (
-                HttpStatusCode.Unauthorized,
-                new { error = invalidPasswordEx.Message }),
-            InvalidRefreshTokenException invalidRefreshTokenEx => (
-                HttpStatusCode.Unauthorized,
-                new { error = invalidRefreshTokenEx.Message }),
-            UserInactiveException userInactiveEx => (
-                HttpStatusCode.Forbidden,
-                new { error = userInactiveEx.Message }),
-            DuplicateEmailException duplicateEmailEx => (
-                HttpStatusCode.Conflict,
-                new { error = duplicateEmailEx.Message }),
-            DuplicateUsernameException duplicateUsernameEx => (
-                HttpStatusCode.Conflict,
-                new { error = duplicateUsernameEx.Message }),
-            DomainException domainEx => (
-                HttpStatusCode.BadRequest,
-                (object)new { error = domainEx.Message }),
-            _ => (
-                HttpStatusCode.InternalServerError,
-                (object)new { error = "An unexpected error occurred" })
-        };
+            var details = validationException.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(e => e.ErrorMessage).ToArray());
 
-        context.Response.ContentType = "application/json";
+            error = new ApplicationError(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request validation failed",
+                details);
+        }
+        else
+        {
+            _logger.LogError(exception, "An unhandled exception occurred");
+            error = new ApplicationError(
+                ApplicationErrorCodes.Common.Unexpected,
+                "An unexpected error occurred");
+        }
+
+        var statusCode = EndpointExtensions.MapStatusCode(error.Code);
+
         context.Response.StatusCode = (int)statusCode;
 
-        return context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+        return context.Response.WriteAsJsonAsync(error);
     }
 }

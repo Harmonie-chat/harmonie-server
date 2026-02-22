@@ -1,8 +1,8 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
-using Harmonie.Domain.Exceptions;
 using Harmonie.Domain.ValueObjects;
 using Moq;
 using Xunit;
@@ -87,10 +87,16 @@ public sealed class LoginHandlerTests
 
         // Assert
         response.Should().NotBeNull();
-        response.Email.Should().Be(user.Email.Value);
-        response.Username.Should().Be(user.Username.Value);
-        response.AccessToken.Should().Be("access_token");
-        response.RefreshToken.Should().Be("refresh_token");
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+        if (response.Data is null)
+            throw new InvalidOperationException("Expected successful login response payload.");
+
+        response.Data.Email.Should().Be(user.Email.Value);
+        response.Data.Username.Should().Be(user.Username.Value);
+        response.Data.AccessToken.Should().Be("access_token");
+        response.Data.RefreshToken.Should().Be("refresh_token");
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
         _userRepositoryMock.Verify(x => x.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
@@ -140,12 +146,17 @@ public sealed class LoginHandlerTests
         var response = await _handler.HandleAsync(request);
 
         // Assert
-        response.Username.Should().Be("testuser");
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        if (response.Data is null)
+            throw new InvalidOperationException("Expected successful login response payload.");
+
+        response.Data.Username.Should().Be("testuser");
         _userRepositoryMock.Verify(x => x.GetByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_WithUnknownIdentity_ShouldThrowInvalidPasswordException()
+    public async Task HandleAsync_WithUnknownIdentity_ShouldReturnInvalidCredentialsFailure()
     {
         // Arrange
         var request = new LoginRequest("missing@harmonie.chat", "Test123!@#");
@@ -154,14 +165,23 @@ public sealed class LoginHandlerTests
             .Setup(x => x.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidPasswordException>(() => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected invalid credentials error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_WithInactiveUser_ShouldThrowUserInactiveException()
+    public async Task HandleAsync_WithInactiveUser_ShouldReturnUserInactiveFailure()
     {
         // Arrange
         var user = CreateInactiveUser();
@@ -171,14 +191,23 @@ public sealed class LoginHandlerTests
             .Setup(x => x.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UserInactiveException>(() => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected inactive user error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.UserInactive);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_WithInvalidPassword_ShouldThrowInvalidPasswordException()
+    public async Task HandleAsync_WithInvalidPassword_ShouldReturnInvalidCredentialsFailure()
     {
         // Arrange
         var user = CreateActiveUser();
@@ -192,8 +221,17 @@ public sealed class LoginHandlerTests
             .Setup(x => x.VerifyPassword(It.IsAny<string>(), user.PasswordHash, request.Password))
             .Returns(false);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidPasswordException>(() => _handler.HandleAsync(request));
+        // Act
+        var response = await _handler.HandleAsync(request);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        if (response.Error is null)
+            throw new InvalidOperationException("Expected invalid credentials error.");
+
+        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

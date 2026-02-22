@@ -1,5 +1,5 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces;
-using Harmonie.Domain.Exceptions;
 using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Application.Features.Auth.Login;
@@ -29,7 +29,7 @@ public sealed class LoginHandler
         _jwtTokenService = jwtTokenService;
     }
 
-    public async Task<LoginResponse> HandleAsync(
+    public async Task<ApplicationResponse<LoginResponse>> HandleAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -44,14 +44,20 @@ public sealed class LoginHandler
             user = await _userRepository.GetByUsernameAsync(usernameResult.Value, cancellationToken);
 
         if (user == null)
-            throw new InvalidPasswordException("Invalid email/username or password");
+            return ApplicationResponse<LoginResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                "Invalid email/username or password");
 
         if (!user.IsActive)
-            throw new UserInactiveException(user.Id);
+            return ApplicationResponse<LoginResponse>.Fail(
+                ApplicationErrorCodes.Auth.UserInactive,
+                $"User with ID '{user.Id}' is inactive and cannot perform this operation");
 
         // Verify password
         if (!_passwordHasher.VerifyPassword(user.Email, user.PasswordHash, request.Password))
-            throw new InvalidPasswordException("Invalid email/username or password");
+            return ApplicationResponse<LoginResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                "Invalid email/username or password");
 
         // Record login
         user.RecordLogin();
@@ -76,7 +82,7 @@ public sealed class LoginHandler
             cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return new LoginResponse(
+        var payload = new LoginResponse(
             UserId: user.Id.ToString(),
             Email: user.Email,
             Username: user.Username,
@@ -84,5 +90,7 @@ public sealed class LoginHandler
             RefreshToken: refreshToken,
             ExpiresAt: accessTokenExpiresAt
         );
+
+        return ApplicationResponse<LoginResponse>.Ok(payload);
     }
 }

@@ -71,7 +71,10 @@ Responsibilities:
 
 ## Cross-Cutting Concerns
 
-- Global exception handling: `src/Harmonie.API/Middleware/GlobalExceptionHandler.cs`
+- Standardized internal application result flow: `ApplicationResponse<T>` in handlers
+- Success HTTP responses return feature DTOs directly
+- Standardized error contract: `ApplicationError` (`code`, `message`, `details`)
+- Global exception handling (unexpected errors fallback): `src/Harmonie.API/Middleware/GlobalExceptionHandler.cs`
 - Structured logging: Serilog
 - Authentication: JWT bearer middleware
 

@@ -24,9 +24,10 @@ public static class LoginEndpoint
                 return operation;
             })*/
             .Produces<LoginResponse>(StatusCodes.Status200OK)
-            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
-            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
-            .ProducesValidationProblem();
+            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
+            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
+            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
+            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> HandleAsync(
@@ -38,11 +39,11 @@ public static class LoginEndpoint
         // Validate request
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError != null)
-            return validationError;
+            return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult();
 
         // Handle login
         var response = await handler.HandleAsync(request, cancellationToken);
 
-        return Results.Ok(response);
+        return response.ToHttpResult();
     }
 }
