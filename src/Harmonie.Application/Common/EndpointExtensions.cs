@@ -97,6 +97,17 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Auth.UserInactive => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.Auth.DuplicateEmail => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Auth.DuplicateUsername => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Guild.NotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Guild.AccessDenied => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Guild.InviteForbidden => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Guild.InviteTargetNotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Guild.MemberAlreadyExists => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Guild.NameConflict => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Channel.NotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Channel.AccessDenied => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Channel.NotText => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Message.ContentEmpty => HttpStatusCode.BadRequest,
+            ApplicationErrorCodes.Message.ContentTooLong => HttpStatusCode.BadRequest,
             _ => HttpStatusCode.InternalServerError
         };
 }

@@ -23,6 +23,10 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IGuildRepository, GuildRepository>();
+        services.AddScoped<IGuildMemberRepository, GuildMemberRepository>();
+        services.AddScoped<IGuildChannelRepository, GuildChannelRepository>();
+        services.AddScoped<IChannelMessageRepository, ChannelMessageRepository>();
         return services;
     }
 }
