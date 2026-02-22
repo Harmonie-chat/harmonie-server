@@ -1,0 +1,17 @@
+# Git internals
+.git/
+**/.git/**
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/artifacts/
+**/TestResults/
+
+# Common generated binaries
+**/*.dll
+**/*.exe
+**/*.pdb
+**/*.deps.json
+**/*.runtimeconfig.json
