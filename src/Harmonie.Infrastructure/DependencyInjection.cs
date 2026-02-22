@@ -19,8 +19,10 @@ public static class DependencyInjection
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");
 
-        services.AddScoped<IUserRepository>(_ => new UserRepository(connectionString));
-        services.AddScoped<IRefreshTokenRepository>(_ => new RefreshTokenRepository(connectionString));
+        services.AddScoped(_ => new DbSession(connectionString));
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         return services;
     }
 }

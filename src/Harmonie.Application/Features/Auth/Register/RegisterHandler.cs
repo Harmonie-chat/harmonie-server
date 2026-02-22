@@ -12,17 +12,20 @@ public sealed class RegisterHandler
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
 
     public RegisterHandler(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
     }
@@ -61,9 +64,6 @@ public sealed class RegisterHandler
 
         var user = userResult.Value;
 
-        // Persist user
-        await _userRepository.AddAsync(user, cancellationToken);
-
         // Generate tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(
             user.Id,
@@ -74,11 +74,23 @@ public sealed class RegisterHandler
         var refreshTokenHash = _jwtTokenService.HashRefreshToken(refreshToken);
         var refreshTokenExpiresAt = _jwtTokenService.GetRefreshTokenExpirationUtc();
         var accessTokenExpiresAt = _jwtTokenService.GetAccessTokenExpirationUtc();
-        await _refreshTokenRepository.StoreAsync(
-            user.Id,
-            refreshTokenHash,
-            refreshTokenExpiresAt,
-            cancellationToken);
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await _userRepository.AddAsync(user, cancellationToken);
+            await _refreshTokenRepository.StoreAsync(
+                user.Id,
+                refreshTokenHash,
+                refreshTokenExpiresAt,
+                cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
 
         return new RegisterResponse(
             UserId: user.Id.ToString(),

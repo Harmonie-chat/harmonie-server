@@ -8,14 +8,12 @@ namespace Harmonie.Infrastructure.Persistence;
 
 public sealed class RefreshTokenRepository : IRefreshTokenRepository
 {
-    private readonly string _connectionString;
+    private readonly DbSession _dbSession;
 
-    public RefreshTokenRepository(string connectionString)
+    public RefreshTokenRepository(DbSession dbSession)
     {
-        _connectionString = connectionString;
+        _dbSession = dbSession;
     }
-
-    private NpgsqlConnection CreateConnection() => new(_connectionString);
 
     public async Task StoreAsync(
         UserId userId,
@@ -27,15 +25,19 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             INSERT INTO refresh_tokens (id, user_id, token_hash, created_at_utc, expires_at_utc)
             VALUES (@Id, @UserId, @TokenHash, @CreatedAtUtc, @ExpiresAtUtc)";
 
-        await using var conn = CreateConnection();
-        var cmd = new CommandDefinition(sql, new
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId.Value,
-            TokenHash = tokenHash,
-            CreatedAtUtc = DateTime.UtcNow,
-            ExpiresAtUtc = expiresAtUtc
-        }, cancellationToken: cancellationToken);
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId.Value,
+                TokenHash = tokenHash,
+                CreatedAtUtc = DateTime.UtcNow,
+                ExpiresAtUtc = expiresAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
 
         await conn.ExecuteAsync(cmd);
     }
@@ -53,8 +55,12 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             FROM refresh_tokens
             WHERE token_hash = @TokenHash";
 
-        await using var conn = CreateConnection();
-        var cmd = new CommandDefinition(sql, new { TokenHash = tokenHash }, cancellationToken: cancellationToken);
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new { TokenHash = tokenHash },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
         var tokenRow = await conn.QueryFirstOrDefaultAsync<RefreshTokenDto>(cmd);
 
         if (tokenRow is null)
@@ -75,6 +81,36 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         DateTime revokedAtUtc,
         CancellationToken cancellationToken = default)
     {
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var ambientTransaction = _dbSession.Transaction;
+
+        if (ambientTransaction is not null)
+            return await RotateInTransactionAsync(conn, ambientTransaction, tokenId, userId, newTokenHash, newExpiresAtUtc, revokedAtUtc, cancellationToken);
+
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var rotated = await RotateInTransactionAsync(conn, tx, tokenId, userId, newTokenHash, newExpiresAtUtc, revokedAtUtc, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+            return rotated;
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    private static async Task<bool> RotateInTransactionAsync(
+        NpgsqlConnection conn,
+        NpgsqlTransaction tx,
+        Guid tokenId,
+        UserId userId,
+        string newTokenHash,
+        DateTime newExpiresAtUtc,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken)
+    {
         const string revokeSql = """
                                  UPDATE refresh_tokens
                                  SET revoked_at_utc = @RevokedAtUtc
@@ -87,10 +123,6 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
                                  VALUES (@Id, @UserId, @TokenHash, @CreatedAtUtc, @ExpiresAtUtc)
                                  """;
 
-        await using var conn = CreateConnection();
-        await conn.OpenAsync(cancellationToken);
-        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
-
         var revokeCmd = new CommandDefinition(
             revokeSql,
             new { Id = tokenId, RevokedAtUtc = revokedAtUtc },
@@ -99,10 +131,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
 
         var affectedRows = await conn.ExecuteAsync(revokeCmd);
         if (affectedRows != 1)
-        {
-            await tx.RollbackAsync(cancellationToken);
             return false;
-        }
 
         var insertCmd = new CommandDefinition(
             insertSql,
@@ -118,7 +147,6 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             cancellationToken: cancellationToken);
 
         await conn.ExecuteAsync(insertCmd);
-        await tx.CommitAsync(cancellationToken);
         return true;
     }
 }
