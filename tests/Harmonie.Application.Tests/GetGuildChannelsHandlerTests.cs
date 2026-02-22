@@ -43,11 +43,7 @@ public sealed class GetGuildChannelsHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected guild not found error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Guild.NotFound);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.NotFound);
     }
 
     [Fact]
@@ -68,11 +64,7 @@ public sealed class GetGuildChannelsHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected access denied error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
     }
 
     [Fact]
@@ -100,11 +92,7 @@ public sealed class GetGuildChannelsHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful guild channels payload.");
-
-        response.Data.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.ToString());
         response.Data.Channels.Should().HaveCount(2);
         response.Data.Channels[0].Type.Should().Be("Text");
         response.Data.Channels[1].Type.Should().Be("Voice");
@@ -113,14 +101,14 @@ public sealed class GetGuildChannelsHandlerTests
     private static Guild CreateGuild()
     {
         var nameResult = GuildName.Create("Guild Alpha");
-        if (nameResult.IsFailure || nameResult.Value is null)
+        if (nameResult.IsFailure)
             throw new InvalidOperationException("Failed to create guild name for tests.");
 
-        var guildResult = Guild.Create(nameResult.Value, UserId.New());
-        if (guildResult.IsFailure || guildResult.Value is null)
+        var guildResult = Guild.Create(nameResult.Value!, UserId.New());
+        if (guildResult.IsFailure)
             throw new InvalidOperationException("Failed to create guild for tests.");
 
-        return guildResult.Value;
+        return guildResult.Value!;
     }
 
     private static GuildChannel CreateChannel(
@@ -131,9 +119,9 @@ public sealed class GetGuildChannelsHandlerTests
         int position)
     {
         var channelResult = GuildChannel.Create(guildId, name, type, isDefault, position);
-        if (channelResult.IsFailure || channelResult.Value is null)
+        if (channelResult.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");
 
-        return channelResult.Value;
+        return channelResult.Value!;
     }
 }

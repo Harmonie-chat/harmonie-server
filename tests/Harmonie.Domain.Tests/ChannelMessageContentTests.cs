@@ -15,11 +15,7 @@ public sealed class ChannelMessageContentTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-
-        if (result.Value is null)
-            throw new InvalidOperationException("Expected message content value.");
-
-        result.Value.Value.Should().Be(normalizedContent);
+        result.Value!.Value.Should().Be(normalizedContent);
     }
 
     [Theory]

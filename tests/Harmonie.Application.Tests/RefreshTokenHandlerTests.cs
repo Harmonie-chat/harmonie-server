@@ -89,10 +89,7 @@ public sealed class RefreshTokenHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Error.Should().BeNull();
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful refresh token response payload.");
-
-        response.Data.AccessToken.Should().Be("new_access_token");
+        response.Data!.AccessToken.Should().Be("new_access_token");
         response.Data.RefreshToken.Should().Be("new_refresh_token");
 
         _refreshTokenRepositoryMock.Verify(x => x.RotateAsync(
@@ -126,10 +123,7 @@ public sealed class RefreshTokenHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invalid refresh token error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
     }
 
     [Fact]
@@ -160,10 +154,7 @@ public sealed class RefreshTokenHandlerTests
         response.Success.Should().BeFalse();
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invalid refresh token error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
     }
 
     private static User CreateValidUser()
@@ -171,20 +162,20 @@ public sealed class RefreshTokenHandlerTests
         var emailResult = Email.Create("test@harmonie.chat");
         var usernameResult = Username.Create("testuser");
 
-        if (emailResult.IsFailure || emailResult.Value is null)
+        if (emailResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid email for test.");
 
-        if (usernameResult.IsFailure || usernameResult.Value is null)
+        if (usernameResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid username for test.");
 
         var userResult = User.Create(
-            emailResult.Value,
-            usernameResult.Value,
+            emailResult.Value!,
+            usernameResult.Value!,
             "hashed_password");
 
-        if (userResult.IsFailure || userResult.Value is null)
+        if (userResult.IsFailure)
             throw new InvalidOperationException("Failed to create valid user for test.");
 
-        return userResult.Value;
+        return userResult.Value!;
     }
 }

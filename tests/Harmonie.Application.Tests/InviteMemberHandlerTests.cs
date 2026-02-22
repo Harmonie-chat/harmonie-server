@@ -48,11 +48,7 @@ public sealed class InviteMemberHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invite forbidden error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Guild.InviteForbidden);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.InviteForbidden);
     }
 
     [Fact]
@@ -79,11 +75,7 @@ public sealed class InviteMemberHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected invite target not found error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Guild.InviteTargetNotFound);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.InviteTargetNotFound);
     }
 
     [Fact]
@@ -114,11 +106,7 @@ public sealed class InviteMemberHandlerTests
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
-
-        if (response.Error is null)
-            throw new InvalidOperationException("Expected member already exists error.");
-
-        response.Error.Code.Should().Be(ApplicationErrorCodes.Guild.MemberAlreadyExists);
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberAlreadyExists);
     }
 
     [Fact]
@@ -154,11 +142,7 @@ public sealed class InviteMemberHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-
-        if (response.Data is null)
-            throw new InvalidOperationException("Expected successful invite payload.");
-
-        response.Data.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.ToString());
         response.Data.UserId.Should().Be(targetUserId.ToString());
         response.Data.Role.Should().Be(GuildRole.Member.ToString());
     }
@@ -166,30 +150,30 @@ public sealed class InviteMemberHandlerTests
     private static Guild CreateGuild()
     {
         var nameResult = GuildName.Create("Guild Alpha");
-        if (nameResult.IsFailure || nameResult.Value is null)
+        if (nameResult.IsFailure)
             throw new InvalidOperationException("Failed to create guild name for tests.");
 
-        var guildResult = Guild.Create(nameResult.Value, UserId.New());
-        if (guildResult.IsFailure || guildResult.Value is null)
+        var guildResult = Guild.Create(nameResult.Value!, UserId.New());
+        if (guildResult.IsFailure)
             throw new InvalidOperationException("Failed to create guild for tests.");
 
-        return guildResult.Value;
+        return guildResult.Value!;
     }
 
     private static User CreateUser(UserId userId)
     {
         var emailResult = Email.Create($"{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure || emailResult.Value is null)
+        if (emailResult.IsFailure)
             throw new InvalidOperationException("Failed to create email for tests.");
 
         var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
+        if (usernameResult.IsFailure)
             throw new InvalidOperationException("Failed to create username for tests.");
 
         return User.Rehydrate(
             userId,
-            emailResult.Value,
-            usernameResult.Value,
+            emailResult.Value!,
+            usernameResult.Value!,
             "hash",
             avatarUrl: null,
             isEmailVerified: true,

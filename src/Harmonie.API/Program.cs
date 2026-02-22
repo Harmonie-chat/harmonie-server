@@ -1,4 +1,5 @@
 using Harmonie.API.Middleware;
+using Harmonie.API.RealTime;
 using Harmonie.Application;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.RefreshToken;
@@ -8,6 +9,7 @@ using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.InviteMember;
+using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -30,6 +32,8 @@ builder.Host.UseSerilog();
 // Add layers
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
 
 // Configure Swagger with JWT support
 builder.Services.AddEndpointsApiExplorer();
@@ -56,6 +60,22 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && path.StartsWithSegments("/hubs/text-channels"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -119,6 +139,7 @@ InviteMemberEndpoint.Map(app);
 GetGuildChannelsEndpoint.Map(app);
 SendMessageEndpoint.Map(app);
 GetMessagesEndpoint.Map(app);
+app.MapHub<TextChannelsHub>("/hubs/text-channels");
 
 // Future endpoints will be added here as features are developed
 // Example:

@@ -11,15 +11,21 @@ public sealed class SendMessageHandler
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ITextChannelNotifier _textChannelNotifier;
 
     public SendMessageHandler(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
-        IChannelMessageRepository channelMessageRepository)
+        IChannelMessageRepository channelMessageRepository,
+        IUnitOfWork unitOfWork,
+        ITextChannelNotifier textChannelNotifier)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
+        _unitOfWork = unitOfWork;
+        _textChannelNotifier = textChannelNotifier;
     }
 
     public async Task<ApplicationResponse<SendMessageResponse>> HandleAsync(
@@ -81,7 +87,20 @@ public sealed class SendMessageHandler
                 messageResult.Error ?? "Unable to create channel message");
         }
 
-        await _channelMessageRepository.AddAsync(messageResult.Value, cancellationToken);
+        await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
+        {
+            await _channelMessageRepository.AddAsync(messageResult.Value, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        await NotifyMessageCreatedSafelyAsync(
+            new TextChannelMessageCreatedNotification(
+                messageResult.Value.Id,
+                messageResult.Value.ChannelId,
+                messageResult.Value.AuthorUserId,
+                messageResult.Value.Content.Value,
+                messageResult.Value.CreatedAtUtc),
+            cancellationToken);
 
         var payload = new SendMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),
@@ -101,5 +120,19 @@ public sealed class SendMessageHandler
         return rawContent.Trim().Length > ChannelMessageContent.MaxLength
             ? ApplicationErrorCodes.Message.ContentTooLong
             : ApplicationErrorCodes.Common.DomainRuleViolation;
+    }
+
+    private async Task NotifyMessageCreatedSafelyAsync(
+        TextChannelMessageCreatedNotification notification,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _textChannelNotifier.NotifyMessageCreatedAsync(notification, cancellationToken);
+        }
+        catch
+        {
+            // Real-time delivery is best-effort and must not fail a successful write.
+        }
     }
 }

@@ -9,9 +9,10 @@ Scope: canonical instructions for AI coding agents working in this repository.
 - Do not assume non-null from external boundaries (HTTP, config, DB, env, deserialization).
 - Add or update tests to cover nullable paths when behavior changes.
 
-2. Null-forgiving operator is forbidden:
-- Do not use `!` to silence nullable warnings.
-- If a value can be null in type flow, use guards, pattern matching, validation, or explicit error handling.
+2. Null-forgiving operator policy:
+- In non-test code (`src/**`, `tools/**`), do not use `!` to silence nullable warnings.
+- In test projects (`tests/**`), using `!` is allowed when it improves test readability.
+- If a value can be null in type flow, prefer guards, pattern matching, validation, or explicit error handling.
 
 3. Build must stay warning-clean for nullable correctness:
 - Fix nullable warnings by code changes, not suppression shortcuts.
