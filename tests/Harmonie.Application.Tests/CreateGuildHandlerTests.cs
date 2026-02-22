@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -42,7 +43,8 @@ public sealed class CreateGuildHandlerTests
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            NullLogger<CreateGuildHandler>.Instance);
     }
 
     [Fact]

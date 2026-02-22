@@ -16,6 +16,7 @@ public static class SendMessageEndpoint
             .WithName("SendChannelMessage")
             .WithTags("Channels")
             .RequireAuthorization()
+            .RequireRateLimiting("message-post")
             .WithSummary("Send a message")
             .WithDescription("Posts a message in a text channel.")
             .Produces<SendMessageResponse>(StatusCodes.Status201Created)
@@ -24,6 +25,7 @@ public static class SendMessageEndpoint
             .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
             .Produces<ApplicationError>(StatusCodes.Status404NotFound)
             .Produces<ApplicationError>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status429TooManyRequests)
             .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
     }
 

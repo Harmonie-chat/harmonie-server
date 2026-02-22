@@ -3,6 +3,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
 
@@ -15,19 +16,22 @@ public sealed class SendMessageHandler
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
+    private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
-        ITextChannelNotifier textChannelNotifier)
+        ITextChannelNotifier textChannelNotifier,
+        ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
+        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SendMessageResponse>> HandleAsync(
@@ -43,9 +47,20 @@ public sealed class SendMessageHandler
         if (currentUserId is null)
             throw new ArgumentNullException(nameof(currentUserId));
 
+        _logger.LogInformation(
+            "SendMessage started. ChannelId={ChannelId}, UserId={UserId}",
+            channelId,
+            currentUserId);
+
         var contentResult = ChannelMessageContent.Create(request.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
         {
+            _logger.LogWarning(
+                "SendMessage validation failed. ChannelId={ChannelId}, UserId={UserId}, Error={Error}",
+                channelId,
+                currentUserId,
+                contentResult.Error);
+
             var code = ResolveContentErrorCode(request.Content);
             return ApplicationResponse<SendMessageResponse>.Fail(
                 code,
@@ -55,6 +70,11 @@ public sealed class SendMessageHandler
         var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
         if (channel is null)
         {
+            _logger.LogWarning(
+                "SendMessage failed because channel was not found. ChannelId={ChannelId}, UserId={UserId}",
+                channelId,
+                currentUserId);
+
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -62,6 +82,12 @@ public sealed class SendMessageHandler
 
         if (channel.Type != GuildChannelType.Text)
         {
+            _logger.LogWarning(
+                "SendMessage failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
+                channelId,
+                channel.Type,
+                currentUserId);
+
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Messages can only be sent to text channels");
@@ -73,6 +99,12 @@ public sealed class SendMessageHandler
             cancellationToken);
         if (!isMember)
         {
+            _logger.LogWarning(
+                "SendMessage access denied. ChannelId={ChannelId}, GuildId={GuildId}, UserId={UserId}",
+                channelId,
+                channel.GuildId,
+                currentUserId);
+
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
@@ -84,6 +116,12 @@ public sealed class SendMessageHandler
             contentResult.Value);
         if (messageResult.IsFailure || messageResult.Value is null)
         {
+            _logger.LogWarning(
+                "SendMessage domain creation failed. ChannelId={ChannelId}, UserId={UserId}, Error={Error}",
+                channelId,
+                currentUserId,
+                messageResult.Error);
+
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 messageResult.Error ?? "Unable to create channel message");
@@ -102,6 +140,12 @@ public sealed class SendMessageHandler
                 messageResult.Value.AuthorUserId,
                 messageResult.Value.Content.Value,
                 messageResult.Value.CreatedAtUtc));
+
+        _logger.LogInformation(
+            "SendMessage succeeded. MessageId={MessageId}, ChannelId={ChannelId}, UserId={UserId}",
+            messageResult.Value.Id,
+            messageResult.Value.ChannelId,
+            messageResult.Value.AuthorUserId);
 
         var payload = new SendMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),
@@ -131,9 +175,13 @@ public sealed class SendMessageHandler
             using var notificationCts = new CancellationTokenSource(NotificationTimeout);
             await _textChannelNotifier.NotifyMessageCreatedAsync(notification, notificationCts.Token);
         }
-        catch
+        catch (Exception ex)
         {
-            // Real-time delivery is best-effort and must not fail a successful write.
+            _logger.LogWarning(
+                ex,
+                "SendMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+                notification.MessageId,
+                notification.ChannelId);
         }
     }
 }
