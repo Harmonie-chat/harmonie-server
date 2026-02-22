@@ -5,6 +5,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,7 +27,8 @@ public sealed class GetMessagesHandlerTests
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _channelMessageRepositoryMock.Object);
+            _channelMessageRepositoryMock.Object,
+            NullLogger<GetMessagesHandler>.Instance);
     }
 
     [Fact]

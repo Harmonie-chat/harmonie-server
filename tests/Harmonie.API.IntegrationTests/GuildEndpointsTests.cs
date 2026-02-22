@@ -151,6 +151,48 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
     }
 
+    [Fact]
+    public async Task SendMessage_WhenRateLimitExceeded_ShouldReturnTooManyRequests()
+    {
+        var user = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Rate Limit Guild"),
+            user.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var channelsResponse = await SendAuthorizedGetAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/channels",
+            user.AccessToken);
+        channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
+        channelsPayload.Should().NotBeNull();
+
+        var textChannel = channelsPayload!.Channels.First(channel => channel.Type == "Text");
+
+        for (var i = 0; i < 40; i++)
+        {
+            var sendResponse = await SendAuthorizedPostAsync(
+                $"/api/channels/{textChannel.ChannelId}/messages",
+                new SendMessageRequest($"msg-{i}"),
+                user.AccessToken);
+
+            sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        var throttledResponse = await SendAuthorizedPostAsync(
+            $"/api/channels/{textChannel.ChannelId}/messages",
+            new SendMessageRequest("msg-over-limit"),
+            user.AccessToken);
+
+        throttledResponse.StatusCode.Should().Be((HttpStatusCode)429);
+    }
+
     private async Task<RegisterResponse> RegisterAsync()
     {
         var request = new RegisterRequest(

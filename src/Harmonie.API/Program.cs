@@ -1,6 +1,7 @@
 using Harmonie.API.Middleware;
 using Harmonie.API.RealTime;
 using Harmonie.Application;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
@@ -12,9 +13,11 @@ using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -34,6 +37,24 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("message-post", httpContext =>
+    {
+        var partitionKey = ResolveMessagePostPartitionKey(httpContext);
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 40,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            });
+    });
+});
 
 // Configure Swagger with JWT support
 builder.Services.AddEndpointsApiExplorer();
@@ -115,6 +136,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 // ============================================================
 // MAP ENDPOINTS - Vertical Slice Architecture
@@ -150,6 +172,15 @@ app.MapHub<TextChannelsHub>("/hubs/text-channels");
 // ============================================================
 
 app.Run();
+
+static string ResolveMessagePostPartitionKey(HttpContext httpContext)
+{
+    if (httpContext.TryGetAuthenticatedUserId(out var userId) && userId is not null)
+        return $"user:{userId}";
+
+    var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    return $"ip:{remoteIp}";
+}
 
 // Make Program class accessible to integration tests
 public partial class Program { }

@@ -5,6 +5,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -48,7 +49,8 @@ public sealed class SendMessageHandlerTests
             _guildMemberRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _textChannelNotifierMock.Object);
+            _textChannelNotifierMock.Object,
+            NullLogger<SendMessageHandler>.Instance);
     }
 
     [Fact]

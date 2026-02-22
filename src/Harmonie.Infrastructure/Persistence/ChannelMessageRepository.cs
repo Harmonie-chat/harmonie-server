@@ -60,34 +60,58 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
         if (limit <= 0)
             throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be positive.");
 
-        const string sql = """
-                           SELECT id AS "Id",
-                                  channel_id AS "ChannelId",
-                                  author_user_id AS "AuthorUserId",
-                                  content AS "Content",
-                                  created_at_utc AS "CreatedAtUtc"
-                           FROM channel_messages
-                           WHERE channel_id = @ChannelId
-                             AND (
-                                 @BeforeCreatedAtUtc::timestamptz IS NULL
-                                 OR (created_at_utc, id) < (@BeforeCreatedAtUtc::timestamptz, @BeforeMessageId::uuid)
-                             )
-                           ORDER BY created_at_utc DESC, id DESC
-                           LIMIT @Take
-                           """;
-
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
+        string sql;
+        object parameters;
+
+        if (beforeCursor is null)
+        {
+            sql = """
+                  SELECT id AS "Id",
+                         channel_id AS "ChannelId",
+                         author_user_id AS "AuthorUserId",
+                         content AS "Content",
+                         created_at_utc AS "CreatedAtUtc"
+                  FROM channel_messages
+                  WHERE channel_id = @ChannelId
+                  ORDER BY created_at_utc DESC, id DESC
+                  LIMIT @Take
+                  """;
+
+            parameters = new
+            {
+                ChannelId = channelId.Value,
+                Take = take
+            };
+        }
+        else
+        {
+            sql = """
+                  SELECT id AS "Id",
+                         channel_id AS "ChannelId",
+                         author_user_id AS "AuthorUserId",
+                         content AS "Content",
+                         created_at_utc AS "CreatedAtUtc"
+                  FROM channel_messages
+                  WHERE channel_id = @ChannelId
+                    AND (created_at_utc, id) < (@BeforeCreatedAtUtc, @BeforeMessageId)
+                  ORDER BY created_at_utc DESC, id DESC
+                  LIMIT @Take
+                  """;
+
+            parameters = new
+            {
+                ChannelId = channelId.Value,
+                BeforeCreatedAtUtc = beforeCursor.CreatedAtUtc,
+                BeforeMessageId = beforeCursor.MessageId.Value,
+                Take = take
+            };
+        }
 
         var command = new CommandDefinition(
             sql,
-            new
-            {
-                ChannelId = channelId.Value,
-                BeforeCreatedAtUtc = beforeCursor?.CreatedAtUtc,
-                BeforeMessageId = beforeCursor?.MessageId.Value,
-                Take = take
-            },
+            parameters,
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
