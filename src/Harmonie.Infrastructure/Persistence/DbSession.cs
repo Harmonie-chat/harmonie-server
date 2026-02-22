@@ -39,20 +39,39 @@ public sealed class DbSession : IAsyncDisposable
     {
         if (_transaction is null)
             throw new InvalidOperationException("No active transaction to commit.");
-
-        await _transaction.CommitAsync(cancellationToken);
-        await _transaction.DisposeAsync();
-        _transaction = null;
+        try
+        {
+            await _transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
     }
 
     public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
         if (_transaction is null)
             return;
+        try
+        {
+            await _transaction.RollbackAsync(cancellationToken);
+        }
+        finally
+        {
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
 
-        await _transaction.RollbackAsync(cancellationToken);
-        await _transaction.DisposeAsync();
-        _transaction = null;
+    public async Task CloseConnectionAsync()
+    {
+        if (_connection is null)
+            return;
+
+        await _connection.DisposeAsync();
+        _connection = null;
     }
 
     public async ValueTask DisposeAsync()
@@ -72,10 +91,6 @@ public sealed class DbSession : IAsyncDisposable
             _transaction = null;
         }
 
-        if (_connection is not null)
-        {
-            await _connection.DisposeAsync();
-            _connection = null;
-        }
+        await CloseConnectionAsync();
     }
 }

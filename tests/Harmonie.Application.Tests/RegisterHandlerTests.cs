@@ -17,6 +17,7 @@ public sealed class RegisterHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
     private readonly RegisterHandler _handler;
@@ -26,9 +27,18 @@ public sealed class RegisterHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
-        
+
+        _transactionMock
+            .Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _unitOfWorkMock
+            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_transactionMock.Object);
+
         _handler = new RegisterHandler(
             _userRepositoryMock.Object,
             _refreshTokenRepositoryMock.Object,
@@ -55,7 +65,7 @@ public sealed class RegisterHandlerTests
             .ReturnsAsync(false);
 
         _passwordHasherMock
-            .Setup(x => x.HashPassword(It.IsAny<string>(),It.IsAny<string>()))
+            .Setup(x => x.HashPassword(It.IsAny<string>(), It.IsAny<string>()))
             .Returns("hashed_password");
 
         _jwtTokenServiceMock
@@ -65,7 +75,7 @@ public sealed class RegisterHandlerTests
         _jwtTokenServiceMock
             .Setup(x => x.GenerateRefreshToken())
             .Returns("refresh_token");
-        
+
         _jwtTokenServiceMock
             .Setup(x => x.HashRefreshToken(It.IsAny<string>()))
             .Returns("refresh_token_hash");
@@ -89,7 +99,7 @@ public sealed class RegisterHandlerTests
         response.RefreshToken.Should().Be("refresh_token");
 
         _unitOfWorkMock.Verify(
-            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            x => x.BeginAsync(It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userRepositoryMock.Verify(
@@ -104,17 +114,17 @@ public sealed class RegisterHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _unitOfWorkMock.Verify(
+        _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _unitOfWorkMock.Verify(
-            x => x.RollbackAsync(It.IsAny<CancellationToken>()),
-            Times.Never);
+        _transactionMock.Verify(
+            x => x.DisposeAsync(),
+            Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_WhenRefreshTokenStoreFails_ShouldRollbackTransaction()
+    public async Task HandleAsync_WhenRefreshTokenStoreFails_ShouldDisposeWithoutCommit()
     {
         // Arrange
         var request = new RegisterRequest(
@@ -169,7 +179,7 @@ public sealed class RegisterHandlerTests
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         _unitOfWorkMock.Verify(
-            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            x => x.BeginAsync(It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userRepositoryMock.Verify(
@@ -184,13 +194,13 @@ public sealed class RegisterHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _unitOfWorkMock.Verify(
-            x => x.RollbackAsync(It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        _unitOfWorkMock.Verify(
+        _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Never);
+
+        _transactionMock.Verify(
+            x => x.DisposeAsync(),
+            Times.Once);
     }
 
     [Fact]

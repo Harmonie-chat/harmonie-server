@@ -6,17 +6,18 @@ namespace Harmonie.Application.Interfaces;
 public interface IUnitOfWork
 {
     /// <summary>
-    /// Begin a new database transaction.
+    /// Begin a new transactional scope.
     /// </summary>
-    Task BeginTransactionAsync(CancellationToken cancellationToken = default);
+    Task<IUnitOfWorkTransaction> BeginAsync(CancellationToken cancellationToken = default);
+}
 
+/// <summary>
+/// Represents an active unit of work transaction scope.
+/// </summary>
+public interface IUnitOfWorkTransaction : IAsyncDisposable
+{
     /// <summary>
-    /// Commit current transaction.
+    /// Commit the current transactional scope.
     /// </summary>
     Task CommitAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Rollback current transaction.
-    /// </summary>
-    Task RollbackAsync(CancellationToken cancellationToken = default);
 }

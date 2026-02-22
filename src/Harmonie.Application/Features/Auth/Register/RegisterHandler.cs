@@ -75,22 +75,14 @@ public sealed class RegisterHandler
         var refreshTokenExpiresAt = _jwtTokenService.GetRefreshTokenExpirationUtc();
         var accessTokenExpiresAt = _jwtTokenService.GetAccessTokenExpirationUtc();
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
-        {
-            await _userRepository.AddAsync(user, cancellationToken);
-            await _refreshTokenRepository.StoreAsync(
-                user.Id,
-                refreshTokenHash,
-                refreshTokenExpiresAt,
-                cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await _unitOfWork.RollbackAsync(cancellationToken);
-            throw;
-        }
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+        await _userRepository.AddAsync(user, cancellationToken);
+        await _refreshTokenRepository.StoreAsync(
+            user.Id,
+            refreshTokenHash,
+            refreshTokenExpiresAt,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return new RegisterResponse(
             UserId: user.Id.ToString(),
