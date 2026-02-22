@@ -21,4 +21,27 @@ public static class ApplicationErrorCodes
         public const string DuplicateEmail = "AUTH_DUPLICATE_EMAIL";
         public const string DuplicateUsername = "AUTH_DUPLICATE_USERNAME";
     }
+
+    public static class Guild
+    {
+        public const string NotFound = "GUILD_NOT_FOUND";
+        public const string AccessDenied = "GUILD_ACCESS_DENIED";
+        public const string InviteForbidden = "GUILD_INVITE_FORBIDDEN";
+        public const string InviteTargetNotFound = "GUILD_INVITE_TARGET_NOT_FOUND";
+        public const string MemberAlreadyExists = "GUILD_MEMBER_ALREADY_EXISTS";
+        public const string NameConflict = "GUILD_NAME_CONFLICT";
+    }
+
+    public static class Channel
+    {
+        public const string NotFound = "CHANNEL_NOT_FOUND";
+        public const string NotText = "CHANNEL_NOT_TEXT";
+        public const string AccessDenied = "CHANNEL_ACCESS_DENIED";
+    }
+
+    public static class Message
+    {
+        public const string ContentEmpty = "MESSAGE_CONTENT_EMPTY";
+        public const string ContentTooLong = "MESSAGE_CONTENT_TOO_LONG";
+    }
 }

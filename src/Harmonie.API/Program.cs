@@ -3,6 +3,9 @@ using Harmonie.Application;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Guilds.CreateGuild;
+using Harmonie.Application.Features.Guilds.GetGuildChannels;
+using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -109,6 +112,9 @@ app.MapGet("/health", () => Results.Ok(new
 RegisterEndpoint.Map(app);
 LoginEndpoint.Map(app);
 RefreshTokenEndpoint.Map(app);
+CreateGuildEndpoint.Map(app);
+InviteMemberEndpoint.Map(app);
+GetGuildChannelsEndpoint.Map(app);
 
 // Future endpoints will be added here as features are developed
 // Example:
