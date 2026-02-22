@@ -201,6 +201,51 @@ public sealed class SendMessageHandlerTests
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenRequestTokenCanceledAfterCommit_ShouldNotifyWithIndependentToken()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("hello");
+        using var requestCts = new CancellationTokenSource();
+        var notifierToken = CancellationToken.None;
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(channel.GuildId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _transactionMock
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => requestCts.Cancel())
+            .Returns(Task.CompletedTask);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<TextChannelMessageCreatedNotification, CancellationToken>((_, token) => notifierToken = token)
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(channel.Id, request, userId, requestCts.Token);
+
+        response.Success.Should().BeTrue();
+        notifierToken.Equals(requestCts.Token).Should().BeFalse();
+        notifierToken.IsCancellationRequested.Should().BeFalse();
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageCreatedAsync(
+                It.IsAny<TextChannelMessageCreatedNotification>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     private static GuildChannel CreateChannel(GuildChannelType type)
     {
         var channelResult = GuildChannel.Create(

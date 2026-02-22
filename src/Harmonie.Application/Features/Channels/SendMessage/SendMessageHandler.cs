@@ -8,6 +8,8 @@ namespace Harmonie.Application.Features.Channels.SendMessage;
 
 public sealed class SendMessageHandler
 {
+    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
@@ -99,8 +101,7 @@ public sealed class SendMessageHandler
                 messageResult.Value.ChannelId,
                 messageResult.Value.AuthorUserId,
                 messageResult.Value.Content.Value,
-                messageResult.Value.CreatedAtUtc),
-            cancellationToken);
+                messageResult.Value.CreatedAtUtc));
 
         var payload = new SendMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),
@@ -123,12 +124,12 @@ public sealed class SendMessageHandler
     }
 
     private async Task NotifyMessageCreatedSafelyAsync(
-        TextChannelMessageCreatedNotification notification,
-        CancellationToken cancellationToken)
+        TextChannelMessageCreatedNotification notification)
     {
         try
         {
-            await _textChannelNotifier.NotifyMessageCreatedAsync(notification, cancellationToken);
+            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
+            await _textChannelNotifier.NotifyMessageCreatedAsync(notification, notificationCts.Token);
         }
         catch
         {
