@@ -52,6 +52,42 @@ dotnet run --project src/Harmonie.API
 
 In Development, OpenAPI and Scalar are enabled.
 
+## Agent Dev Container
+
+All agent-specific tooling is grouped under `agents/`.
+
+1. Build the agent image:
+
+```bash
+docker build -f agents/Dockerfile.codex -t harmonie-codex .
+```
+
+2. Start an interactive shell with the repository mounted:
+
+PowerShell:
+
+```powershell
+docker run --rm -it `
+  --entrypoint bash `
+  -v "${PWD}:/workspace" `
+  -v "${env:USERPROFILE}\.codex:/root/.codex" `
+  -e OPENAI_API_KEY="${env:OPENAI_API_KEY}" `
+  harmonie-codex
+```
+
+3. Inside the container, run Codex manually:
+
+```bash
+cd /workspace
+codex
+```
+
+4. Optional: run CI-like setup inside the container (PostgreSQL + migrations + build + tests):
+
+```bash
+bash /workspace/agents/setup-inside-codex.sh
+```
+
 ## API Response Model
 
 Auth endpoints return:
