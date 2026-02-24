@@ -9,6 +9,7 @@ using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.InviteMember;
+using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -85,6 +86,57 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         getMessagesPayload!.Items.Should().Contain(item => item.MessageId == sendMessagePayload.MessageId);
         getMessagesPayload.Items.Should().Contain(item => item.Content == "Hello team");
+    }
+
+    [Fact]
+    public async Task ListUserGuilds_ShouldReturnOwnedAndInvitedGuilds()
+    {
+        var owner = await RegisterAsync();
+        var inviter = await RegisterAsync();
+
+        var ownerGuildOneResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Owner Guild One"),
+            owner.AccessToken);
+        ownerGuildOneResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var ownerGuildOne = await ownerGuildOneResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        ownerGuildOne.Should().NotBeNull();
+
+        var ownerGuildTwoResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Owner Guild Two"),
+            owner.AccessToken);
+        ownerGuildTwoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var ownerGuildTwo = await ownerGuildTwoResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        ownerGuildTwo.Should().NotBeNull();
+
+        var inviterGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Inviter Guild"),
+            inviter.AccessToken);
+        inviterGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var inviterGuild = await inviterGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        inviterGuild.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{inviterGuild!.GuildId}/members/invite",
+            new InviteMemberRequest(owner.UserId),
+            inviter.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listResponse = await SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<ListUserGuildsResponse>();
+        listPayload.Should().NotBeNull();
+
+        listPayload!.Guilds.Should().HaveCount(3);
+        listPayload.Guilds.Should().Contain(guild => guild.GuildId == ownerGuildOne!.GuildId && guild.Role == "Admin");
+        listPayload.Guilds.Should().Contain(guild => guild.GuildId == ownerGuildTwo!.GuildId && guild.Role == "Admin");
+        listPayload.Guilds.Should().Contain(guild => guild.GuildId == inviterGuild.GuildId && guild.Role == "Member");
     }
 
     [Fact]

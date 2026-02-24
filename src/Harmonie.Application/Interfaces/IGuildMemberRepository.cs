@@ -19,4 +19,13 @@ public interface IGuildMemberRepository
     Task<bool> TryAddAsync(
         GuildMember member,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<UserGuildMembership>> GetUserGuildMembershipsAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record UserGuildMembership(
+    Guild Guild,
+    GuildRole Role,
+    DateTime JoinedAtUtc);
