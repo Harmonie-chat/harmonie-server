@@ -29,11 +29,6 @@ public sealed class GetGuildChannelsHandler
         UserId requesterUserId,
         CancellationToken cancellationToken = default)
     {
-        if (guildId is null)
-            throw new ArgumentNullException(nameof(guildId));
-        if (requesterUserId is null)
-            throw new ArgumentNullException(nameof(requesterUserId));
-
         _logger.LogInformation(
             "GetGuildChannels started. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
             guildId,

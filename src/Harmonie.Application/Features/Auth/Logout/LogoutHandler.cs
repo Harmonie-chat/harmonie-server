@@ -25,11 +25,6 @@ public sealed class LogoutHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        if (request is null)
-            throw new ArgumentNullException(nameof(request));
-        if (currentUserId is null)
-            throw new ArgumentNullException(nameof(currentUserId));
-
         var refreshTokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
         var revoked = await _refreshTokenRepository.RevokeActiveAsync(
             currentUserId,

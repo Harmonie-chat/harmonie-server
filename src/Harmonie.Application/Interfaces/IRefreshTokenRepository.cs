@@ -42,6 +42,14 @@ public interface IRefreshTokenRepository
         string tokenHash,
         DateTime revokedAtUtc,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revoke all active refresh token sessions for a specific user.
+    /// </summary>
+    Task RevokeAllActiveAsync(
+        UserId userId,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

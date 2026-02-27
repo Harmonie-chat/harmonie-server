@@ -28,28 +28,29 @@ public static class InviteMemberEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [FromRoute] string guildId,
+        [AsParameters] InviteMemberRouteRequest routeRequest,
         [FromBody] InviteMemberRequest request,
         [FromServices] InviteMemberHandler handler,
+        [FromServices] IValidator<InviteMemberRouteRequest> routeValidator,
         [FromServices] IValidator<InviteMemberRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
+        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
+        if (routeValidationError is not null)
+            return ApplicationResponse<InviteMemberResponse>.Fail(routeValidationError).ToHttpResult();
+
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<InviteMemberResponse>.Fail(validationError).ToHttpResult();
 
-        if (!GuildId.TryParse(guildId, out var parsedGuildId) || parsedGuildId is null)
+        if (routeRequest.GuildId is not string guildId
+            || !GuildId.TryParse(guildId, out var parsedGuildId)
+            || parsedGuildId is null)
         {
-            var details = new Dictionary<string, string[]>
-            {
-                ["guildId"] = ["Guild ID must be a valid non-empty GUID"]
-            };
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
-                ApplicationErrorCodes.Common.ValidationFailed,
-                "Request validation failed",
-                details).ToHttpResult();
+                ApplicationErrorCodes.Common.InvalidState,
+                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
         }
 
         if (!httpContext.TryGetAuthenticatedUserId(out var currentUserId) || currentUserId is null)

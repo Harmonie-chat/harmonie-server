@@ -16,6 +16,8 @@ Current mapped endpoints:
 - `GET /health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
 - `POST /api/auth/refresh`
 - `POST /api/guilds`
 - `GET /api/guilds`
@@ -37,6 +39,8 @@ Current features:
 - `Features/Auth/Register/*`
 - `Features/Auth/Login/*`
 - `Features/Auth/RefreshToken/*`
+- `Features/Auth/Logout/*`
+- `Features/Auth/LogoutAll/*`
 - `Features/Guilds/CreateGuild/*`
 - `Features/Guilds/ListUserGuilds/*`
 - `Features/Guilds/InviteMember/*`
@@ -104,7 +108,7 @@ Responsibilities:
 
 ## Known Gaps
 
-- Session security hardening (logout/revoke endpoints, token reuse detection)
+- Session security hardening (token reuse detection, refresh token family hardening)
 - User profile endpoints (`/api/users/me`)
 - Guild lifecycle completion (leave, kick, role changes, owner transfer)
 - Channel lifecycle management (create/rename/reorder/delete)

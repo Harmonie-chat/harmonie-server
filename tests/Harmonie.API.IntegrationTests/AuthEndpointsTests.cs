@@ -263,6 +263,68 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task LogoutAll_WithValidAuthentication_ReturnsNoContentAndRevokesAllRefreshTokens()
+    {
+        // Arrange
+        var registerRequest = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#");
+
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        registerPayload.Should().NotBeNull();
+
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(registerRequest.Email, registerRequest.Password));
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        loginPayload.Should().NotBeNull();
+
+        // Act
+        var logoutAllResponse = await SendAuthorizedPostAsync(
+            "/api/auth/logout-all",
+            registerPayload!.AccessToken);
+
+        // Assert
+        logoutAllResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var refreshWithRegisterTokenResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(registerPayload.RefreshToken));
+        refreshWithRegisterTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var refreshWithRegisterTokenError =
+            await refreshWithRegisterTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        refreshWithRegisterTokenError.Should().NotBeNull();
+        refreshWithRegisterTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+
+        var refreshWithLoginTokenResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(loginPayload!.RefreshToken));
+        refreshWithLoginTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var refreshWithLoginTokenError =
+            await refreshWithLoginTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        refreshWithLoginTokenError.Should().NotBeNull();
+        refreshWithLoginTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+    }
+
+    [Fact]
+    public async Task LogoutAll_WithoutAuthentication_ReturnsUnauthorized()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/auth/logout-all", content: null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task Logout_WithEmptyRefreshToken_ReturnsBadRequest()
     {
         // Arrange
@@ -300,6 +362,15 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         {
             Content = JsonContent.Create(payload)
         };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPostAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }

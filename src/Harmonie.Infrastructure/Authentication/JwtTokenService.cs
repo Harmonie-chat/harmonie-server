@@ -45,8 +45,7 @@ public sealed class JwtTokenService : IJwtTokenService
 
     public string HashRefreshToken(string refreshToken)
     {
-        if (string.IsNullOrWhiteSpace(refreshToken))
-            throw new ArgumentException("Refresh token cannot be null or empty", nameof(refreshToken));
+        ArgumentException.ThrowIfNullOrEmpty(refreshToken);
 
         var tokenBytes = Encoding.UTF8.GetBytes(refreshToken);
         var hashBytes = SHA256.HashData(tokenBytes);

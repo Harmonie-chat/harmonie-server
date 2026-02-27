@@ -180,4 +180,31 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         var affectedRows = await conn.ExecuteAsync(cmd);
         return affectedRows == 1;
     }
+
+    public async Task RevokeAllActiveAsync(
+        UserId userId,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE refresh_tokens
+                           SET revoked_at_utc = @RevokedAtUtc
+                           WHERE user_id = @UserId
+                             AND revoked_at_utc IS NULL
+                             AND expires_at_utc > @RevokedAtUtc
+                           """;
+
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                UserId = userId.Value,
+                RevokedAtUtc = revokedAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await conn.ExecuteAsync(cmd);
+    }
 }

@@ -5,7 +5,7 @@ Open-source, self-hosted communication platform backend.
 ## Current Scope
 
 This repository currently provides:
-- User registration, login, and refresh token rotation
+- User registration, login, refresh token rotation, session logout, and logout-all session revocation
 - Refresh token persistence in PostgreSQL
 - Guild creation and membership management (invite + list members)
 - Guild channel listing with default text and voice channels
@@ -51,6 +51,8 @@ dotnet run --project src/Harmonie.API
 - `GET /health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
 - `POST /api/auth/refresh`
 - `POST /api/guilds`
 - `GET /api/guilds`

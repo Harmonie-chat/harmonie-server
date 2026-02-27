@@ -22,9 +22,6 @@ public sealed class ListUserGuildsHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        if (currentUserId is null)
-            throw new ArgumentNullException(nameof(currentUserId));
-
         _logger.LogInformation(
             "ListUserGuilds started for user {UserId}",
             currentUserId);

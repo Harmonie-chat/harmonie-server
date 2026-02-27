@@ -51,12 +51,9 @@ public sealed class Guild : Entity<GuildId>
         DateTime createdAtUtc,
         DateTime updatedAtUtc)
     {
-        if (id is null)
-            throw new ArgumentNullException(nameof(id));
-        if (name is null)
-            throw new ArgumentNullException(nameof(name));
-        if (ownerUserId is null)
-            throw new ArgumentNullException(nameof(ownerUserId));
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(ownerUserId);
 
         return new Guild(
             id,
