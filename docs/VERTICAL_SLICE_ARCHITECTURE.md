@@ -16,7 +16,16 @@ Example (`Auth/Register`):
 Current auth slices:
 - `Features/Auth/Register`
 - `Features/Auth/Login`
-- `Features/Auth/RefreshToken` (request/response contracts only)
+- `Features/Auth/RefreshToken`
+
+Current guild and channel slices:
+- `Features/Guilds/CreateGuild`
+- `Features/Guilds/ListUserGuilds`
+- `Features/Guilds/InviteMember`
+- `Features/Guilds/GetGuildMembers`
+- `Features/Guilds/GetGuildChannels`
+- `Features/Channels/SendMessage`
+- `Features/Channels/GetMessages`
 
 ## Why This Layout
 
@@ -38,6 +47,14 @@ Endpoints are mapped from `Program.cs`:
 
 - `RegisterEndpoint.Map(app);`
 - `LoginEndpoint.Map(app);`
+- `RefreshTokenEndpoint.Map(app);`
+- `CreateGuildEndpoint.Map(app);`
+- `ListUserGuildsEndpoint.Map(app);`
+- `InviteMemberEndpoint.Map(app);`
+- `GetGuildMembersEndpoint.Map(app);`
+- `GetGuildChannelsEndpoint.Map(app);`
+- `SendMessageEndpoint.Map(app);`
+- `GetMessagesEndpoint.Map(app);`
 
 As new slices are added, map their endpoints in the same place.
 

@@ -1,10 +1,12 @@
-# Guild Feature Planning
+# Guild Feature Package
 
-This folder contains the full planning package for the Guild feature before implementation.
+This folder contains the design and planning package that guided the first guild/text implementation.
+
+Status: implemented for the initial MVP flow.
 
 ## Product Goal
 
-Deliver the first collaborative workflow:
+Delivered collaborative workflow:
 
 1. User A creates a guild.
 2. User A is automatically guild administrator.
@@ -25,7 +27,8 @@ Voice channel entities are prepared at data level, but voice behavior is out of 
 
 ## Scope Policy
 
-- This planning package is intentionally implementation-first and concrete.
+- This package is implementation-first and concrete.
+- It now serves as design history and reference for future iterations.
 - All contracts use current project conventions:
   - `ApplicationResponse<T>` for internal handler flow.
   - success HTTP responses return feature DTOs directly.

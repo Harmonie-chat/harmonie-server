@@ -5,12 +5,14 @@ Open-source, self-hosted communication platform backend.
 ## Current Scope
 
 This repository currently provides:
-- User registration and login endpoints
-- JWT access token generation
-- Refresh token persistence and rotation
-- PostgreSQL persistence with Dapper
-- DbUp migrations
-- Unit and integration tests
+- User registration, login, and refresh token rotation
+- Refresh token persistence in PostgreSQL
+- Guild creation and membership management (invite + list members)
+- Guild channel listing with default text and voice channels
+- Text messaging (send + read with cursor-based pagination)
+- SignalR real-time delivery for text channel messages
+- Rate limiting for message posting
+- Unit and integration tests for auth, guild flows, messaging, and real-time delivery
 
 ## Tech Stack
 
@@ -19,6 +21,7 @@ This repository currently provides:
 - Dapper
 - FluentValidation
 - Serilog
+- SignalR
 - OpenAPI + Scalar API reference
 
 ## Quick Start
@@ -49,10 +52,45 @@ dotnet run --project src/Harmonie.API
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
+- `POST /api/guilds`
 - `GET /api/guilds`
+- `POST /api/guilds/{guildId}/members/invite`
 - `GET /api/guilds/{guildId}/members`
+- `GET /api/guilds/{guildId}/channels`
+- `POST /api/channels/{channelId}/messages`
+- `GET /api/channels/{channelId}/messages`
+- `GET /hubs/text-channels` (SignalR negotiate/transport)
 
 In Development, OpenAPI and Scalar are enabled.
+
+## API Response Model
+
+Endpoints return:
+- Success: feature response DTOs
+- Error: standardized `ApplicationError` payload (`code`, `message`, `details`)
+
+Success example:
+
+```json
+{
+  "userId": "d8f2a3d1-3f27-4f8b-8f42-7b79f12ad7b7",
+  "email": "user@harmonie.chat",
+  "username": "user123",
+  "accessToken": "eyJ...",
+  "refreshToken": "vL...",
+  "expiresAt": "2026-02-22T12:00:00Z"
+}
+```
+
+Error example:
+
+```json
+{
+  "code": "AUTH_INVALID_CREDENTIALS",
+  "message": "Invalid email/username or password",
+  "details": null
+}
+```
 
 ## Agent Dev Container
 
@@ -90,43 +128,14 @@ codex
 bash /workspace/agents/setup-inside-codex.sh
 ```
 
-## API Response Model
-
-Auth endpoints return:
-- Success: the feature response DTO (`RegisterResponse`, `LoginResponse`, `RefreshTokenResponse`)
-- Error: a standardized `ApplicationError` payload (`code`, `message`, `details`)
-
-Success example:
-
-```json
-{
-  "userId": "d8f2a3d1-3f27-4f8b-8f42-7b79f12ad7b7",
-  "email": "user@harmonie.chat",
-  "username": "user123",
-  "accessToken": "eyJ...",
-  "refreshToken": "vL...",
-  "expiresAt": "2026-02-22T12:00:00Z"
-}
-```
-
-Error example:
-
-```json
-{
-  "code": "AUTH_INVALID_CREDENTIALS",
-  "message": "Invalid email/username or password",
-  "details": null
-}
-```
-
 ## Project Structure
 
 ```text
 src/
-  Harmonie.API/              # Startup, middleware, HTTP pipeline
+  Harmonie.API/              # Startup, middleware, HTTP pipeline, SignalR hub
   Harmonie.Application/      # Vertical slices (feature endpoints/handlers/validators)
   Harmonie.Domain/           # Entities, value objects, domain rules
-  Harmonie.Infrastructure/   # Dapper repository, JWT service, hashing
+  Harmonie.Infrastructure/   # Dapper repositories, JWT service, hashing
 tests/
   Harmonie.Domain.Tests/
   Harmonie.Application.Tests/
@@ -137,6 +146,7 @@ docs/
   ARCHITECTURE.md
   GETTING_STARTED.md
   VERTICAL_SLICE_ARCHITECTURE.md
+  MVP/
 ```
 
 ## Documentation
@@ -144,8 +154,9 @@ docs/
 - `docs/GETTING_STARTED.md`
 - `docs/ARCHITECTURE.md`
 - `docs/VERTICAL_SLICE_ARCHITECTURE.md`
-- `docs/features/guilds/README.md` (guild feature planning package)
-- `agent.md` (AI assistant context)
+- `docs/MVP/README.md` (backlog-ready MVP tickets)
+- `docs/features/guilds/README.md` (implementation design package)
+- `AGENTS.md` (AI assistant context)
 - `CONTRIBUTING.md`
 
 ## License

@@ -44,6 +44,12 @@ dotnet run --project src/Harmonie.API
 - Health: `GET /health`
 - Register: `POST /api/auth/register`
 - Login: `POST /api/auth/login`
+- Refresh token: `POST /api/auth/refresh`
+- Create guild: `POST /api/guilds`
+- List guilds: `GET /api/guilds`
+- List guild channels: `GET /api/guilds/{guildId}/channels`
+- Send message: `POST /api/channels/{channelId}/messages`
+- Read messages: `GET /api/channels/{channelId}/messages`
 
 Example register payload:
 
@@ -64,5 +70,6 @@ dotnet test
 ## Notes
 
 - OpenAPI and Scalar API reference are enabled only in Development.
-- Refresh tokens are generated but not yet persisted/rotated in storage.
+- Refresh tokens are persisted and rotated in storage.
+- Message posting is rate-limited (`40` messages/minute per authenticated user).
 - If the API cannot connect to PostgreSQL, confirm `docker-compose` is running and port `5432` is available.
