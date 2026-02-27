@@ -26,6 +26,7 @@ Current guild and channel slices:
 - `Features/Guilds/GetGuildChannels`
 - `Features/Channels/SendMessage`
 - `Features/Channels/GetMessages`
+- `Features/Users/GetMyProfile`
 
 ## Why This Layout
 
@@ -55,6 +56,7 @@ Endpoints are mapped from `Program.cs`:
 - `GetGuildChannelsEndpoint.Map(app);`
 - `SendMessageEndpoint.Map(app);`
 - `GetMessagesEndpoint.Map(app);`
+- `GetMyProfileEndpoint.Map(app);`
 
 As new slices are added, map their endpoints in the same place.
 

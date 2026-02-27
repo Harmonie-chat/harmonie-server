@@ -109,6 +109,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Channel.NotText => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Message.ContentEmpty => HttpStatusCode.BadRequest,
             ApplicationErrorCodes.Message.ContentTooLong => HttpStatusCode.BadRequest,
+            ApplicationErrorCodes.User.NotFound => HttpStatusCode.NotFound,
             _ => HttpStatusCode.InternalServerError
         };
 }

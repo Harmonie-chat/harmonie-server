@@ -52,6 +52,7 @@ dotnet run --project src/Harmonie.API
 - List guild channels: `GET /api/guilds/{guildId}/channels`
 - Send message: `POST /api/channels/{channelId}/messages`
 - Read messages: `GET /api/channels/{channelId}/messages`
+- Get current user profile: `GET /api/users/me`
 
 Example register payload:
 

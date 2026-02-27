@@ -26,6 +26,7 @@ Current mapped endpoints:
 - `GET /api/guilds/{guildId}/channels`
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
+- `GET /api/users/me`
 - `GET /hubs/text-channels` (SignalR)
 
 ## Application (`src/Harmonie.Application`)
@@ -48,6 +49,7 @@ Current features:
 - `Features/Guilds/GetGuildChannels/*`
 - `Features/Channels/SendMessage/*`
 - `Features/Channels/GetMessages/*`
+- `Features/Users/GetMyProfile/*`
 
 Shared:
 - `Common/IEndpoint.cs`
@@ -108,7 +110,6 @@ Responsibilities:
 
 ## Known Gaps
 
-- User profile endpoints (`/api/users/me`)
 - Guild lifecycle completion (leave, kick, role changes, owner transfer)
 - Channel lifecycle management (create/rename/reorder/delete)
 - Message lifecycle management (edit/delete)
