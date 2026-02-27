@@ -63,10 +63,8 @@ public sealed class GuildMember
         DateTime joinedAtUtc,
         UserId? invitedByUserId)
     {
-        if (guildId is null)
-            throw new ArgumentNullException(nameof(guildId));
-        if (userId is null)
-            throw new ArgumentNullException(nameof(userId));
+        ArgumentNullException.ThrowIfNull(guildId);
+        ArgumentNullException.ThrowIfNull(userId);
         if (!Enum.IsDefined(role))
             throw new ArgumentOutOfRangeException(nameof(role), "Guild role is invalid.");
 

@@ -76,12 +76,9 @@ public sealed class GuildChannel : Entity<GuildChannelId>
         int position,
         DateTime createdAtUtc)
     {
-        if (id is null)
-            throw new ArgumentNullException(nameof(id));
-        if (guildId is null)
-            throw new ArgumentNullException(nameof(guildId));
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Channel name is required.", nameof(name));
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(guildId);
+        ArgumentException.ThrowIfNullOrWhiteSpace("Channel name is required.", nameof(name));
         if (!Enum.IsDefined(type))
             throw new ArgumentOutOfRangeException(nameof(type), "Channel type is invalid.");
         if (position < 0)

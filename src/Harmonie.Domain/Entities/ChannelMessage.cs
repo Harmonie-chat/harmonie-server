@@ -52,14 +52,10 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         ChannelMessageContent content,
         DateTime createdAtUtc)
     {
-        if (id is null)
-            throw new ArgumentNullException(nameof(id));
-        if (channelId is null)
-            throw new ArgumentNullException(nameof(channelId));
-        if (authorUserId is null)
-            throw new ArgumentNullException(nameof(authorUserId));
-        if (content is null)
-            throw new ArgumentNullException(nameof(content));
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(channelId);
+        ArgumentNullException.ThrowIfNull(authorUserId);
+        ArgumentNullException.ThrowIfNull(content);
 
         return new ChannelMessage(
             id,
