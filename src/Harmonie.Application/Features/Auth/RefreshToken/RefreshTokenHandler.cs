@@ -36,7 +36,7 @@ public sealed class RefreshTokenHandler
                 "Refresh token is invalid or expired");
 
         if (session.RevokedAtUtc is not null)
-            return await HandleReuseDetectedAsync(session.Id, nowUtc, cancellationToken);
+            return await HandleReuseDetectedAsync(session, nowUtc, cancellationToken);
 
         if (session.ExpiresAtUtc <= nowUtc)
             return ApplicationResponse<RefreshTokenResponse>.Fail(
@@ -73,7 +73,7 @@ public sealed class RefreshTokenHandler
         {
             var latestSession = await _refreshTokenRepository.GetByTokenHashAsync(refreshTokenHash, cancellationToken);
             if (latestSession?.RevokedAtUtc is not null)
-                return await HandleReuseDetectedAsync(latestSession.Id, nowUtc, cancellationToken);
+                return await HandleReuseDetectedAsync(latestSession, nowUtc, cancellationToken);
 
             return ApplicationResponse<RefreshTokenResponse>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
@@ -89,15 +89,30 @@ public sealed class RefreshTokenHandler
     }
 
     private async Task<ApplicationResponse<RefreshTokenResponse>> HandleReuseDetectedAsync(
-        Guid reusedTokenId,
+        RefreshTokenSession reusedSession,
         DateTime revokedAtUtc,
         CancellationToken cancellationToken)
     {
         await _refreshTokenRepository.RevokeActiveFamilyAsync(
-            reusedTokenId,
+            reusedSession.Id,
             revokedAtUtc,
             RefreshTokenRevocationReasons.ReuseDetected,
             cancellationToken);
+
+        // Upgrade safety: historical rotated tokens may miss replacement linkage.
+        // In that specific case, revoke all active sessions for the user to avoid leaving compromised access active.
+        var shouldFallbackToRevokeAll = reusedSession.ReplacedByTokenId is null
+            && (string.IsNullOrWhiteSpace(reusedSession.RevocationReason)
+                || reusedSession.RevocationReason == RefreshTokenRevocationReasons.Rotated);
+
+        if (shouldFallbackToRevokeAll)
+        {
+            await _refreshTokenRepository.RevokeAllActiveAsync(
+                reusedSession.UserId,
+                revokedAtUtc,
+                RefreshTokenRevocationReasons.ReuseDetected,
+                cancellationToken);
+        }
 
         return ApplicationResponse<RefreshTokenResponse>.Fail(
             ApplicationErrorCodes.Auth.RefreshTokenReuseDetected,

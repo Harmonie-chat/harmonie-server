@@ -135,8 +135,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         const string revokeSql = """
                                  UPDATE refresh_tokens
                                  SET revoked_at_utc = @RevokedAtUtc,
-                                     revocation_reason = @RevocationReason,
-                                     replaced_by_token_id = @ReplacedByTokenId
+                                     revocation_reason = @RevocationReason
                                  WHERE id = @Id
                                    AND user_id = @UserId
                                    AND revoked_at_utc IS NULL
@@ -162,6 +161,12 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
                                      NULL)
                                  """;
 
+        const string linkReplacementSql = """
+                                          UPDATE refresh_tokens
+                                          SET replaced_by_token_id = @ReplacedByTokenId
+                                          WHERE id = @Id
+                                          """;
+
         var revokeCmd = new CommandDefinition(
             revokeSql,
             new
@@ -169,8 +174,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
                 Id = tokenId,
                 UserId = userId.Value,
                 RevokedAtUtc = revokedAtUtc,
-                RevocationReason = RefreshTokenRevocationReasons.Rotated,
-                ReplacedByTokenId = newTokenId
+                RevocationReason = RefreshTokenRevocationReasons.Rotated
             },
             transaction: tx,
             cancellationToken: cancellationToken);
@@ -193,6 +197,18 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             cancellationToken: cancellationToken);
 
         await conn.ExecuteAsync(insertCmd);
+
+        var linkCmd = new CommandDefinition(
+            linkReplacementSql,
+            new
+            {
+                Id = tokenId,
+                ReplacedByTokenId = newTokenId
+            },
+            transaction: tx,
+            cancellationToken: cancellationToken);
+
+        await conn.ExecuteAsync(linkCmd);
         return true;
     }
 

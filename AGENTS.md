@@ -34,6 +34,17 @@ Scope: canonical instructions for AI coding agents working in this repository.
 - Return standardized failure patterns (`ApplicationResponse` / `Result`) for expected failure paths.
 - Reserve exceptions for truly unexpected technical failures only.
 
+7. Migration table changes require backfill:
+- For any SQL migration that adds/changes table structure or relationships used by existing data flows, include a backfill strategy in migration scripts.
+- Backfill must be delivered as part of the migration set (same rollout), not postponed.
+- If exact backfill is impossible, add an explicit fail-safe migration/logic that prevents stale data from creating a security or business inconsistency.
+
+8. Migration script naming convention:
+- New migration script files must follow: `date_numberThatDay_scriptName.sql`.
+- `date` format: `yyyyMMdd`.
+- `numberThatDay` resets each day (1, 2, 3, ...), so numbering is local to the date and does not keep growing globally.
+- Example: `20260227_1_AddRefreshTokenMetadata.sql`, `20260227_2_BackfillRefreshTokenLinks.sql`.
+
 ## Project Snapshot
 
 Harmonie Server is a .NET 10 backend for a self-hosted communication platform.

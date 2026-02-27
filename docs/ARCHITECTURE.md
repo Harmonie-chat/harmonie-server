@@ -108,7 +108,6 @@ Responsibilities:
 
 ## Known Gaps
 
-- Session security hardening (token reuse detection, refresh token family hardening)
 - User profile endpoints (`/api/users/me`)
 - Guild lifecycle completion (leave, kick, role changes, owner transfer)
 - Channel lifecycle management (create/rename/reorder/delete)

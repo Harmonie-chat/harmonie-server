@@ -7,6 +7,7 @@ Open-source, self-hosted communication platform backend.
 This repository currently provides:
 - User registration, login, refresh token rotation, session logout, and logout-all session revocation
 - Refresh token persistence in PostgreSQL
+- Refresh token reuse detection with family session revocation on security incident
 - Guild creation and membership management (invite + list members)
 - Guild channel listing with default text and voice channels
 - Text messaging (send + read with cursor-based pagination)
@@ -93,6 +94,8 @@ Error example:
   "details": null
 }
 ```
+
+Refresh-token security incidents return stable code `AUTH_REFRESH_TOKEN_REUSE_DETECTED` with HTTP `401`.
 
 ## Agent Dev Container
 
