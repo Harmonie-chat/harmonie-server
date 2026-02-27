@@ -3,6 +3,7 @@ using Harmonie.API.RealTime;
 using Harmonie.Application;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
+using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.GetMessages;
@@ -157,6 +158,7 @@ app.MapGet("/health", () => Results.Ok(new
 // Auth endpoints
 RegisterEndpoint.Map(app);
 LoginEndpoint.Map(app);
+LogoutEndpoint.Map(app);
 RefreshTokenEndpoint.Map(app);
 CreateGuildEndpoint.Map(app);
 ListUserGuildsEndpoint.Map(app);

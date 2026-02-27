@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using Harmonie.Application.Features.Auth.Login;
+using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.GetMessages;
@@ -30,6 +31,7 @@ public static class DependencyInjection
         // Auth features
         services.AddScoped<RegisterHandler>();
         services.AddScoped<LoginHandler>();
+        services.AddScoped<LogoutHandler>();
         services.AddScoped<RefreshTokenHandler>();
         services.AddScoped<CreateGuildHandler>();
         services.AddScoped<ListUserGuildsHandler>();

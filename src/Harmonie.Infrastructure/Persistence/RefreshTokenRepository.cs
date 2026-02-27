@@ -149,4 +149,35 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         await conn.ExecuteAsync(insertCmd);
         return true;
     }
+
+    public async Task<bool> RevokeActiveAsync(
+        UserId userId,
+        string tokenHash,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE refresh_tokens
+                           SET revoked_at_utc = @RevokedAtUtc
+                           WHERE user_id = @UserId
+                             AND token_hash = @TokenHash
+                             AND revoked_at_utc IS NULL
+                             AND expires_at_utc > @RevokedAtUtc
+                           """;
+
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                UserId = userId.Value,
+                TokenHash = tokenHash,
+                RevokedAtUtc = revokedAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var affectedRows = await conn.ExecuteAsync(cmd);
+        return affectedRows == 1;
+    }
 }
