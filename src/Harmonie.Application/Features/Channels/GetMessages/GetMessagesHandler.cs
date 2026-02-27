@@ -33,13 +33,6 @@ public sealed class GetMessagesHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        if (channelId is null)
-            throw new ArgumentNullException(nameof(channelId));
-        if (request is null)
-            throw new ArgumentNullException(nameof(request));
-        if (currentUserId is null)
-            throw new ArgumentNullException(nameof(currentUserId));
-
         _logger.LogInformation(
             "GetMessages started. ChannelId={ChannelId}, UserId={UserId}, Limit={Limit}, HasBefore={HasBefore}",
             channelId,

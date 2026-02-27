@@ -34,12 +34,6 @@ public sealed class CreateGuildHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        if (request is null)
-            throw new ArgumentNullException(nameof(request));
-
-        if (currentUserId is null)
-            throw new ArgumentNullException(nameof(currentUserId));
-
         _logger.LogInformation(
             "CreateGuild started for user {UserId}",
             currentUserId);

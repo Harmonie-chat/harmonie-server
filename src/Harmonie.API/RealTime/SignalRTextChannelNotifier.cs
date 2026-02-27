@@ -16,9 +16,6 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         TextChannelMessageCreatedNotification notification,
         CancellationToken cancellationToken = default)
     {
-        if (notification is null)
-            throw new ArgumentNullException(nameof(notification));
-
         var payload = new MessageCreatedEvent(
             MessageId: notification.MessageId.ToString(),
             ChannelId: notification.ChannelId.ToString(),

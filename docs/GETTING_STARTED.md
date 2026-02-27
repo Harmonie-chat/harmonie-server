@@ -44,6 +44,8 @@ dotnet run --project src/Harmonie.API
 - Health: `GET /health`
 - Register: `POST /api/auth/register`
 - Login: `POST /api/auth/login`
+- Logout current session: `POST /api/auth/logout`
+- Logout all sessions: `POST /api/auth/logout-all`
 - Refresh token: `POST /api/auth/refresh`
 - Create guild: `POST /api/guilds`
 - List guilds: `GET /api/guilds`

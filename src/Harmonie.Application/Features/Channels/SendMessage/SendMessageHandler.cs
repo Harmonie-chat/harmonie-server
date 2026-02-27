@@ -40,13 +40,6 @@ public sealed class SendMessageHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        if (channelId is null)
-            throw new ArgumentNullException(nameof(channelId));
-        if (request is null)
-            throw new ArgumentNullException(nameof(request));
-        if (currentUserId is null)
-            throw new ArgumentNullException(nameof(currentUserId));
-
         _logger.LogInformation(
             "SendMessage started. ChannelId={ChannelId}, UserId={UserId}",
             channelId,

@@ -7,6 +7,8 @@ Scope: canonical instructions for AI coding agents working in this repository.
 1. Nullable safety is required:
 - Any nullable path must be handled explicitly in code.
 - Do not assume non-null from external boundaries (HTTP, config, DB, env, deserialization).
+- Limit null checks to values that are actually nullable in type flow (`T?`, maybe-null analysis) or originate from external/untrusted boundaries.
+- Do not add defensive null checks for non-nullable internal parameters that are guaranteed by compile-time contracts.
 - Add or update tests to cover nullable paths when behavior changes.
 
 2. Null-forgiving operator policy:
@@ -21,6 +23,16 @@ Scope: canonical instructions for AI coding agents working in this repository.
 - For any new endpoint/feature or behavior change, compare implementation against at least 2 existing features before finalizing.
 - Match established conventions (endpoint flow, validator usage, handler error mapping, DI registration, Program mapping, and test style).
 - If misaligned, update the new code to align unless there is a documented reason not to.
+
+5. HTTP input nullability checks must live in FluentValidation:
+- For HTTP request DTOs (body/query/route models), non-null/empty boundary checks must be defined in `*Validator.cs`.
+- Do not duplicate HTTP DTO non-null checks inside handlers when the input is already validated at endpoint boundary.
+- Keep endpoint/handler checks focused on values that are outside FluentValidation scope (e.g., auth claims, parsed IDs, infrastructure results).
+
+6. Do not use exceptions for expected flow control:
+- In API/Application code (`src/Harmonie.API/**`, `src/Harmonie.Application/**`), do not throw exceptions for validation, business rules, or authorization outcomes.
+- Return standardized failure patterns (`ApplicationResponse` / `Result`) for expected failure paths.
+- Reserve exceptions for truly unexpected technical failures only.
 
 ## Project Snapshot
 

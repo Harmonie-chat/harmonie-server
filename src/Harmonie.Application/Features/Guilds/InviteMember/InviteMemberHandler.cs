@@ -32,13 +32,6 @@ public sealed class InviteMemberHandler
         UserId inviterUserId,
         CancellationToken cancellationToken = default)
     {
-        if (guildId is null)
-            throw new ArgumentNullException(nameof(guildId));
-        if (request is null)
-            throw new ArgumentNullException(nameof(request));
-        if (inviterUserId is null)
-            throw new ArgumentNullException(nameof(inviterUserId));
-
         _logger.LogInformation(
             "InviteMember started. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserIdRaw={TargetUserIdRaw}",
             guildId,
