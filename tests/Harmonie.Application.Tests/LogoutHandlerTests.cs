@@ -43,6 +43,7 @@ public sealed class LogoutHandlerTests
                 currentUserId,
                 "refresh_token_hash",
                 It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.Logout,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
@@ -59,6 +60,7 @@ public sealed class LogoutHandlerTests
                 currentUserId,
                 "refresh_token_hash",
                 It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.Logout,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -79,6 +81,7 @@ public sealed class LogoutHandlerTests
                 currentUserId,
                 "invalid_hash",
                 It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.Logout,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 

@@ -157,6 +157,61 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task RefreshToken_WhenRevokedTokenIsReused_ShouldReturnReuseCodeAndRevokeAssociatedSessionOnly()
+    {
+        // Arrange
+        var registerRequest = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#");
+
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        registerPayload.Should().NotBeNull();
+
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(registerRequest.Email, registerRequest.Password));
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        loginPayload.Should().NotBeNull();
+
+        var firstRefreshResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(registerPayload!.RefreshToken));
+        firstRefreshResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var firstRefreshPayload = await firstRefreshResponse.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        firstRefreshPayload.Should().NotBeNull();
+
+        // Act - reuse rotated token
+        var reuseResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(registerPayload.RefreshToken));
+
+        // Assert - reuse is treated as security incident
+        reuseResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var reuseError = await reuseResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        reuseError.Should().NotBeNull();
+        reuseError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
+
+        // The associated active descendant session is revoked
+        var descendantResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(firstRefreshPayload!.RefreshToken));
+        descendantResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var descendantError = await descendantResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        descendantError.Should().NotBeNull();
+        descendantError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
+
+        // Unrelated active session remains valid
+        var unrelatedResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest(loginPayload!.RefreshToken));
+        unrelatedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
     {
         // Arrange
@@ -208,7 +263,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         var refreshError = await refreshResponse.Content.ReadFromJsonAsync<ApplicationError>();
         refreshError.Should().NotBeNull();
-        refreshError!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+        refreshError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
     }
 
     [Fact]
@@ -301,7 +356,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var refreshWithRegisterTokenError =
             await refreshWithRegisterTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
         refreshWithRegisterTokenError.Should().NotBeNull();
-        refreshWithRegisterTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+        refreshWithRegisterTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         var refreshWithLoginTokenResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
@@ -311,7 +366,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var refreshWithLoginTokenError =
             await refreshWithLoginTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
         refreshWithLoginTokenError.Should().NotBeNull();
-        refreshWithLoginTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+        refreshWithLoginTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
     }
 
     [Fact]

@@ -40,7 +40,9 @@ public sealed class RefreshTokenHandlerTests
             Id: Guid.NewGuid(),
             UserId: user.Id,
             ExpiresAtUtc: DateTime.UtcNow.AddMinutes(10),
-            RevokedAtUtc: null);
+            RevokedAtUtc: null,
+            RevocationReason: null,
+            ReplacedByTokenId: null);
 
         _jwtTokenServiceMock
             .Setup(x => x.HashRefreshToken(It.IsAny<string>()))
@@ -100,6 +102,13 @@ public sealed class RefreshTokenHandlerTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _refreshTokenRepositoryMock.Verify(x => x.RevokeActiveFamilyAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -135,7 +144,9 @@ public sealed class RefreshTokenHandlerTests
             Id: Guid.NewGuid(),
             UserId: userId,
             ExpiresAtUtc: DateTime.UtcNow.AddMinutes(-1),
-            RevokedAtUtc: null);
+            RevokedAtUtc: null,
+            RevocationReason: null,
+            ReplacedByTokenId: null);
 
         _jwtTokenServiceMock
             .Setup(x => x.HashRefreshToken("expired_refresh_token"))
@@ -155,6 +166,137 @@ public sealed class RefreshTokenHandlerTests
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithRevokedRefreshToken_ShouldRevokeActiveFamilyAndReturnReuseDetectedFailure()
+    {
+        // Arrange
+        var userId = UserId.New();
+        var revokedSession = new RefreshTokenSession(
+            Id: Guid.NewGuid(),
+            UserId: userId,
+            ExpiresAtUtc: DateTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: DateTime.UtcNow.AddMinutes(-1),
+            RevocationReason: RefreshTokenRevocationReasons.Rotated,
+            ReplacedByTokenId: Guid.NewGuid());
+
+        _jwtTokenServiceMock
+            .Setup(x => x.HashRefreshToken("reused_refresh_token"))
+            .Returns("reused_hash");
+
+        _refreshTokenRepositoryMock
+            .Setup(x => x.GetByTokenHashAsync("reused_hash", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(revokedSession);
+
+        _refreshTokenRepositoryMock
+            .Setup(x => x.RevokeActiveFamilyAsync(
+                revokedSession.Id,
+                It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.ReuseDetected,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var response = await _handler.HandleAsync(new RefreshTokenRequest("reused_refresh_token"));
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
+
+        _refreshTokenRepositoryMock.Verify(x => x.RevokeActiveFamilyAsync(
+                revokedSession.Id,
+                It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.ReuseDetected,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenRotateLosesRaceAndTokenBecomesRevoked_ShouldReturnReuseDetectedFailure()
+    {
+        // Arrange
+        var user = CreateValidUser();
+        var tokenId = Guid.NewGuid();
+        var originalSession = new RefreshTokenSession(
+            Id: tokenId,
+            UserId: user.Id,
+            ExpiresAtUtc: DateTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: null,
+            RevocationReason: null,
+            ReplacedByTokenId: null);
+        var revokedSession = new RefreshTokenSession(
+            Id: tokenId,
+            UserId: user.Id,
+            ExpiresAtUtc: DateTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: DateTime.UtcNow,
+            RevocationReason: RefreshTokenRevocationReasons.Rotated,
+            ReplacedByTokenId: Guid.NewGuid());
+
+        _jwtTokenServiceMock
+            .Setup(x => x.HashRefreshToken(It.IsAny<string>()))
+            .Returns((string token) => token == "race_refresh_token" ? "race_hash" : "new_hash");
+
+        _refreshTokenRepositoryMock
+            .SetupSequence(x => x.GetByTokenHashAsync("race_hash", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(originalSession)
+            .ReturnsAsync(revokedSession);
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GenerateAccessToken(user.Id, user.Email, user.Username))
+            .Returns("new_access_token");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GenerateRefreshToken())
+            .Returns("new_refresh_token");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GetAccessTokenExpirationUtc())
+            .Returns(DateTime.UtcNow.AddMinutes(15));
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GetRefreshTokenExpirationUtc())
+            .Returns(DateTime.UtcNow.AddDays(30));
+
+        _refreshTokenRepositoryMock
+            .Setup(x => x.RotateAsync(
+                tokenId,
+                user.Id,
+                "new_hash",
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _refreshTokenRepositoryMock
+            .Setup(x => x.RevokeActiveFamilyAsync(
+                tokenId,
+                It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.ReuseDetected,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var response = await _handler.HandleAsync(new RefreshTokenRequest("race_refresh_token"));
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Data.Should().BeNull();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
+
+        _refreshTokenRepositoryMock.Verify(x => x.RevokeActiveFamilyAsync(
+                tokenId,
+                It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.ReuseDetected,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static User CreateValidUser()

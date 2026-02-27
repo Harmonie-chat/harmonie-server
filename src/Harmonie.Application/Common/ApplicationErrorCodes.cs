@@ -17,6 +17,7 @@ public static class ApplicationErrorCodes
     {
         public const string InvalidCredentials = "AUTH_INVALID_CREDENTIALS";
         public const string InvalidRefreshToken = "AUTH_INVALID_REFRESH_TOKEN";
+        public const string RefreshTokenReuseDetected = "AUTH_REFRESH_TOKEN_REUSE_DETECTED";
         public const string UserInactive = "AUTH_USER_INACTIVE";
         public const string DuplicateEmail = "AUTH_DUPLICATE_EMAIL";
         public const string DuplicateUsername = "AUTH_DUPLICATE_USERNAME";

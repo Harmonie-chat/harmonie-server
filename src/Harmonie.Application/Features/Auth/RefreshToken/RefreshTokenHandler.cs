@@ -26,11 +26,19 @@ public sealed class RefreshTokenHandler
         RefreshTokenRequest request,
         CancellationToken cancellationToken = default)
     {
+        var nowUtc = DateTime.UtcNow;
         var refreshTokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
         var session = await _refreshTokenRepository.GetByTokenHashAsync(refreshTokenHash, cancellationToken);
-        var nowUtc = DateTime.UtcNow;
 
-        if (session is null || session.RevokedAtUtc is not null || session.ExpiresAtUtc <= nowUtc)
+        if (session is null)
+            return ApplicationResponse<RefreshTokenResponse>.Fail(
+                ApplicationErrorCodes.Auth.InvalidRefreshToken,
+                "Refresh token is invalid or expired");
+
+        if (session.RevokedAtUtc is not null)
+            return await HandleReuseDetectedAsync(session.Id, nowUtc, cancellationToken);
+
+        if (session.ExpiresAtUtc <= nowUtc)
             return ApplicationResponse<RefreshTokenResponse>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
@@ -62,9 +70,15 @@ public sealed class RefreshTokenHandler
             cancellationToken);
 
         if (!rotated)
+        {
+            var latestSession = await _refreshTokenRepository.GetByTokenHashAsync(refreshTokenHash, cancellationToken);
+            if (latestSession?.RevokedAtUtc is not null)
+                return await HandleReuseDetectedAsync(latestSession.Id, nowUtc, cancellationToken);
+
             return ApplicationResponse<RefreshTokenResponse>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
+        }
 
         var payload = new RefreshTokenResponse(
             AccessToken: accessToken,
@@ -72,5 +86,21 @@ public sealed class RefreshTokenHandler
             ExpiresAt: accessTokenExpiresAt);
 
         return ApplicationResponse<RefreshTokenResponse>.Ok(payload);
+    }
+
+    private async Task<ApplicationResponse<RefreshTokenResponse>> HandleReuseDetectedAsync(
+        Guid reusedTokenId,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        await _refreshTokenRepository.RevokeActiveFamilyAsync(
+            reusedTokenId,
+            revokedAtUtc,
+            RefreshTokenRevocationReasons.ReuseDetected,
+            cancellationToken);
+
+        return ApplicationResponse<RefreshTokenResponse>.Fail(
+            ApplicationErrorCodes.Auth.RefreshTokenReuseDetected,
+            "Refresh token reuse detected; associated sessions were revoked");
     }
 }

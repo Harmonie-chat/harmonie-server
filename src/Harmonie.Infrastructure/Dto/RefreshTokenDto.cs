@@ -5,4 +5,6 @@ public sealed record RefreshTokenDto(
     Guid UserId,
     string TokenHash,
     DateTime ExpiresAtUtc,
-    DateTime? RevokedAtUtc);
+    DateTime? RevokedAtUtc,
+    string? RevocationReason,
+    Guid? ReplacedByTokenId);

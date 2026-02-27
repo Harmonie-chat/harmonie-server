@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.LogoutAll;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
@@ -31,6 +32,7 @@ public sealed class LogoutAllHandlerTests
             .Setup(x => x.RevokeAllActiveAsync(
                 currentUserId,
                 It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.LogoutAll,
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -46,6 +48,7 @@ public sealed class LogoutAllHandlerTests
             x => x.RevokeAllActiveAsync(
                 currentUserId,
                 It.IsAny<DateTime>(),
+                RefreshTokenRevocationReasons.LogoutAll,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

@@ -94,6 +94,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Common.DomainRuleViolation => HttpStatusCode.BadRequest,
             ApplicationErrorCodes.Auth.InvalidCredentials => HttpStatusCode.Unauthorized,
             ApplicationErrorCodes.Auth.InvalidRefreshToken => HttpStatusCode.Unauthorized,
+            ApplicationErrorCodes.Auth.RefreshTokenReuseDetected => HttpStatusCode.Unauthorized,
             ApplicationErrorCodes.Auth.UserInactive => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.Auth.DuplicateEmail => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Auth.DuplicateUsername => HttpStatusCode.Conflict,

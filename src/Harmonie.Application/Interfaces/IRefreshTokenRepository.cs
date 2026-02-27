@@ -41,6 +41,7 @@ public interface IRefreshTokenRepository
         UserId userId,
         string tokenHash,
         DateTime revokedAtUtc,
+        string revocationReason,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -49,6 +50,16 @@ public interface IRefreshTokenRepository
     Task RevokeAllActiveAsync(
         UserId userId,
         DateTime revokedAtUtc,
+        string revocationReason,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revoke all active sessions in a refresh-token family starting from a reused token.
+    /// </summary>
+    Task RevokeActiveFamilyAsync(
+        Guid tokenId,
+        DateTime revokedAtUtc,
+        string revocationReason,
         CancellationToken cancellationToken = default);
 }
 
@@ -59,4 +70,6 @@ public sealed record RefreshTokenSession(
     Guid Id,
     UserId UserId,
     DateTime ExpiresAtUtc,
-    DateTime? RevokedAtUtc);
+    DateTime? RevokedAtUtc,
+    string? RevocationReason,
+    Guid? ReplacedByTokenId);

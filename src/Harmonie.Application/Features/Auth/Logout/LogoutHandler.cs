@@ -30,6 +30,7 @@ public sealed class LogoutHandler
             currentUserId,
             refreshTokenHash,
             DateTime.UtcNow,
+            RefreshTokenRevocationReasons.Logout,
             cancellationToken);
 
         if (!revoked)

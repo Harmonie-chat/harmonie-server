@@ -23,6 +23,7 @@ public sealed class LogoutAllHandler
         await _refreshTokenRepository.RevokeAllActiveAsync(
             currentUserId,
             DateTime.UtcNow,
+            RefreshTokenRevocationReasons.LogoutAll,
             cancellationToken);
 
         return ApplicationResponse<LogoutAllResponse>.Ok(new LogoutAllResponse());

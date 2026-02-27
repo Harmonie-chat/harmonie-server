@@ -1,4 +1,5 @@
 using Dapper;
+using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
 using Harmonie.Infrastructure.Dto;
@@ -22,8 +23,22 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = @"
-            INSERT INTO refresh_tokens (id, user_id, token_hash, created_at_utc, expires_at_utc)
-            VALUES (@Id, @UserId, @TokenHash, @CreatedAtUtc, @ExpiresAtUtc)";
+            INSERT INTO refresh_tokens (
+                id,
+                user_id,
+                token_hash,
+                created_at_utc,
+                expires_at_utc,
+                revocation_reason,
+                replaced_by_token_id)
+            VALUES (
+                @Id,
+                @UserId,
+                @TokenHash,
+                @CreatedAtUtc,
+                @ExpiresAtUtc,
+                NULL,
+                NULL)";
 
         var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var cmd = new CommandDefinition(
@@ -51,7 +66,9 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
                    user_id as ""UserId"",
                    token_hash as ""TokenHash"",
                    expires_at_utc as ""ExpiresAtUtc"",
-                   revoked_at_utc as ""RevokedAtUtc""
+                   revoked_at_utc as ""RevokedAtUtc"",
+                   revocation_reason as ""RevocationReason"",
+                   replaced_by_token_id as ""ReplacedByTokenId""
             FROM refresh_tokens
             WHERE token_hash = @TokenHash";
 
@@ -70,7 +87,9 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             Id: tokenRow.Id,
             UserId: UserId.From(tokenRow.UserId),
             ExpiresAtUtc: tokenRow.ExpiresAtUtc,
-            RevokedAtUtc: tokenRow.RevokedAtUtc);
+            RevokedAtUtc: tokenRow.RevokedAtUtc,
+            RevocationReason: tokenRow.RevocationReason,
+            ReplacedByTokenId: tokenRow.ReplacedByTokenId);
     }
 
     public async Task<bool> RotateAsync(
@@ -111,21 +130,48 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         DateTime revokedAtUtc,
         CancellationToken cancellationToken)
     {
+        var newTokenId = Guid.NewGuid();
+
         const string revokeSql = """
                                  UPDATE refresh_tokens
-                                 SET revoked_at_utc = @RevokedAtUtc
+                                 SET revoked_at_utc = @RevokedAtUtc,
+                                     revocation_reason = @RevocationReason,
+                                     replaced_by_token_id = @ReplacedByTokenId
                                  WHERE id = @Id
+                                   AND user_id = @UserId
                                    AND revoked_at_utc IS NULL
+                                   AND expires_at_utc > @RevokedAtUtc
                                  """;
 
         const string insertSql = """
-                                 INSERT INTO refresh_tokens (id, user_id, token_hash, created_at_utc, expires_at_utc)
-                                 VALUES (@Id, @UserId, @TokenHash, @CreatedAtUtc, @ExpiresAtUtc)
+                                 INSERT INTO refresh_tokens (
+                                     id,
+                                     user_id,
+                                     token_hash,
+                                     created_at_utc,
+                                     expires_at_utc,
+                                     revocation_reason,
+                                     replaced_by_token_id)
+                                 VALUES (
+                                     @Id,
+                                     @UserId,
+                                     @TokenHash,
+                                     @CreatedAtUtc,
+                                     @ExpiresAtUtc,
+                                     NULL,
+                                     NULL)
                                  """;
 
         var revokeCmd = new CommandDefinition(
             revokeSql,
-            new { Id = tokenId, RevokedAtUtc = revokedAtUtc },
+            new
+            {
+                Id = tokenId,
+                UserId = userId.Value,
+                RevokedAtUtc = revokedAtUtc,
+                RevocationReason = RefreshTokenRevocationReasons.Rotated,
+                ReplacedByTokenId = newTokenId
+            },
             transaction: tx,
             cancellationToken: cancellationToken);
 
@@ -137,7 +183,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             insertSql,
             new
             {
-                Id = Guid.NewGuid(),
+                Id = newTokenId,
                 UserId = userId.Value,
                 TokenHash = newTokenHash,
                 CreatedAtUtc = revokedAtUtc,
@@ -154,11 +200,13 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         UserId userId,
         string tokenHash,
         DateTime revokedAtUtc,
+        string revocationReason,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
                            UPDATE refresh_tokens
-                           SET revoked_at_utc = @RevokedAtUtc
+                           SET revoked_at_utc = @RevokedAtUtc,
+                               revocation_reason = @RevocationReason
                            WHERE user_id = @UserId
                              AND token_hash = @TokenHash
                              AND revoked_at_utc IS NULL
@@ -172,7 +220,8 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             {
                 UserId = userId.Value,
                 TokenHash = tokenHash,
-                RevokedAtUtc = revokedAtUtc
+                RevokedAtUtc = revokedAtUtc,
+                RevocationReason = revocationReason
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
@@ -184,11 +233,13 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
     public async Task RevokeAllActiveAsync(
         UserId userId,
         DateTime revokedAtUtc,
+        string revocationReason,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
                            UPDATE refresh_tokens
-                           SET revoked_at_utc = @RevokedAtUtc
+                           SET revoked_at_utc = @RevokedAtUtc,
+                               revocation_reason = @RevocationReason
                            WHERE user_id = @UserId
                              AND revoked_at_utc IS NULL
                              AND expires_at_utc > @RevokedAtUtc
@@ -200,7 +251,50 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             new
             {
                 UserId = userId.Value,
-                RevokedAtUtc = revokedAtUtc
+                RevokedAtUtc = revokedAtUtc,
+                RevocationReason = revocationReason
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await conn.ExecuteAsync(cmd);
+    }
+
+    public async Task RevokeActiveFamilyAsync(
+        Guid tokenId,
+        DateTime revokedAtUtc,
+        string revocationReason,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           WITH RECURSIVE token_family AS (
+                               SELECT id, replaced_by_token_id
+                               FROM refresh_tokens
+                               WHERE id = @TokenId
+
+                               UNION ALL
+
+                               SELECT next_token.id, next_token.replaced_by_token_id
+                               FROM refresh_tokens next_token
+                               INNER JOIN token_family family
+                                   ON next_token.id = family.replaced_by_token_id
+                           )
+                           UPDATE refresh_tokens
+                           SET revoked_at_utc = @RevokedAtUtc,
+                               revocation_reason = @RevocationReason
+                           WHERE id IN (SELECT id FROM token_family)
+                             AND revoked_at_utc IS NULL
+                             AND expires_at_utc > @RevokedAtUtc
+                           """;
+
+        var conn = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                TokenId = tokenId,
+                RevokedAtUtc = revokedAtUtc,
+                RevocationReason = revocationReason
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
