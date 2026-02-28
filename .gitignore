@@ -96,6 +96,9 @@ docker-compose.override.yml
 *.sqlite
 *.sqlite3
 
+# Claude Code
+.claude/
+
 # macOS
 .DS_Store
 

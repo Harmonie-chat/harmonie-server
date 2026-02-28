@@ -11,6 +11,7 @@ using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.InviteMember;
+using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<CreateGuildHandler>();
         services.AddScoped<ListUserGuildsHandler>();
         services.AddScoped<InviteMemberHandler>();
+        services.AddScoped<LeaveGuildHandler>();
         services.AddScoped<GetGuildChannelsHandler>();
         services.AddScoped<GetGuildMembersHandler>();
         services.AddScoped<SendMessageHandler>();

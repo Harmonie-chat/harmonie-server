@@ -1,6 +1,14 @@
 # AGENTS Rules - Harmonie Server
 
 Scope: canonical instructions for AI coding agents working in this repository.
+For project scope, endpoints, and structure see `README.md` and `docs/`.
+
+## Branch Naming Convention
+
+- Feature branches must follow: `feat/{issueNumber}-{FeatureName}`.
+- `issueNumber` is the GitHub issue number the branch addresses.
+- `FeatureName` is PascalCase, derived from the issue title (no spaces).
+- Example: `feat/20-LeaveGuild`, `feat/42-UserProfile`.
 
 ## Mandatory Rules
 
@@ -45,45 +53,6 @@ Scope: canonical instructions for AI coding agents working in this repository.
 - `numberThatDay` resets each day (1, 2, 3, ...), so numbering is local to the date and does not keep growing globally.
 - Example: `20260227_1_AddRefreshTokenMetadata.sql`, `20260227_2_BackfillRefreshTokenLinks.sql`.
 
-## Project Snapshot
-
-Harmonie Server is a .NET 10 backend for a self-hosted communication platform.
-
-Current implemented scope:
-- Auth: register, login, and refresh
-- JWT access token generation
-- Refresh token persistence and rotation
-- Guild creation, invitation, membership listing
-- Guild channel listing
-- Channel messaging (send/read) with cursor pagination
-- SignalR real-time text channel delivery
-- Health endpoint
-- PostgreSQL persistence for users, refresh tokens, guilds, memberships, channels, and messages
-
-## Source Layout
-
-- `src/Harmonie.API`: startup, middleware, endpoint mapping
-- `src/Harmonie.Application`: vertical slices and interfaces
-- `src/Harmonie.Domain`: entities, value objects, domain rules
-- `src/Harmonie.Infrastructure`: Dapper repository, JWT, password hashing
-- `tools/Harmonie.Migrations`: DbUp migration runner + SQL scripts
-- `tests/*`: domain, application, and API integration tests
-
-## Active Endpoints
-
-- `GET /health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `POST /api/guilds`
-- `GET /api/guilds`
-- `POST /api/guilds/{guildId}/members/invite`
-- `GET /api/guilds/{guildId}/members`
-- `GET /api/guilds/{guildId}/channels`
-- `POST /api/channels/{channelId}/messages`
-- `GET /api/channels/{channelId}/messages`
-- `GET /hubs/text-channels` (SignalR)
-
 ## Architecture Rules
 
 - Keep Domain independent of framework/infrastructure concerns.
@@ -125,19 +94,11 @@ Current implemented scope:
 - Prefer filtered recursive listing:
 `Get-ChildItem -Recurse -File | Where-Object { $_.FullName -notmatch '\\(bin|obj|out|artifacts|TestResults)\\' -and $_.FullName -notmatch '\\\\.git\\\\' }`
 
-## Known Gaps
-
-- Session revocation endpoints and token reuse hardening.
-- User profile self-service endpoints.
-- Guild membership lifecycle completion (leave, kick, role changes, owner transfer).
-- Channel lifecycle management (create/rename/reorder/delete).
-- Message lifecycle management (edit/delete).
-
 ## Reference Docs
 
-- `README.md`
+- `README.md` — current scope, endpoints, stack, scalability TODOs
 - `docs/GETTING_STARTED.md`
 - `docs/ARCHITECTURE.md`
 - `docs/VERTICAL_SLICE_ARCHITECTURE.md`
 
-Last updated: 2026-02-27
+Last updated: 2026-02-28

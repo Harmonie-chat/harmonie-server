@@ -181,6 +181,31 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         return rows.Select(MapToGuildMemberUser).ToArray();
     }
 
+    public async Task RemoveAsync(
+        GuildId guildId,
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           DELETE FROM guild_members
+                           WHERE guild_id = @GuildId
+                             AND user_id = @UserId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                GuildId = guildId.Value,
+                UserId = userId.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static UserGuildMembership MapToUserGuildMembership(UserGuildMembershipDto row)
     {
         if (!Enum.IsDefined(typeof(GuildRole), row.Role))

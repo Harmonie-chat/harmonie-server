@@ -27,6 +27,11 @@ public interface IGuildMemberRepository
     Task<IReadOnlyList<GuildMemberUser>> GetGuildMembersAsync(
         GuildId guildId,
         CancellationToken cancellationToken = default);
+
+    Task RemoveAsync(
+        GuildId guildId,
+        UserId userId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record UserGuildMembership(

@@ -31,6 +31,7 @@ public static class ApplicationErrorCodes
         public const string InviteTargetNotFound = "GUILD_INVITE_TARGET_NOT_FOUND";
         public const string MemberAlreadyExists = "GUILD_MEMBER_ALREADY_EXISTS";
         public const string NameConflict = "GUILD_NAME_CONFLICT";
+        public const string OwnerCannotLeave = "GUILD_OWNER_CANNOT_LEAVE";
     }
 
     public static class Channel

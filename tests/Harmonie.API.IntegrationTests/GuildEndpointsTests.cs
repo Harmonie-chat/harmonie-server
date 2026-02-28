@@ -281,6 +281,118 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         throttledResponse.StatusCode.Should().Be((HttpStatusCode)429);
     }
 
+    [Fact]
+    public async Task LeaveGuild_WhenMemberLeaves_ShouldReturn204()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Leave Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var leaveResponse = await SendAuthorizedPostNoBodyAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/leave",
+            member.AccessToken);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task LeaveGuild_WhenOwnerLeaves_ShouldReturn409()
+    {
+        var owner = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Owner Leave Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var leaveResponse = await SendAuthorizedPostNoBodyAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/leave",
+            owner.AccessToken);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var error = await leaveResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.OwnerCannotLeave);
+    }
+
+    [Fact]
+    public async Task LeaveGuild_WhenNotMember_ShouldReturn403()
+    {
+        var owner = await RegisterAsync();
+        var outsider = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Not Member Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var leaveResponse = await SendAuthorizedPostNoBodyAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/leave",
+            outsider.AccessToken);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await leaveResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
+    }
+
+    [Fact]
+    public async Task LeaveGuild_WhenNotAuthenticated_ShouldReturn401()
+    {
+        var owner = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Auth Leave Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var leaveResponse = await _client.PostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/leave",
+            null);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task LeaveGuild_WhenGuildNotFound_ShouldReturn404()
+    {
+        var user = await RegisterAsync();
+        var nonExistentGuildId = Guid.NewGuid();
+
+        var leaveResponse = await SendAuthorizedPostNoBodyAsync(
+            $"/api/guilds/{nonExistentGuildId}/leave",
+            user.AccessToken);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await leaveResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.NotFound);
+    }
+
     private async Task<RegisterResponse> RegisterAsync()
     {
         var request = new RegisterRequest(
@@ -315,6 +427,15 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         string accessToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPostNoBodyAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }
