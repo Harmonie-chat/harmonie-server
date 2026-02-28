@@ -62,7 +62,18 @@ public sealed class UpdateMyProfileHandler
         }
 
         if (request.DisplayNameIsSet || request.BioIsSet || request.AvatarUrlIsSet)
-            await _userRepository.UpdateAsync(user, cancellationToken);
+        {
+            await _userRepository.UpdateProfileAsync(
+                user.Id,
+                request.DisplayNameIsSet,
+                request.DisplayName,
+                request.BioIsSet,
+                request.Bio,
+                request.AvatarUrlIsSet,
+                request.AvatarUrl,
+                user.UpdatedAtUtc,
+                cancellationToken);
+        }
 
         var payload = new UpdateMyProfileResponse(
             UserId: user.Id.ToString(),

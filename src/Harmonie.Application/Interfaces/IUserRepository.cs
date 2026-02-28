@@ -45,6 +45,20 @@ public interface IUserRepository
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Update only profile fields for an existing user.
+    /// </summary>
+    Task UpdateProfileAsync(
+        UserId userId,
+        bool displayNameIsSet,
+        string? displayName,
+        bool bioIsSet,
+        string? bio,
+        bool avatarUrlIsSet,
+        string? avatarUrl,
+        DateTime? updatedAtUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Delete a user (soft delete recommended)
     /// </summary>
     Task DeleteAsync(UserId userId, CancellationToken cancellationToken = default);

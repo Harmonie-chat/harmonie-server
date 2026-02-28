@@ -53,7 +53,16 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.AvatarUrl.Should().Be("https://cdn.harmonie.chat/avatar-initial.png");
 
         _userRepositoryMock.Verify(
-            x => x.UpdateAsync(user, It.IsAny<CancellationToken>()),
+            x => x.UpdateProfileAsync(
+                user.Id,
+                true,
+                "Updated Name",
+                false,
+                null,
+                false,
+                null,
+                It.IsAny<DateTime?>(),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -88,7 +97,16 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.AvatarUrl.Should().BeNull();
 
         _userRepositoryMock.Verify(
-            x => x.UpdateAsync(user, It.IsAny<CancellationToken>()),
+            x => x.UpdateProfileAsync(
+                user.Id,
+                false,
+                null,
+                true,
+                null,
+                true,
+                null,
+                It.IsAny<DateTime?>(),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -116,7 +134,16 @@ public sealed class UpdateMyProfileHandlerTests
         response.Error.Details!.Should().ContainKey(nameof(request.DisplayName));
 
         _userRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+            x => x.UpdateProfileAsync(
+                It.IsAny<UserId>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -142,7 +169,16 @@ public sealed class UpdateMyProfileHandlerTests
         response.Error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
 
         _userRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+            x => x.UpdateProfileAsync(
+                It.IsAny<UserId>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
