@@ -62,4 +62,58 @@ public sealed class UserTests
         user.Email.Should().Be(newEmail);
         user.IsEmailVerified.Should().BeFalse();
     }
+
+    [Fact]
+    public void UpdateDisplayName_WithNull_ShouldClearDisplayName()
+    {
+        // Arrange
+        var user = User.Create(
+            Email.Create("user-display@harmonie.chat").Value!,
+            Username.Create("displayuser").Value!,
+            "hash").Value!;
+        user.UpdateDisplayName("Alice");
+
+        // Act
+        var result = user.UpdateDisplayName(null);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        user.DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateBio_WithTooLongValue_ShouldFail()
+    {
+        // Arrange
+        var user = User.Create(
+            Email.Create("user-bio@harmonie.chat").Value!,
+            Username.Create("biouser").Value!,
+            "hash").Value!;
+        var tooLongBio = new string('b', 501);
+
+        // Act
+        var result = user.UpdateBio(tooLongBio);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Bio is too long");
+    }
+
+    [Fact]
+    public void UpdateAvatar_WithTooLongValue_ShouldFail()
+    {
+        // Arrange
+        var user = User.Create(
+            Email.Create("user-avatar@harmonie.chat").Value!,
+            Username.Create("avataruser").Value!,
+            "hash").Value!;
+        var tooLongAvatarUrl = $"https://cdn.harmonie.chat/{new string('a', 2100)}";
+
+        // Act
+        var result = user.UpdateAvatar(tooLongAvatarUrl);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Avatar URL is too long");
+    }
 }

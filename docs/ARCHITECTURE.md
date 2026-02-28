@@ -27,6 +27,7 @@ Current mapped endpoints:
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
 - `GET /api/users/me`
+- `PUT /api/users/me`
 - `GET /hubs/text-channels` (SignalR)
 
 ## Application (`src/Harmonie.Application`)
@@ -50,6 +51,7 @@ Current features:
 - `Features/Channels/SendMessage/*`
 - `Features/Channels/GetMessages/*`
 - `Features/Users/GetMyProfile/*`
+- `Features/Users/UpdateMyProfile/*`
 
 Shared:
 - `Common/IEndpoint.cs`

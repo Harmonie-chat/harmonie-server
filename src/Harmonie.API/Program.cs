@@ -15,6 +15,7 @@ using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Features.Users.GetMyProfile;
+using Harmonie.Application.Features.Users.UpdateMyProfile;
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -171,6 +172,7 @@ GetGuildMembersEndpoint.Map(app);
 SendMessageEndpoint.Map(app);
 GetMessagesEndpoint.Map(app);
 GetMyProfileEndpoint.Map(app);
+UpdateMyProfileEndpoint.Map(app);
 app.MapHub<TextChannelsHub>("/hubs/text-channels");
 
 // Future endpoints will be added here as features are developed

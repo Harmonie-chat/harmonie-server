@@ -161,6 +161,46 @@ public sealed class UserRepository : IUserRepository
         await conn.ExecuteAsync(cmd);
     }
 
+    public async Task UpdateProfileAsync(
+        UserId userId,
+        bool displayNameIsSet,
+        string? displayName,
+        bool bioIsSet,
+        string? bio,
+        bool avatarUrlIsSet,
+        string? avatarUrl,
+        DateTime? updatedAtUtc,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE users
+            SET display_name = CASE WHEN @DisplayNameIsSet THEN @DisplayName ELSE display_name END,
+                bio = CASE WHEN @BioIsSet THEN @Bio ELSE bio END,
+                avatar_url = CASE WHEN @AvatarUrlIsSet THEN @AvatarUrl ELSE avatar_url END,
+                updated_at_utc = @UpdatedAtUtc
+            WHERE id = @Id
+              AND deleted_at IS NULL";
+
+        var conn = await _dbSession.GetOpenConnectionAsync(ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                Id = userId.Value,
+                DisplayNameIsSet = displayNameIsSet,
+                DisplayName = displayName,
+                BioIsSet = bioIsSet,
+                Bio = bio,
+                AvatarUrlIsSet = avatarUrlIsSet,
+                AvatarUrl = avatarUrl,
+                UpdatedAtUtc = updatedAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: ct);
+
+        await conn.ExecuteAsync(cmd);
+    }
+
     public async Task DeleteAsync(UserId userId, CancellationToken ct = default)
     {
         const string sql = "UPDATE users SET deleted_at = @DeletedAt WHERE id = @Id";

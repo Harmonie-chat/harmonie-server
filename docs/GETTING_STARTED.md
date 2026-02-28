@@ -53,6 +53,7 @@ dotnet run --project src/Harmonie.API
 - Send message: `POST /api/channels/{channelId}/messages`
 - Read messages: `GET /api/channels/{channelId}/messages`
 - Get current user profile: `GET /api/users/me`
+- Update current user profile: `PUT /api/users/me`
 
 Example register payload:
 
