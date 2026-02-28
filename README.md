@@ -166,6 +166,31 @@ docs/
 - `AGENTS.md` (AI assistant context)
 - `CONTRIBUTING.md`
 
+## Scalability TODO
+
+Known limitations and improvements needed before horizontal scaling or high-load deployments.
+
+### Critical (required for multi-instance)
+
+- **SignalR backplane**: real-time delivery only works on a single instance today. Add a Redis or Azure SignalR backplane so messages are broadcast across all instances.
+- **Distributed rate limiting**: the `message-post` rate limiter is in-memory per instance. Move to a Redis-based distributed limiter so limits are enforced across instances.
+
+### High impact (single instance, 500–1000 users)
+
+- **Database connection pool tuning**: Npgsql defaults to `MaxPoolSize=30`. Explicitly set `MaxPoolSize=100;MinPoolSize=10` in the connection string to avoid exhaustion under load.
+- **Cache layer**: no caching exists today. Guild channels, guild members, and user profiles are stable data queried on every request. Adding Redis cache with short TTLs (5–10 min) and mutation-triggered invalidation would significantly reduce DB load.
+
+### Security / hardening
+
+- **Rate limit auth endpoints**: `POST /api/auth/login`, `POST /api/auth/register`, and `POST /api/auth/refresh` are not rate-limited. Add per-IP limits to prevent brute-force and token-farming attacks.
+- **CORS policy**: `AllowAnyOrigin` is acceptable for development but must be restricted to known origins in production.
+- **SignalR JWT via query parameter**: the `?access_token=` transport is logged by proxies and visible in browser history. Prefer an httpOnly cookie for the SignalR connection once a client-side session model is in place.
+
+### Observability
+
+- **Health check details**: `GET /health` reports status only. Add DB connectivity and (future) Redis checks so orchestrators can detect partial failures.
+- **Metrics**: no Prometheus/OpenTelemetry integration. Add instrumentation for request latency, DB query duration, and SignalR connection count.
+
 ## License
 
 AGPL-3.0. See `LICENSE`.
