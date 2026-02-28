@@ -8,6 +8,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Users.GetMyProfile;
+using Harmonie.Application.Features.Users.UpdateMyProfile;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,6 +68,109 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
     }
 
+    [Fact]
+    public async Task UpdateMyProfile_WithPartialUpdate_ShouldUpdateOnlyProvidedField()
+    {
+        var user = await RegisterAsync();
+
+        var seedResponse = await SendAuthorizedPutAsync(
+            "/api/users/me",
+            new
+            {
+                displayName = "Initial Name",
+                bio = "Initial bio",
+                avatarUrl = "https://cdn.harmonie.chat/initial.png"
+            },
+            user.AccessToken);
+        seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var response = await SendAuthorizedPutAsync(
+            "/api/users/me",
+            new { displayName = "Updated Name" },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.UserId.Should().Be(user.UserId);
+        payload.Username.Should().Be(user.Username);
+        payload.DisplayName.Should().Be("Updated Name");
+        payload.Bio.Should().Be("Initial bio");
+        payload.AvatarUrl.Should().Be("https://cdn.harmonie.chat/initial.png");
+
+        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        profile.Should().NotBeNull();
+        profile!.DisplayName.Should().Be("Updated Name");
+        profile.Bio.Should().Be("Initial bio");
+        profile.AvatarUrl.Should().Be("https://cdn.harmonie.chat/initial.png");
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithExplicitNull_ShouldResetFieldToNull()
+    {
+        var user = await RegisterAsync();
+
+        var seedResponse = await SendAuthorizedPutAsync(
+            "/api/users/me",
+            new
+            {
+                displayName = "Alice",
+                bio = "Bio to reset",
+                avatarUrl = "https://cdn.harmonie.chat/reset-me.png"
+            },
+            user.AccessToken);
+        seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var response = await SendAuthorizedPutAsync(
+            "/api/users/me",
+            new
+            {
+                bio = (string?)null,
+                avatarUrl = (string?)null
+            },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.DisplayName.Should().Be("Alice");
+        payload.Bio.Should().BeNull();
+        payload.AvatarUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithOutOfRangeValues_ShouldReturnStableValidationError()
+    {
+        var user = await RegisterAsync();
+
+        var response = await SendAuthorizedPutAsync(
+            "/api/users/me",
+            new { displayName = new string('x', 101) },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        error.Details.Should().NotBeNull();
+        error.Details!.Should().ContainKey("DisplayName");
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var response = await _client.PutAsJsonAsync(
+            "/api/users/me",
+            new { displayName = "NoAuth" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task<RegisterResponse> RegisterAsync()
     {
         var request = new RegisterRequest(
@@ -86,6 +190,19 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        {
+            Content = JsonContent.Create(payload)
+        };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }

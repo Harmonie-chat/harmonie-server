@@ -13,6 +13,7 @@ using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Features.Users.GetMyProfile;
+using Harmonie.Application.Features.Users.UpdateMyProfile;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application;
@@ -44,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<SendMessageHandler>();
         services.AddScoped<GetMessagesHandler>();
         services.AddScoped<GetMyProfileHandler>();
+        services.AddScoped<UpdateMyProfileHandler>();
         // Add more handlers as features are created
 
         return services;

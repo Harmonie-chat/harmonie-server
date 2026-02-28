@@ -63,6 +63,7 @@ dotnet run --project src/Harmonie.API
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
 - `GET /api/users/me`
+- `PUT /api/users/me`
 - `GET /hubs/text-channels` (SignalR negotiate/transport)
 
 In Development, OpenAPI and Scalar are enabled.
