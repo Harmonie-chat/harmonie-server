@@ -7,6 +7,7 @@ using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<GetMessagesHandler>();
         services.AddScoped<GetMyProfileHandler>();
         services.AddScoped<UpdateMyProfileHandler>();
+        services.AddScoped<UpdateChannelHandler>();
         // Add more handlers as features are created
 
         return services;

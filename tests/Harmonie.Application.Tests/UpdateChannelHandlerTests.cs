@@ -1,0 +1,272 @@
+using FluentAssertions;
+using Harmonie.Application.Common;
+using Harmonie.Application.Features.Channels.UpdateChannel;
+using Harmonie.Application.Interfaces;
+using Harmonie.Domain.Entities;
+using Harmonie.Domain.Enums;
+using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Xunit;
+
+namespace Harmonie.Application.Tests;
+
+public sealed class UpdateChannelHandlerTests
+{
+    private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly UpdateChannelHandler _handler;
+
+    public UpdateChannelHandlerTests()
+    {
+        _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _transactionMock = new Mock<IUnitOfWorkTransaction>();
+
+        _unitOfWorkMock
+            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_transactionMock.Object);
+
+        _transactionMock
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _transactionMock
+            .Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _handler = new UpdateChannelHandler(
+            _guildChannelRepositoryMock.Object,
+            _guildMemberRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            NullLogger<UpdateChannelHandler>.Instance);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenChannelDoesNotExist_ShouldReturnNotFound()
+    {
+        var channelId = GuildChannelId.New();
+        var callerId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channelId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildChannel?)null);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var response = await _handler.HandleAsync(channelId, callerId, request);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnChannelAccessDenied()
+    {
+        var channel = CreateChannel();
+        var callerId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildRole?)null);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var response = await _handler.HandleAsync(channel.Id, callerId, request);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenCallerIsMemberNotAdmin_ShouldReturnGuildAccessDenied()
+    {
+        var channel = CreateChannel();
+        var callerId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var response = await _handler.HandleAsync(channel.Id, callerId, request);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNameAlreadyExistsInGuild_ShouldReturnNameConflict()
+    {
+        var channel = CreateChannel();
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                channel.GuildId,
+                "existing-channel",
+                channel.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "existing-channel" };
+        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminUpdatesName_ShouldReturnUpdatedChannel()
+    {
+        var channel = CreateChannel("old-name");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                channel.GuildId,
+                "new-name",
+                channel.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+        response.Data!.ChannelId.Should().Be(channel.Id.ToString());
+        response.Data.Name.Should().Be("new-name");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminUpdatesPosition_ShouldReturnUpdatedChannel()
+    {
+        var channel = CreateChannel(position: 0);
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        var request = new UpdateChannelRequest { PositionIsSet = true, Position = 5 };
+        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+        response.Data!.Position.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminUpdatesChannel_ShouldPersistAndCommit()
+    {
+        var channel = CreateChannel("old-name");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                channel.GuildId,
+                "new-name",
+                channel.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        await _handler.HandleAsync(channel.Id, adminId, request);
+
+        _guildChannelRepositoryMock.Verify(
+            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _transactionMock.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNoFieldsSet_ShouldSucceedWithoutUpdating()
+    {
+        var channel = CreateChannel("unchanged");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        var request = new UpdateChannelRequest();
+        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Name.Should().Be("unchanged");
+
+        _guildChannelRepositoryMock.Verify(
+            x => x.ExistsByNameInGuildAsync(
+                It.IsAny<GuildId>(),
+                It.IsAny<string>(),
+                It.IsAny<GuildChannelId>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private static GuildChannel CreateChannel(string name = "general", int position = 0)
+    {
+        var result = GuildChannel.Create(
+            GuildId.New(),
+            name,
+            GuildChannelType.Text,
+            isDefault: false,
+            position);
+
+        if (result.IsFailure)
+            throw new InvalidOperationException("Failed to create channel for tests.");
+
+        return result.Value!;
+    }
+}
