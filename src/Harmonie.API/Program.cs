@@ -16,6 +16,7 @@ using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Features.Guilds.RemoveMember;
+using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
@@ -136,7 +137,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();  
+    app.MapScalarApiReference();
 }
 
 app.UseMiddleware<GlobalExceptionHandler>();
@@ -152,10 +153,10 @@ app.UseRateLimiter();
 // ============================================================
 
 // Health check endpoint
-app.MapGet("/health", () => Results.Ok(new 
-{ 
-    status = "healthy", 
-    timestamp = DateTime.UtcNow 
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow
 }))
 .WithName("HealthCheck")
 .WithTags("System")
@@ -175,6 +176,7 @@ GetGuildMembersEndpoint.Map(app);
 LeaveGuildEndpoint.Map(app);
 RemoveMemberEndpoint.Map(app);
 UpdateMemberRoleEndpoint.Map(app);
+TransferOwnershipEndpoint.Map(app);
 SendMessageEndpoint.Map(app);
 GetMessagesEndpoint.Map(app);
 GetMyProfileEndpoint.Map(app);

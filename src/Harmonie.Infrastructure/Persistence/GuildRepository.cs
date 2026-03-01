@@ -72,6 +72,29 @@ public sealed class GuildRepository : IGuildRepository
         await connection.ExecuteAsync(command);
     }
 
+    public async Task UpdateOwnerAsync(GuildId guildId, UserId newOwnerId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE guilds
+                           SET owner_user_id = @NewOwnerId,
+                               updated_at_utc = NOW()
+                           WHERE id = @GuildId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                GuildId = guildId.Value,
+                NewOwnerId = newOwnerId.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static Guild MapToGuild(GuildDto row)
     {
         var nameResult = GuildName.Create(row.Name);
