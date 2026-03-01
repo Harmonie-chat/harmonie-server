@@ -33,7 +33,7 @@ public interface IGuildMemberRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
-    Task UpdateRoleAsync(
+    Task<int> UpdateRoleAsync(
         GuildId guildId,
         UserId userId,
         GuildRole newRole,

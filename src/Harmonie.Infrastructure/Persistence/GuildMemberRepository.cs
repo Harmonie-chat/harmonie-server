@@ -206,7 +206,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         await connection.ExecuteAsync(command);
     }
 
-    public async Task UpdateRoleAsync(
+    public async Task<int> UpdateRoleAsync(
         GuildId guildId,
         UserId userId,
         GuildRole newRole,
@@ -231,7 +231,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        await connection.ExecuteAsync(command);
+        return await connection.ExecuteAsync(command);
     }
 
     private static UserGuildMembership MapToUserGuildMembership(UserGuildMembershipDto row)

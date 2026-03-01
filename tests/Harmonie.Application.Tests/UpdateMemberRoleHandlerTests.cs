@@ -163,7 +163,7 @@ public sealed class UpdateMemberRoleHandlerTests
 
         _guildMemberRepositoryMock
             .Setup(x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Admin, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(1);
 
         var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Admin);
 
@@ -197,7 +197,7 @@ public sealed class UpdateMemberRoleHandlerTests
 
         _guildMemberRepositoryMock
             .Setup(x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Member, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(1);
 
         var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Member);
 

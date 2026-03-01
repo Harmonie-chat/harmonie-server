@@ -108,6 +108,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Guild.MemberNotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Guild.OwnerCannotBeRemoved => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Guild.OwnerRoleCannotBeChanged => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Guild.OwnerTransferToSelf => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Channel.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Channel.AccessDenied => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.Channel.NotText => HttpStatusCode.Conflict,
