@@ -18,6 +18,7 @@ public sealed class DeleteMessageHandlerTests
     private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
     private readonly DeleteMessageHandler _handler;
 
     public DeleteMessageHandlerTests()
@@ -27,6 +28,7 @@ public sealed class DeleteMessageHandlerTests
         _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
 
         _unitOfWorkMock
             .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
@@ -40,11 +42,16 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.DisposeAsync())
             .Returns(ValueTask.CompletedTask);
 
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new DeleteMessageHandler(
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
             _unitOfWorkMock.Object,
+            _textChannelNotifierMock.Object,
             NullLogger<DeleteMessageHandler>.Instance);
     }
 
@@ -304,6 +311,67 @@ public sealed class DeleteMessageHandlerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenAuthorDeletesOwnMessage_ShouldNotifyMessageDeleted()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var authorId = UserId.New();
+        var messageId = ChannelMessageId.New();
+        var message = CreateMessage(channel.Id, authorId);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, authorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
+
+        response.Success.Should().BeTrue();
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageDeletedAsync(
+                It.Is<TextChannelMessageDeletedNotification>(n =>
+                    n.MessageId == messageId &&
+                    n.ChannelId == channel.Id),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNotifierThrows_ShouldStillSucceed()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var authorId = UserId.New();
+        var messageId = ChannelMessageId.New();
+        var message = CreateMessage(channel.Id, authorId);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(channel.GuildId, authorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
+
+        var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
+
+        response.Success.Should().BeTrue();
+    }
+
     private static GuildChannel CreateChannel(GuildChannelType type)
     {
         var result = GuildChannel.Create(
@@ -330,6 +398,7 @@ public sealed class DeleteMessageHandlerTests
             channelId,
             authorId,
             contentResult.Value,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            updatedAtUtc: null);
     }
 }

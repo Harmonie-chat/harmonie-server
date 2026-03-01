@@ -8,10 +8,13 @@ namespace Harmonie.Application.Features.Channels.EditMessage;
 
 public sealed class EditMessageHandler
 {
+    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<EditMessageHandler> _logger;
 
     public EditMessageHandler(
@@ -19,12 +22,14 @@ public sealed class EditMessageHandler
         IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
+        ITextChannelNotifier textChannelNotifier,
         ILogger<EditMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _unitOfWork = unitOfWork;
+        _textChannelNotifier = textChannelNotifier;
         _logger = logger;
     }
 
@@ -142,12 +147,38 @@ public sealed class EditMessageHandler
             messageId,
             callerId);
 
+        await NotifyMessageUpdatedSafelyAsync(
+            new TextChannelMessageUpdatedNotification(
+                message.Id,
+                message.ChannelId,
+                message.Content.Value,
+                message.UpdatedAtUtc!.Value));
+
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
             MessageId: message.Id.ToString(),
             ChannelId: message.ChannelId.ToString(),
             AuthorUserId: message.AuthorUserId.ToString(),
             Content: message.Content.Value,
-            CreatedAtUtc: message.CreatedAtUtc));
+            CreatedAtUtc: message.CreatedAtUtc,
+            UpdatedAtUtc: message.UpdatedAtUtc));
+    }
+
+    private async Task NotifyMessageUpdatedSafelyAsync(
+        TextChannelMessageUpdatedNotification notification)
+    {
+        try
+        {
+            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
+            await _textChannelNotifier.NotifyMessageUpdatedAsync(notification, notificationCts.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "EditMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+                notification.MessageId,
+                notification.ChannelId);
+        }
     }
 
     private static string ResolveContentErrorCode(string? rawContent)

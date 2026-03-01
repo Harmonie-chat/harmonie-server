@@ -5,4 +5,5 @@ public sealed record EditMessageResponse(
     string ChannelId,
     string AuthorUserId,
     string Content,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    DateTime? UpdatedAtUtc);

@@ -18,6 +18,7 @@ public sealed class EditMessageHandlerTests
     private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
     private readonly EditMessageHandler _handler;
 
     public EditMessageHandlerTests()
@@ -27,6 +28,7 @@ public sealed class EditMessageHandlerTests
         _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
 
         _unitOfWorkMock
             .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
@@ -40,11 +42,16 @@ public sealed class EditMessageHandlerTests
             .Setup(x => x.DisposeAsync())
             .Returns(ValueTask.CompletedTask);
 
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageUpdatedAsync(It.IsAny<TextChannelMessageUpdatedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new EditMessageHandler(
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
             _unitOfWorkMock.Object,
+            _textChannelNotifierMock.Object,
             NullLogger<EditMessageHandler>.Instance);
     }
 
@@ -296,6 +303,75 @@ public sealed class EditMessageHandlerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenAuthorEditsOwnMessage_ShouldNotifyMessageUpdated()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var authorId = UserId.New();
+        var messageId = ChannelMessageId.New();
+        var message = CreateMessage(channel.Id, authorId);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(channel.GuildId, authorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        var response = await _handler.HandleAsync(
+            channel.Id,
+            messageId,
+            new EditMessageRequest("updated content"),
+            authorId);
+
+        response.Success.Should().BeTrue();
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageUpdatedAsync(
+                It.Is<TextChannelMessageUpdatedNotification>(n =>
+                    n.ChannelId == channel.Id &&
+                    n.Content == "updated content"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNotifierThrows_ShouldStillSucceed()
+    {
+        var channel = CreateChannel(GuildChannelType.Text);
+        var authorId = UserId.New();
+        var messageId = ChannelMessageId.New();
+        var message = CreateMessage(channel.Id, authorId);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channel);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(channel.GuildId, authorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessageUpdatedAsync(It.IsAny<TextChannelMessageUpdatedNotification>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
+
+        var response = await _handler.HandleAsync(
+            channel.Id,
+            messageId,
+            new EditMessageRequest("updated content"),
+            authorId);
+
+        response.Success.Should().BeTrue();
+    }
+
     private static GuildChannel CreateChannel(GuildChannelType type)
     {
         var result = GuildChannel.Create(
@@ -322,6 +398,7 @@ public sealed class EditMessageHandlerTests
             channelId,
             authorId,
             contentResult.Value,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            updatedAtUtc: null);
     }
 }

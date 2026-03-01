@@ -72,7 +72,8 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
                          channel_id AS "ChannelId",
                          author_user_id AS "AuthorUserId",
                          content AS "Content",
-                         created_at_utc AS "CreatedAtUtc"
+                         created_at_utc AS "CreatedAtUtc",
+                         updated_at_utc AS "UpdatedAtUtc"
                   FROM channel_messages
                   WHERE channel_id = @ChannelId
                     AND deleted_at_utc IS NULL
@@ -93,7 +94,8 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
                          channel_id AS "ChannelId",
                          author_user_id AS "AuthorUserId",
                          content AS "Content",
-                         created_at_utc AS "CreatedAtUtc"
+                         created_at_utc AS "CreatedAtUtc",
+                         updated_at_utc AS "UpdatedAtUtc"
                   FROM channel_messages
                   WHERE channel_id = @ChannelId
                     AND deleted_at_utc IS NULL
@@ -146,7 +148,8 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
                                   channel_id AS "ChannelId",
                                   author_user_id AS "AuthorUserId",
                                   content AS "Content",
-                                  created_at_utc AS "CreatedAtUtc"
+                                  created_at_utc AS "CreatedAtUtc",
+                                  updated_at_utc AS "UpdatedAtUtc"
                            FROM channel_messages
                            WHERE id = @MessageId
                              AND deleted_at_utc IS NULL
@@ -169,7 +172,8 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
     {
         const string sql = """
                            UPDATE channel_messages
-                           SET content = @Content
+                           SET content = @Content,
+                               updated_at_utc = @UpdatedAtUtc
                            WHERE id = @Id
                            """;
 
@@ -179,6 +183,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             new
             {
                 Content = message.Content.Value,
+                message.UpdatedAtUtc,
                 Id = message.Id.Value
             },
             transaction: _dbSession.Transaction,
@@ -222,6 +227,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             GuildChannelId.From(row.ChannelId),
             UserId.From(row.AuthorUserId),
             contentResult.Value,
-            row.CreatedAtUtc);
+            row.CreatedAtUtc,
+            row.UpdatedAtUtc);
     }
 }

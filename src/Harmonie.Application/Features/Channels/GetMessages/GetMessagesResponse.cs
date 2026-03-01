@@ -9,4 +9,5 @@ public sealed record GetMessagesItemResponse(
     string MessageId,
     string AuthorUserId,
     string Content,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    DateTime? UpdatedAtUtc);

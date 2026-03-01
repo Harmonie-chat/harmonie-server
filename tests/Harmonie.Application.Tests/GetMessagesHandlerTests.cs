@@ -157,6 +157,7 @@ public sealed class GetMessagesHandlerTests
             channelId,
             authorUserId,
             contentResult.Value!,
-            createdAtUtc);
+            createdAtUtc,
+            updatedAtUtc: null);
     }
 }

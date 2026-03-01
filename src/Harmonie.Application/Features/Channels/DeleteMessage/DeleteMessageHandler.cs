@@ -8,10 +8,13 @@ namespace Harmonie.Application.Features.Channels.DeleteMessage;
 
 public sealed class DeleteMessageHandler
 {
+    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<DeleteMessageHandler> _logger;
 
     public DeleteMessageHandler(
@@ -19,12 +22,14 @@ public sealed class DeleteMessageHandler
         IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
+        ITextChannelNotifier textChannelNotifier,
         ILogger<DeleteMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _unitOfWork = unitOfWork;
+        _textChannelNotifier = textChannelNotifier;
         _logger = logger;
     }
 
@@ -114,6 +119,27 @@ public sealed class DeleteMessageHandler
             messageId,
             callerId);
 
+        await NotifyMessageDeletedSafelyAsync(
+            new TextChannelMessageDeletedNotification(messageId, channelId));
+
         return ApplicationResponse<bool>.Ok(true);
+    }
+
+    private async Task NotifyMessageDeletedSafelyAsync(
+        TextChannelMessageDeletedNotification notification)
+    {
+        try
+        {
+            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
+            await _textChannelNotifier.NotifyMessageDeletedAsync(notification, notificationCts.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "DeleteMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+                notification.MessageId,
+                notification.ChannelId);
+        }
     }
 }

@@ -129,7 +129,8 @@ public sealed class GetMessagesHandler
                 MessageId: x.Id.ToString(),
                 AuthorUserId: x.AuthorUserId.ToString(),
                 Content: x.Content.Value,
-                CreatedAtUtc: x.CreatedAtUtc))
+                CreatedAtUtc: x.CreatedAtUtc,
+                UpdatedAtUtc: x.UpdatedAtUtc))
             .ToArray();
 
         var payload = new GetMessagesResponse(
