@@ -16,4 +16,14 @@ public interface IGuildChannelRepository
     Task<IReadOnlyList<GuildChannel>> GetByGuildIdAsync(
         GuildId guildId,
         CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsByNameInGuildAsync(
+        GuildId guildId,
+        string name,
+        GuildChannelId excludeId,
+        CancellationToken cancellationToken = default);
 }

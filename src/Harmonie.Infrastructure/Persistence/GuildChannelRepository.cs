@@ -114,6 +114,63 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         return rows.Select(MapToGuildChannel).ToArray();
     }
 
+    public async Task UpdateAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE guild_channels
+                           SET name     = @Name,
+                               position = @Position
+                           WHERE id = @Id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                Id = channel.Id.Value,
+                channel.Name,
+                channel.Position
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
+    public async Task<bool> ExistsByNameInGuildAsync(
+        GuildId guildId,
+        string name,
+        GuildChannelId excludeId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT COUNT(1)
+                           FROM guild_channels
+                           WHERE guild_id = @GuildId
+                             AND name     = @Name
+                             AND id      != @ExcludeId
+                           LIMIT 1
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                GuildId = guildId.Value,
+                Name = name,
+                ExcludeId = excludeId.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var count = await connection.ExecuteScalarAsync<int>(command);
+        return count > 0;
+    }
+
     private static GuildChannel MapToGuildChannel(GuildChannelDto row)
     {
         if (!Enum.IsDefined(typeof(GuildChannelType), row.Type))

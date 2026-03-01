@@ -43,6 +43,7 @@ public static class ApplicationErrorCodes
         public const string NotFound = "CHANNEL_NOT_FOUND";
         public const string NotText = "CHANNEL_NOT_TEXT";
         public const string AccessDenied = "CHANNEL_ACCESS_DENIED";
+        public const string NameConflict = "CHANNEL_NAME_CONFLICT";
     }
 
     public static class Message

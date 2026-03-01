@@ -67,6 +67,28 @@ public sealed class GuildChannel : Entity<GuildChannelId>
             DateTime.UtcNow));
     }
 
+    public Result UpdateName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure("Channel name is required");
+
+        var normalized = name.Trim();
+        if (normalized.Length > 100)
+            return Result.Failure("Channel name cannot exceed 100 characters");
+
+        Name = normalized;
+        return Result.Success();
+    }
+
+    public Result UpdatePosition(int position)
+    {
+        if (position < 0)
+            return Result.Failure("Channel position cannot be negative");
+
+        Position = position;
+        return Result.Success();
+    }
+
     public static GuildChannel Rehydrate(
         GuildChannelId id,
         GuildId guildId,
