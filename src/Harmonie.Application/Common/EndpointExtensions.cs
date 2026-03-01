@@ -116,6 +116,8 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Channel.CannotDeleteDefault => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Message.ContentEmpty => HttpStatusCode.BadRequest,
             ApplicationErrorCodes.Message.ContentTooLong => HttpStatusCode.BadRequest,
+            ApplicationErrorCodes.Message.NotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Message.EditForbidden => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.User.NotFound => HttpStatusCode.NotFound,
             _ => HttpStatusCode.InternalServerError
         };

@@ -45,6 +45,15 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
             DateTime.UtcNow));
     }
 
+    public Result UpdateContent(ChannelMessageContent newContent)
+    {
+        if (newContent is null)
+            return Result.Failure("New content is required");
+
+        Content = newContent;
+        return Result.Success();
+    }
+
     public static ChannelMessage Rehydrate(
         ChannelMessageId id,
         GuildChannelId channelId,
