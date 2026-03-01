@@ -51,6 +51,8 @@ public static class ApplicationErrorCodes
     {
         public const string ContentEmpty = "MESSAGE_CONTENT_EMPTY";
         public const string ContentTooLong = "MESSAGE_CONTENT_TOO_LONG";
+        public const string NotFound = "MESSAGE_NOT_FOUND";
+        public const string EditForbidden = "MESSAGE_EDIT_FORBIDDEN";
     }
 
     public static class User

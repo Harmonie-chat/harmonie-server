@@ -6,6 +6,7 @@ using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.DeleteChannel;
+using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
@@ -60,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<UpdateMyProfileHandler>();
         services.AddScoped<UpdateChannelHandler>();
         services.AddScoped<DeleteChannelHandler>();
+        services.AddScoped<EditMessageHandler>();
         // Add more handlers as features are created
 
         return services;

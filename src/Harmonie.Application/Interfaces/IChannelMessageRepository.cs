@@ -14,6 +14,14 @@ public interface IChannelMessageRepository
         ChannelMessageCursor? beforeCursor,
         int limit,
         CancellationToken cancellationToken = default);
+
+    Task<ChannelMessage?> GetByIdAsync(
+        ChannelMessageId messageId,
+        CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(
+        ChannelMessage message,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ChannelMessageCursor(

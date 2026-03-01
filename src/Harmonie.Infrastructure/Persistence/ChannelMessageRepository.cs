@@ -135,6 +135,55 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
         return new ChannelMessagePage(items, nextCursor);
     }
 
+    public async Task<ChannelMessage?> GetByIdAsync(
+        ChannelMessageId messageId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT id AS "Id",
+                                  channel_id AS "ChannelId",
+                                  author_user_id AS "AuthorUserId",
+                                  content AS "Content",
+                                  created_at_utc AS "CreatedAtUtc"
+                           FROM channel_messages
+                           WHERE id = @MessageId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { MessageId = messageId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QuerySingleOrDefaultAsync<ChannelMessageDto>(command);
+        return row is null ? null : MapToChannelMessage(row);
+    }
+
+    public async Task UpdateAsync(
+        ChannelMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE channel_messages
+                           SET content = @Content
+                           WHERE id = @Id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                Content = message.Content.Value,
+                Id = message.Id.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static ChannelMessage MapToChannelMessage(ChannelMessageDto row)
     {
         var contentResult = ChannelMessageContent.Create(row.Content);
