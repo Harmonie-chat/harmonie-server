@@ -118,6 +118,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Message.ContentTooLong => HttpStatusCode.BadRequest,
             ApplicationErrorCodes.Message.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Message.EditForbidden => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Message.DeleteForbidden => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.User.NotFound => HttpStatusCode.NotFound,
             _ => HttpStatusCode.InternalServerError
         };
