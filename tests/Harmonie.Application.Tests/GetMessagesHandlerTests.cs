@@ -14,19 +14,16 @@ namespace Harmonie.Application.Tests;
 public sealed class GetMessagesHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetMessagesHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
 
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,
-            _guildMemberRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
             NullLogger<GetMessagesHandler>.Instance);
     }
@@ -51,8 +48,8 @@ public sealed class GetMessagesHandlerTests
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         var response = await _handler.HandleAsync(
             channel.Id,
@@ -71,12 +68,8 @@ public sealed class GetMessagesHandlerTests
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(channel.GuildId, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
         var response = await _handler.HandleAsync(
             channel.Id,
@@ -95,12 +88,8 @@ public sealed class GetMessagesHandlerTests
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(channel.GuildId, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         var first = CreateMessage(channel.Id, userId, "First", DateTime.UtcNow.AddMinutes(-2));
         var second = CreateMessage(channel.Id, userId, "Second", DateTime.UtcNow.AddMinutes(-1));

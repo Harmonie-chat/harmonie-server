@@ -1,7 +1,12 @@
 using Harmonie.Domain.Entities;
+using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Application.Interfaces;
+
+public sealed record ChannelAccessContext(
+    GuildChannel Channel,
+    GuildRole? CallerRole);
 
 public interface IGuildChannelRepository
 {
@@ -29,5 +34,10 @@ public interface IGuildChannelRepository
         GuildId guildId,
         string name,
         GuildChannelId excludeId,
+        CancellationToken cancellationToken = default);
+
+    Task<ChannelAccessContext?> GetWithCallerRoleAsync(
+        GuildChannelId channelId,
+        UserId callerId,
         CancellationToken cancellationToken = default);
 }

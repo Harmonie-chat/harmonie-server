@@ -10,4 +10,6 @@ public interface IGuildRepository
     Task AddAsync(Guild guild, CancellationToken cancellationToken = default);
 
     Task UpdateOwnerAsync(GuildId guildId, UserId newOwnerId, CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAsync(GuildId guildId, CancellationToken cancellationToken = default);
 }

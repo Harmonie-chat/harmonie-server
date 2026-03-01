@@ -12,7 +12,6 @@ public sealed class SendMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
@@ -20,14 +19,12 @@ public sealed class SendMessageHandler
 
     public SendMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
-        _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
@@ -60,8 +57,8 @@ public sealed class SendMessageHandler
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, currentUserId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "SendMessage failed because channel was not found. ChannelId={ChannelId}, UserId={UserId}",
@@ -73,12 +70,12 @@ public sealed class SendMessageHandler
                 "Channel was not found");
         }
 
-        if (channel.Type != GuildChannelType.Text)
+        if (ctx.Channel.Type != GuildChannelType.Text)
         {
             _logger.LogWarning(
                 "SendMessage failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
                 channelId,
-                channel.Type,
+                ctx.Channel.Type,
                 currentUserId);
 
             return ApplicationResponse<SendMessageResponse>.Fail(
@@ -86,16 +83,12 @@ public sealed class SendMessageHandler
                 "Messages can only be sent to text channels");
         }
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            channel.GuildId,
-            currentUserId,
-            cancellationToken);
-        if (!isMember)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "SendMessage access denied. ChannelId={ChannelId}, GuildId={GuildId}, UserId={UserId}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 currentUserId);
 
             return ApplicationResponse<SendMessageResponse>.Fail(

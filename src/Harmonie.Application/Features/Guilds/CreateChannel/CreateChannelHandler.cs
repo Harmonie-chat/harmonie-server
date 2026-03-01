@@ -44,8 +44,8 @@ public sealed class CreateChannelHandler
             name,
             channelType);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var guildExists = await _guildRepository.ExistsAsync(guildId, cancellationToken);
+        if (!guildExists)
         {
             _logger.LogWarning(
                 "CreateChannel failed because guild was not found. GuildId={GuildId}",
