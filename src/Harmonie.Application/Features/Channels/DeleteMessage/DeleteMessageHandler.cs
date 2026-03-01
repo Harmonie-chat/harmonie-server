@@ -9,7 +9,6 @@ namespace Harmonie.Application.Features.Channels.DeleteMessage;
 public sealed class DeleteMessageHandler
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;

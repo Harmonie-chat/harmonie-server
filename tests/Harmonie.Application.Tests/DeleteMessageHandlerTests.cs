@@ -45,7 +45,6 @@ public sealed class DeleteMessageHandlerTests
         _textChannelNotifierMock
             .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-
         _handler = new DeleteMessageHandler(
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
@@ -371,7 +370,6 @@ public sealed class DeleteMessageHandlerTests
 
         response.Success.Should().BeTrue();
     }
-
     private static GuildChannel CreateChannel(GuildChannelType type)
     {
         var result = GuildChannel.Create(
