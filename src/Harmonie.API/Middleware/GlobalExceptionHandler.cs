@@ -44,6 +44,12 @@ public sealed class GlobalExceptionHandler
                 "Request validation failed",
                 details);
         }
+        else if (exception is BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest })
+        {
+            error = new ApplicationError(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request body contains an invalid value");
+        }
         else
         {
             _logger.LogError(exception, "An unhandled exception occurred");

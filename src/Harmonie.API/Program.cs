@@ -9,6 +9,7 @@ using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
@@ -27,6 +28,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
@@ -44,6 +46,10 @@ builder.Host.UseSerilog();
 
 // Add layers
 builder.Services.AddApplication();
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
+});
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
@@ -168,6 +174,7 @@ LoginEndpoint.Map(app);
 LogoutEndpoint.Map(app);
 LogoutAllEndpoint.Map(app);
 RefreshTokenEndpoint.Map(app);
+CreateChannelEndpoint.Map(app);
 CreateGuildEndpoint.Map(app);
 ListUserGuildsEndpoint.Map(app);
 InviteMemberEndpoint.Map(app);

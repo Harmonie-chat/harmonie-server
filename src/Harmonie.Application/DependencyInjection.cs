@@ -7,6 +7,7 @@ using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<LogoutHandler>();
         services.AddScoped<LogoutAllHandler>();
         services.AddScoped<RefreshTokenHandler>();
+        services.AddScoped<CreateChannelHandler>();
         services.AddScoped<CreateGuildHandler>();
         services.AddScoped<ListUserGuildsHandler>();
         services.AddScoped<InviteMemberHandler>();
