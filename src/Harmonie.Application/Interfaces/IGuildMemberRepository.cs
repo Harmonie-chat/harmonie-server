@@ -32,6 +32,12 @@ public interface IGuildMemberRepository
         GuildId guildId,
         UserId userId,
         CancellationToken cancellationToken = default);
+
+    Task UpdateRoleAsync(
+        GuildId guildId,
+        UserId userId,
+        GuildRole newRole,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record UserGuildMembership(

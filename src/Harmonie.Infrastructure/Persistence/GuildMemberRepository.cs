@@ -206,6 +206,34 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         await connection.ExecuteAsync(command);
     }
 
+    public async Task UpdateRoleAsync(
+        GuildId guildId,
+        UserId userId,
+        GuildRole newRole,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE guild_members
+                           SET role = @Role
+                           WHERE guild_id = @GuildId
+                             AND user_id = @UserId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                GuildId = guildId.Value,
+                UserId = userId.Value,
+                Role = (short)newRole
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static UserGuildMembership MapToUserGuildMembership(UserGuildMembershipDto row)
     {
         if (!Enum.IsDefined(typeof(GuildRole), row.Role))
