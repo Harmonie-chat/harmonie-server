@@ -34,6 +34,7 @@ public static class ApplicationErrorCodes
         public const string OwnerCannotLeave = "GUILD_OWNER_CANNOT_LEAVE";
         public const string MemberNotFound = "GUILD_MEMBER_NOT_FOUND";
         public const string OwnerCannotBeRemoved = "GUILD_OWNER_CANNOT_BE_REMOVED";
+        public const string OwnerRoleCannotBeChanged = "GUILD_OWNER_ROLE_CANNOT_BE_CHANGED";
     }
 
     public static class Channel

@@ -11,6 +11,7 @@ using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
+using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -449,6 +450,19 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         return await _client.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
     [Fact]
     public async Task RemoveMember_WhenAdminRemovesMember_ShouldReturn204()
     {
@@ -582,5 +596,188 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         var error = await removeResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberNotFound);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenAdminPromotesMember_ShouldReturn204()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Promote Role Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updateRoleResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
+            new UpdateMemberRoleRequest("Admin"),
+            owner.AccessToken);
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenAdminDemotesAdmin_ShouldReturn204()
+    {
+        var owner = await RegisterAsync();
+        var otherAdmin = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Demote Role Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(otherAdmin.UserId),
+            owner.AccessToken);
+
+        await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
+            new UpdateMemberRoleRequest("Admin"),
+            owner.AccessToken);
+
+        var demoteResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
+            new UpdateMemberRoleRequest("Member"),
+            owner.AccessToken);
+        demoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenNonAdminTriesToChangeRole_ShouldReturn403()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+        var target = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Non Admin Role Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+
+        await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
+            new InviteMemberRequest(target.UserId),
+            owner.AccessToken);
+
+        var updateRoleResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/{target.UserId}/role",
+            new UpdateMemberRoleRequest("Admin"),
+            member.AccessToken);
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await updateRoleResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenAdminTriesToChangeOwnerRole_ShouldReturn409()
+    {
+        var owner = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Owner Role Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var updateRoleResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/{owner.UserId}/role",
+            new UpdateMemberRoleRequest("Member"),
+            owner.AccessToken);
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var error = await updateRoleResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.OwnerRoleCannotBeChanged);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenGuildNotFound_ShouldReturn404()
+    {
+        var user = await RegisterAsync();
+        var nonExistentGuildId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+
+        var updateRoleResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
+            new UpdateMemberRoleRequest("Admin"),
+            user.AccessToken);
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await updateRoleResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenNotAuthenticated_ShouldReturn401()
+    {
+        var nonExistentGuildId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+
+        var updateRoleResponse = await _client.PatchAsJsonAsync(
+            $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
+            new UpdateMemberRoleRequest("Admin"));
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_WhenInvalidRole_ShouldReturn400()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Invalid Role Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+
+        var updateRoleResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
+            new UpdateMemberRoleRequest("SuperAdmin"),
+            owner.AccessToken);
+        updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await updateRoleResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 }
