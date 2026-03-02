@@ -1,6 +1,5 @@
 using FluentValidation;
 using Harmonie.Application.Common;
-using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -63,13 +62,6 @@ public static class UpdateMemberRoleEndpoint
                 "Route validation succeeded but user ID parsing failed.").ToHttpResult();
         }
 
-        if (!Enum.TryParse<GuildRole>(request.Role, ignoreCase: true, out var parsedRole) || !Enum.IsDefined(parsedRole))
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Body validation succeeded but role parsing failed.").ToHttpResult();
-        }
-
         if (!httpContext.TryGetAuthenticatedUserId(out var callerId) || callerId is null)
         {
             return ApplicationResponse<bool>.Fail(
@@ -78,7 +70,7 @@ public static class UpdateMemberRoleEndpoint
                 .ToHttpResult();
         }
 
-        var response = await handler.HandleAsync(parsedGuildId, callerId, parsedTargetId, parsedRole, cancellationToken);
+        var response = await handler.HandleAsync(parsedGuildId, callerId, parsedTargetId, request.Role.ToDomain(), cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

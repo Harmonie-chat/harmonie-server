@@ -478,7 +478,20 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     {
         using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
         {
-            Content = JsonContent.Create(payload)
+            Content = JsonContent.Create(payload, options: _jsonOptions)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPatchRawAsync(
+        string uri,
+        string json,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
+        {
+            Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
@@ -788,7 +801,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var updateRoleResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
-            new UpdateMemberRoleRequest("Admin"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -815,12 +828,12 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
-            new UpdateMemberRoleRequest("Admin"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
 
         var demoteResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
-            new UpdateMemberRoleRequest("Member"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Member),
             owner.AccessToken);
         demoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -853,7 +866,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var updateRoleResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{target.UserId}/role",
-            new UpdateMemberRoleRequest("Admin"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             member.AccessToken);
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
@@ -878,7 +891,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var updateRoleResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/{owner.UserId}/role",
-            new UpdateMemberRoleRequest("Member"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Member),
             owner.AccessToken);
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
@@ -896,7 +909,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var updateRoleResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
-            new UpdateMemberRoleRequest("Admin"),
+            new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             user.AccessToken);
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
@@ -913,7 +926,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var updateRoleResponse = await _client.PatchAsJsonAsync(
             $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
-            new UpdateMemberRoleRequest("Admin"));
+            new UpdateMemberRoleRequest(GuildRoleInput.Admin));
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -937,15 +950,11 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
 
-        var updateRoleResponse = await SendAuthorizedPatchAsync(
+        var updateRoleResponse = await SendAuthorizedPatchRawAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
-            new UpdateMemberRoleRequest("SuperAdmin"),
+            """{"role":"Owner"}""",
             owner.AccessToken);
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var error = await updateRoleResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
     [Fact]
