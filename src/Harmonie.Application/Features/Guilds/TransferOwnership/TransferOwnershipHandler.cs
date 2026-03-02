@@ -37,30 +37,6 @@ public sealed class TransferOwnershipHandler
             callerId,
             newOwnerId);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
-        {
-            _logger.LogWarning(
-                "TransferOwnership failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Guild.NotFound,
-                "Guild was not found");
-        }
-
-        if (guild.OwnerUserId != callerId)
-        {
-            _logger.LogWarning(
-                "TransferOwnership failed because caller is not the guild owner. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Guild.AccessDenied,
-                "Only the guild owner can transfer ownership");
-        }
-
         if (newOwnerId == callerId)
         {
             _logger.LogWarning(
@@ -80,8 +56,32 @@ public sealed class TransferOwnershipHandler
         // transaction is abandoned (not committed) to keep state consistent.
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
 
-        var newOwnerRole = await _guildMemberRepository.GetRoleAsync(guildId, newOwnerId, cancellationToken);
-        if (newOwnerRole is null)
+        // Fetch guild and new owner's membership in a single query.
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, newOwnerId, cancellationToken);
+        if (ctx is null)
+        {
+            _logger.LogWarning(
+                "TransferOwnership failed because guild was not found. GuildId={GuildId}",
+                guildId);
+
+            return ApplicationResponse<bool>.Fail(
+                ApplicationErrorCodes.Guild.NotFound,
+                "Guild was not found");
+        }
+
+        if (ctx.Guild.OwnerUserId != callerId)
+        {
+            _logger.LogWarning(
+                "TransferOwnership failed because caller is not the guild owner. GuildId={GuildId}, CallerId={CallerId}",
+                guildId,
+                callerId);
+
+            return ApplicationResponse<bool>.Fail(
+                ApplicationErrorCodes.Guild.AccessDenied,
+                "Only the guild owner can transfer ownership");
+        }
+
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "TransferOwnership failed because new owner is not a member. GuildId={GuildId}, NewOwnerId={NewOwnerId}",

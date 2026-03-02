@@ -8,18 +8,15 @@ namespace Harmonie.Application.Features.Guilds.GetGuildChannels;
 public sealed class GetGuildChannelsHandler
 {
     private readonly IGuildRepository _guildRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly ILogger<GetGuildChannelsHandler> _logger;
 
     public GetGuildChannelsHandler(
         IGuildRepository guildRepository,
-        IGuildMemberRepository guildMemberRepository,
         IGuildChannelRepository guildChannelRepository,
         ILogger<GetGuildChannelsHandler> logger)
     {
         _guildRepository = guildRepository;
-        _guildMemberRepository = guildMemberRepository;
         _guildChannelRepository = guildChannelRepository;
         _logger = logger;
     }
@@ -34,8 +31,8 @@ public sealed class GetGuildChannelsHandler
             guildId,
             requesterUserId);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, requesterUserId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "GetGuildChannels guild not found. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
@@ -47,11 +44,7 @@ public sealed class GetGuildChannelsHandler
                 "Guild was not found");
         }
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            guildId,
-            requesterUserId,
-            cancellationToken);
-        if (!isMember)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "GetGuildChannels access denied. GuildId={GuildId}, RequesterUserId={RequesterUserId}",

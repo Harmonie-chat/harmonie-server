@@ -34,8 +34,8 @@ public sealed class GetGuildMembersHandlerTests
         var requesterUserId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guildId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guild?)null);
+            .Setup(x => x.GetWithCallerRoleAsync(guildId, requesterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildAccessContext?)null);
 
         var response = await _handler.HandleAsync(guildId, requesterUserId);
 
@@ -51,12 +51,8 @@ public sealed class GetGuildMembersHandlerTests
         var requesterUserId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(guild.Id, requesterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, requesterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, null));
 
         var response = await _handler.HandleAsync(guild.Id, requesterUserId);
 
@@ -74,12 +70,8 @@ public sealed class GetGuildMembersHandlerTests
         var memberUser = CreateMemberUser(GuildRole.Member, "member", displayName: null);
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(guild.Id, requesterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, requesterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         _guildMemberRepositoryMock
             .Setup(x => x.GetGuildMembersAsync(guild.Id, It.IsAny<CancellationToken>()))

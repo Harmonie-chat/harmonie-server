@@ -31,8 +31,8 @@ public sealed class GetGuildMembersHandler
             guildId,
             requesterUserId);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, requesterUserId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "GetGuildMembers guild not found. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
@@ -44,11 +44,7 @@ public sealed class GetGuildMembersHandler
                 "Guild was not found");
         }
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            guildId,
-            requesterUserId,
-            cancellationToken);
-        if (!isMember)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "GetGuildMembers access denied. GuildId={GuildId}, RequesterUserId={RequesterUserId}",

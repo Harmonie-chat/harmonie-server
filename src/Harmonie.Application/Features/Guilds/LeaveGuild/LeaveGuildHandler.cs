@@ -31,8 +31,8 @@ public sealed class LeaveGuildHandler
             guildId,
             userId);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, userId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "LeaveGuild failed because guild was not found. GuildId={GuildId}, UserId={UserId}",
@@ -44,8 +44,7 @@ public sealed class LeaveGuildHandler
                 "Guild was not found");
         }
 
-        var role = await _guildMemberRepository.GetRoleAsync(guildId, userId, cancellationToken);
-        if (role is null)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "LeaveGuild failed because user is not a member. GuildId={GuildId}, UserId={UserId}",
@@ -57,7 +56,7 @@ public sealed class LeaveGuildHandler
                 "You are not a member of this guild");
         }
 
-        if (guild.OwnerUserId == userId)
+        if (ctx.Guild.OwnerUserId == userId)
         {
             _logger.LogWarning(
                 "LeaveGuild failed because user is the guild owner. GuildId={GuildId}, UserId={UserId}",

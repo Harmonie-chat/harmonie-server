@@ -46,15 +46,28 @@ public sealed class TransferOwnershipHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenCallerTransfersToSelf_ShouldReturnOwnerTransferToSelf()
+    {
+        var ownerId = UserId.New();
+        var guild = CreateGuild(ownerId);
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId, ownerId);
+
+        response.Success.Should().BeFalse();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.OwnerTransferToSelf);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenGuildNotFound_ShouldReturnNotFound()
     {
-        var guildId = GuildId.New();
         var callerId = UserId.New();
         var newOwnerId = UserId.New();
+        var guildId = GuildId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guildId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guild?)null);
+            .Setup(x => x.GetWithCallerRoleAsync(guildId, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildAccessContext?)null);
 
         var response = await _handler.HandleAsync(guildId, callerId, newOwnerId);
 
@@ -71,29 +84,13 @@ public sealed class TransferOwnershipHandlerTests
         var newOwnerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         var response = await _handler.HandleAsync(guild.Id, callerId, newOwnerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WhenCallerTransfersToSelf_ShouldReturnOwnerTransferToSelf()
-    {
-        var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
-
-        _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        var response = await _handler.HandleAsync(guild.Id, ownerId, ownerId);
-
-        response.Success.Should().BeFalse();
-        response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.OwnerTransferToSelf);
     }
 
     [Fact]
@@ -104,12 +101,8 @@ public sealed class TransferOwnershipHandlerTests
         var newOwnerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((GuildRole?)null);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, null));
 
         var response = await _handler.HandleAsync(guild.Id, ownerId, newOwnerId);
 
@@ -126,12 +119,8 @@ public sealed class TransferOwnershipHandlerTests
         var newOwnerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         _guildRepositoryMock
             .Setup(x => x.UpdateOwnerAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
@@ -168,12 +157,8 @@ public sealed class TransferOwnershipHandlerTests
         var newOwnerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildRepositoryMock
             .Setup(x => x.UpdateOwnerAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
@@ -196,19 +181,14 @@ public sealed class TransferOwnershipHandlerTests
         var newOwnerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        // Membership check passes (member exists at this point)
-        _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         _guildRepositoryMock
             .Setup(x => x.UpdateOwnerAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        // UpdateRoleAsync returns 0: member was deleted concurrently between GetRoleAsync and UpdateRoleAsync
+        // UpdateRoleAsync returns 0: member was deleted concurrently
         _guildMemberRepositoryMock
             .Setup(x => x.UpdateRoleAsync(guild.Id, newOwnerId, GuildRole.Admin, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);

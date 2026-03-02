@@ -34,8 +34,8 @@ public sealed class RemoveMemberHandler
             callerId,
             targetId);
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "RemoveMember failed because guild was not found. GuildId={GuildId}",
@@ -46,8 +46,7 @@ public sealed class RemoveMemberHandler
                 "Guild was not found");
         }
 
-        var callerRole = await _guildMemberRepository.GetRoleAsync(guildId, callerId, cancellationToken);
-        if (callerRole is null || callerRole != GuildRole.Admin)
+        if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
             _logger.LogWarning(
                 "RemoveMember failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}",
@@ -72,7 +71,7 @@ public sealed class RemoveMemberHandler
                 "The specified user is not a member of this guild");
         }
 
-        if (guild.OwnerUserId == targetId)
+        if (ctx.Guild.OwnerUserId == targetId)
         {
             _logger.LogWarning(
                 "RemoveMember failed because target is the guild owner. GuildId={GuildId}, TargetId={TargetId}",
