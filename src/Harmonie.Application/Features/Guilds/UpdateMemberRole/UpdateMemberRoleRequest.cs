@@ -1,3 +1,3 @@
 namespace Harmonie.Application.Features.Guilds.UpdateMemberRole;
 
-public sealed record UpdateMemberRoleRequest(string Role);
+public sealed record UpdateMemberRoleRequest(GuildRoleInput Role);

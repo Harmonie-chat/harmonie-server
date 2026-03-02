@@ -1,5 +1,4 @@
 using FluentValidation;
-using Harmonie.Domain.Enums;
 
 namespace Harmonie.Application.Features.Guilds.UpdateMemberRole;
 
@@ -8,9 +7,7 @@ public sealed class UpdateMemberRoleValidator : AbstractValidator<UpdateMemberRo
     public UpdateMemberRoleValidator()
     {
         RuleFor(x => x.Role)
-            .NotEmpty()
-            .WithMessage("Role is required")
-            .Must(role => Enum.TryParse<GuildRole>(role, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+            .IsInEnum()
             .WithMessage("Role must be 'Admin' or 'Member'");
     }
 }
