@@ -11,18 +11,15 @@ public sealed class GetMessagesHandler
     private const int DefaultLimit = 50;
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
-        IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         ILogger<GetMessagesHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
-        _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _logger = logger;
     }
@@ -66,8 +63,8 @@ public sealed class GetMessagesHandler
 
         var limit = request.Limit ?? DefaultLimit;
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, currentUserId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "GetMessages failed because channel was not found. ChannelId={ChannelId}, UserId={UserId}",
@@ -79,12 +76,12 @@ public sealed class GetMessagesHandler
                 "Channel was not found");
         }
 
-        if (channel.Type != GuildChannelType.Text)
+        if (ctx.Channel.Type != GuildChannelType.Text)
         {
             _logger.LogWarning(
                 "GetMessages failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
                 channelId,
-                channel.Type,
+                ctx.Channel.Type,
                 currentUserId);
 
             return ApplicationResponse<GetMessagesResponse>.Fail(
@@ -92,16 +89,12 @@ public sealed class GetMessagesHandler
                 "Messages can only be read from text channels");
         }
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            channel.GuildId,
-            currentUserId,
-            cancellationToken);
-        if (!isMember)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "GetMessages access denied. ChannelId={ChannelId}, GuildId={GuildId}, UserId={UserId}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 currentUserId);
 
             return ApplicationResponse<GetMessagesResponse>.Fail(

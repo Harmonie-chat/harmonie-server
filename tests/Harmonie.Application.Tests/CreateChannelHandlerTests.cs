@@ -55,8 +55,8 @@ public sealed class CreateChannelHandlerTests
         var callerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guildId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guild?)null);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var response = await _handler.HandleAsync(guildId, callerId, "general", GuildChannelType.Text, 0);
 
@@ -68,18 +68,18 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guildId = GuildId.New();
         var callerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildRole?)null);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, "general", GuildChannelType.Text, 0);
+        var response = await _handler.HandleAsync(guildId, callerId, "general", GuildChannelType.Text, 0);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -89,18 +89,18 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsMemberNotAdmin_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guildId = GuildId.New();
         var callerId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Member);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, "general", GuildChannelType.Text, 0);
+        var response = await _handler.HandleAsync(guildId, callerId, "general", GuildChannelType.Text, 0);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -108,25 +108,54 @@ public sealed class CreateChannelHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenAdminCreatesTextChannel_ShouldReturnCreatedChannel()
+    public async Task HandleAsync_WhenNameAlreadyExistsInGuild_ShouldReturnNameConflict()
     {
-        var guild = CreateGuild();
+        var guildId = GuildId.New();
         var adminId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRoleAsync(guildId, adminId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Admin);
 
-        var response = await _handler.HandleAsync(guild.Id, adminId, "announcements", GuildChannelType.Text, 2);
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                guildId,
+                "announcements",
+                It.IsAny<GuildChannelId>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var response = await _handler.HandleAsync(guildId, adminId, "announcements", GuildChannelType.Text, 2);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminCreatesTextChannel_ShouldReturnCreatedChannel()
+    {
+        var guildId = GuildId.New();
+        var adminId = UserId.New();
+
+        _guildRepositoryMock
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(guildId, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Admin);
+
+        var response = await _handler.HandleAsync(guildId, adminId, "announcements", GuildChannelType.Text, 2);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guildId.ToString());
         response.Data.Name.Should().Be("announcements");
         response.Data.Type.Should().Be("Text");
         response.Data.IsDefault.Should().BeFalse();
@@ -137,18 +166,18 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminCreatesVoiceChannel_ShouldReturnCreatedChannel()
     {
-        var guild = CreateGuild();
+        var guildId = GuildId.New();
         var adminId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRoleAsync(guildId, adminId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Admin);
 
-        var response = await _handler.HandleAsync(guild.Id, adminId, "Gaming", GuildChannelType.Voice, 5);
+        var response = await _handler.HandleAsync(guildId, adminId, "Gaming", GuildChannelType.Voice, 5);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -161,18 +190,18 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminCreatesChannel_ShouldPersistAndCommit()
     {
-        var guild = CreateGuild();
+        var guildId = GuildId.New();
         var adminId = UserId.New();
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.ExistsAsync(guildId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRoleAsync(guildId, adminId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Admin);
 
-        await _handler.HandleAsync(guild.Id, adminId, "lounge", GuildChannelType.Text, 3);
+        await _handler.HandleAsync(guildId, adminId, "lounge", GuildChannelType.Text, 3);
 
         _guildChannelRepositoryMock.Verify(
             x => x.AddAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
@@ -181,18 +210,5 @@ public sealed class CreateChannelHandlerTests
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
-    }
-
-    private static Guild CreateGuild()
-    {
-        var nameResult = GuildName.Create("Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
     }
 }

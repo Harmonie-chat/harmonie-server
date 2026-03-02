@@ -1,6 +1,8 @@
 using System.Net;
+using System.Data.Common;
 using FluentValidation;
 using Harmonie.Application.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Harmonie.API.Middleware;
 
@@ -49,6 +51,20 @@ public sealed class GlobalExceptionHandler
             error = new ApplicationError(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request body contains an invalid value");
+        }
+        else if (exception is DbException)
+        {
+            _logger.LogError(exception, "A database exception occurred");
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+            var problem = new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "Internal Server Error",
+                Detail = "An unexpected server error occurred."
+            };
+
+            return context.Response.WriteAsJsonAsync(problem);
         }
         else
         {

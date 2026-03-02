@@ -9,18 +9,15 @@ namespace Harmonie.Application.Features.Channels.UpdateChannel;
 public sealed class UpdateChannelHandler
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateChannelHandler> _logger;
 
     public UpdateChannelHandler(
         IGuildChannelRepository guildChannelRepository,
-        IGuildMemberRepository guildMemberRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateChannelHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
-        _guildMemberRepository = guildMemberRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -36,8 +33,8 @@ public sealed class UpdateChannelHandler
             channelId,
             callerId);
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "UpdateChannel failed because channel was not found. ChannelId={ChannelId}",
@@ -48,13 +45,12 @@ public sealed class UpdateChannelHandler
                 "Channel was not found");
         }
 
-        var role = await _guildMemberRepository.GetRoleAsync(channel.GuildId, callerId, cancellationToken);
-        if (role is null)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "UpdateChannel failed because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 callerId);
 
             return ApplicationResponse<UpdateChannelResponse>.Fail(
@@ -62,19 +58,21 @@ public sealed class UpdateChannelHandler
                 "You do not have access to this channel");
         }
 
-        if (role != GuildRole.Admin)
+        if (ctx.CallerRole != GuildRole.Admin)
         {
             _logger.LogWarning(
                 "UpdateChannel failed because caller is not an admin. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 callerId,
-                role);
+                ctx.CallerRole);
 
             return ApplicationResponse<UpdateChannelResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only guild admins can update channels");
         }
+
+        var channel = ctx.Channel;
 
         if (request.NameIsSet && request.Name is not null)
         {

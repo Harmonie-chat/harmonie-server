@@ -9,18 +9,15 @@ namespace Harmonie.Application.Features.Channels.DeleteChannel;
 public sealed class DeleteChannelHandler
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DeleteChannelHandler> _logger;
 
     public DeleteChannelHandler(
         IGuildChannelRepository guildChannelRepository,
-        IGuildMemberRepository guildMemberRepository,
         IUnitOfWork unitOfWork,
         ILogger<DeleteChannelHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
-        _guildMemberRepository = guildMemberRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -35,8 +32,8 @@ public sealed class DeleteChannelHandler
             channelId,
             callerId);
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "DeleteChannel failed because channel was not found. ChannelId={ChannelId}",
@@ -47,13 +44,12 @@ public sealed class DeleteChannelHandler
                 "Channel was not found");
         }
 
-        var role = await _guildMemberRepository.GetRoleAsync(channel.GuildId, callerId, cancellationToken);
-        if (role is null)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "DeleteChannel failed because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 callerId);
 
             return ApplicationResponse<bool>.Fail(
@@ -61,26 +57,26 @@ public sealed class DeleteChannelHandler
                 "You do not have access to this channel");
         }
 
-        if (role != GuildRole.Admin)
+        if (ctx.CallerRole != GuildRole.Admin)
         {
             _logger.LogWarning(
                 "DeleteChannel failed because caller is not an admin. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 callerId,
-                role);
+                ctx.CallerRole);
 
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only guild admins can delete channels");
         }
 
-        if (channel.IsDefault)
+        if (ctx.Channel.IsDefault)
         {
             _logger.LogWarning(
                 "DeleteChannel failed because channel is the default channel. ChannelId={ChannelId}, GuildId={GuildId}",
                 channelId,
-                channel.GuildId);
+                ctx.Channel.GuildId);
 
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.CannotDeleteDefault,

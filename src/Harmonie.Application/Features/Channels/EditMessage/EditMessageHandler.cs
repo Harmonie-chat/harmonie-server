@@ -11,7 +11,6 @@ public sealed class EditMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IChannelMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
@@ -19,14 +18,12 @@ public sealed class EditMessageHandler
 
     public EditMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IGuildMemberRepository guildMemberRepository,
         IChannelMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         ILogger<EditMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
-        _guildMemberRepository = guildMemberRepository;
         _channelMessageRepository = channelMessageRepository;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
@@ -62,8 +59,8 @@ public sealed class EditMessageHandler
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "EditMessage failed because channel was not found. ChannelId={ChannelId}",
@@ -74,28 +71,24 @@ public sealed class EditMessageHandler
                 "Channel was not found");
         }
 
-        if (channel.Type != GuildChannelType.Text)
+        if (ctx.Channel.Type != GuildChannelType.Text)
         {
             _logger.LogWarning(
                 "EditMessage failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}",
                 channelId,
-                channel.Type);
+                ctx.Channel.Type);
 
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Messages can only be edited in text channels");
         }
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            channel.GuildId,
-            callerId,
-            cancellationToken);
-        if (!isMember)
+        if (ctx.CallerRole is null)
         {
             _logger.LogWarning(
                 "EditMessage access denied because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
                 channelId,
-                channel.GuildId,
+                ctx.Channel.GuildId,
                 callerId);
 
             return ApplicationResponse<EditMessageResponse>.Fail(

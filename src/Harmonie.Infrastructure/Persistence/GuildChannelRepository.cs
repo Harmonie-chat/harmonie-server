@@ -186,6 +186,43 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         return count > 0;
     }
 
+    public async Task<ChannelAccessContext?> GetWithCallerRoleAsync(
+        GuildChannelId channelId,
+        UserId callerId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT gc.id             AS "Id",
+                                  gc.guild_id       AS "GuildId",
+                                  gc.name           AS "Name",
+                                  gc.type           AS "Type",
+                                  gc.is_default     AS "IsDefault",
+                                  gc.position       AS "Position",
+                                  gc.created_at_utc AS "CreatedAtUtc",
+                                  gm.role           AS "Role"
+                           FROM guild_channels gc
+                           LEFT JOIN guild_members gm
+                                  ON gm.guild_id = gc.guild_id
+                                 AND gm.user_id = @CallerId
+                           WHERE gc.id = @ChannelId
+                           LIMIT 1
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ChannelId = channelId.Value, CallerId = callerId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QueryFirstOrDefaultAsync<ChannelWithRoleDto>(command);
+        return row is null
+            ? null
+            : new ChannelAccessContext(
+                MapToGuildChannel(row),
+                row.Role.HasValue ? (GuildRole)row.Role.Value : null);
+    }
+
     private static GuildChannel MapToGuildChannel(GuildChannelDto row)
     {
         if (!Enum.IsDefined(typeof(GuildChannelType), row.Type))
@@ -199,5 +236,32 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             row.IsDefault,
             row.Position,
             row.CreatedAtUtc);
+    }
+
+    private static GuildChannel MapToGuildChannel(ChannelWithRoleDto row)
+    {
+        if (!Enum.IsDefined(typeof(GuildChannelType), row.Type))
+            throw new InvalidOperationException("Stored channel type is invalid.");
+
+        return GuildChannel.Rehydrate(
+            GuildChannelId.From(row.Id),
+            GuildId.From(row.GuildId),
+            row.Name,
+            (GuildChannelType)row.Type,
+            row.IsDefault,
+            row.Position,
+            row.CreatedAtUtc);
+    }
+
+    private sealed class ChannelWithRoleDto
+    {
+        public Guid Id { get; init; }
+        public Guid GuildId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public short Type { get; init; }
+        public bool IsDefault { get; init; }
+        public int Position { get; init; }
+        public DateTime CreatedAtUtc { get; init; }
+        public short? Role { get; init; }
     }
 }
