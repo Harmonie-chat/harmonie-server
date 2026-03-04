@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -22,24 +20,40 @@ services:
       timeout: 5s
       retries: 5
 
-  # Harmonie API (uncomment when ready to run in Docker)
-  # harmonie-api:
-  #   build:
-  #     context: .
-  #     dockerfile: src/Harmonie.API/Dockerfile
-  #   container_name: harmonie-api
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #     - ASPNETCORE_URLS=https://+:443;http://+:80
-  #     - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
-  #   ports:
-  #     - "5001:80"
-  #     - "7001:443"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - harmonie-network
+  # Database migrations (runs once then exits)
+  harmonie-migrations:
+    build:
+      context: .
+      dockerfile: tools/Harmonie.Migrations/Dockerfile
+    container_name: harmonie-migrations
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - harmonie-network
+    restart: "no"
+
+  # Harmonie API
+  harmonie-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: harmonie-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
+    ports:
+      - "5001:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      harmonie-migrations:
+        condition: service_completed_successfully
+    networks:
+      - harmonie-network
 
 volumes:
   postgres-data:
