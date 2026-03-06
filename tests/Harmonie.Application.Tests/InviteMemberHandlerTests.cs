@@ -15,19 +15,16 @@ public sealed class InviteMemberHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
-    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly InviteMemberHandler _handler;
 
     public InviteMemberHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
-        _userRepositoryMock = new Mock<IUserRepository>();
 
         _handler = new InviteMemberHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _userRepositoryMock.Object,
             NullLogger<InviteMemberHandler>.Instance);
     }
 
@@ -39,12 +36,8 @@ public sealed class InviteMemberHandlerTests
         var request = new InviteMemberRequest(UserId.New().ToString());
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         var response = await _handler.HandleAsync(guild.Id, request, inviterUserId);
 
@@ -62,16 +55,12 @@ public sealed class InviteMemberHandlerTests
         var request = new InviteMemberRequest(targetUserId.ToString());
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
-
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .Setup(x => x.GetInviteMemberTargetLookupAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new InviteMemberTargetLookup(UserExists: false, IsMember: false));
 
         var response = await _handler.HandleAsync(guild.Id, request, inviterUserId);
 
@@ -89,20 +78,12 @@ public sealed class InviteMemberHandlerTests
         var request = new InviteMemberRequest(targetUserId.ToString());
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
-
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateUser(targetUserId));
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetInviteMemberTargetLookupAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new InviteMemberTargetLookup(UserExists: true, IsMember: true));
 
         var response = await _handler.HandleAsync(guild.Id, request, inviterUserId);
 
@@ -120,20 +101,12 @@ public sealed class InviteMemberHandlerTests
         var request = new InviteMemberRequest(targetUserId.ToString());
 
         _guildRepositoryMock
-            .Setup(x => x.GetByIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(guild);
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
-
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateUser(targetUserId));
-
-        _guildMemberRepositoryMock
-            .Setup(x => x.IsMemberAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.GetInviteMemberTargetLookupAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new InviteMemberTargetLookup(UserExists: true, IsMember: false));
 
         _guildMemberRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildMember>(), It.IsAny<CancellationToken>()))
@@ -160,30 +133,5 @@ public sealed class InviteMemberHandlerTests
             throw new InvalidOperationException("Failed to create guild for tests.");
 
         return guildResult.Value!;
-    }
-
-    private static User CreateUser(UserId userId)
-    {
-        var emailResult = Email.Create($"{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure)
-            throw new InvalidOperationException("Failed to create email for tests.");
-
-        var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create username for tests.");
-
-        return User.Rehydrate(
-            userId,
-            emailResult.Value!,
-            usernameResult.Value!,
-            "hash",
-            avatarUrl: null,
-            isEmailVerified: true,
-            isActive: true,
-            lastLoginAtUtc: null,
-            displayName: null,
-            bio: null,
-            createdAtUtc: DateTime.UtcNow,
-            updatedAtUtc: DateTime.UtcNow);
     }
 }

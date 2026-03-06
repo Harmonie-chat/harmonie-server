@@ -213,6 +213,63 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task InviteMember_WhenTargetUserDoesNotExist_ShouldReturnNotFound()
+    {
+        var owner = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Missing Invite Target Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(Guid.NewGuid().ToString()),
+            owner.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await inviteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.InviteTargetNotFound);
+    }
+
+    [Fact]
+    public async Task InviteMember_WhenTargetUserIsAlreadyMember_ShouldReturnConflict()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Duplicate Invite Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var firstInviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        firstInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var secondInviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        secondInviteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var error = await secondInviteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberAlreadyExists);
+    }
+
+    [Fact]
     public async Task SendMessage_WhenChannelIsVoice_ShouldReturnConflict()
     {
         var user = await RegisterAsync();
