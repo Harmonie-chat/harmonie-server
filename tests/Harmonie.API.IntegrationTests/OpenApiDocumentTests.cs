@@ -37,9 +37,21 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         badRequestDescription.Should().NotBeNull();
         badRequestDescription.Should().Contain(ApplicationErrorCodes.Common.ValidationFailed);
 
+        var validationExample = getGuildChannels["400"]?["content"]?["application/json"]?["examples"]?[ApplicationErrorCodes.Common.ValidationFailed]?["value"];
+        validationExample.Should().NotBeNull();
+        validationExample!["code"]?.GetValue<string>().Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        validationExample["detail"]?.GetValue<string>().Should().Be("Validation failed");
+        validationExample["status"]?.GetValue<int>().Should().Be(400);
+        validationExample["traceId"]?.GetValue<string>().Should().Be("trace-id");
+
         var unauthorizedDescription = getGuildChannels["401"]?["description"]?.GetValue<string>();
         unauthorizedDescription.Should().NotBeNull();
         unauthorizedDescription.Should().Contain(ApplicationErrorCodes.Auth.InvalidCredentials);
+
+        var unauthorizedExample = getGuildChannels["401"]?["content"]?["application/json"]?["examples"]?[ApplicationErrorCodes.Auth.InvalidCredentials]?["value"];
+        unauthorizedExample.Should().NotBeNull();
+        unauthorizedExample!["code"]?.GetValue<string>().Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
+        unauthorizedExample["detail"]?.GetValue<string>().Should().Be("Invalid credentials");
     }
 
     [Fact]
@@ -63,5 +75,10 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         description.Should().Contain(ApplicationErrorCodes.Auth.DuplicateEmail);
         description.Should().Contain(ApplicationErrorCodes.Auth.DuplicateUsername);
 
+        var conflictExamples = registerConflict["content"]?["application/json"]?["examples"];
+        conflictExamples?[ApplicationErrorCodes.Auth.DuplicateEmail]?["value"]?["detail"]?.GetValue<string>()
+            .Should().Be("Duplicate email");
+        conflictExamples?[ApplicationErrorCodes.Auth.DuplicateUsername]?["value"]?["detail"]?.GetValue<string>()
+            .Should().Be("Duplicate username");
     }
 }

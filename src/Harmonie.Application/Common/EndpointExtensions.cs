@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi;
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Harmonie.Application.Common;
 
@@ -157,9 +159,53 @@ public static class EndpointExtensions
                 response.Description = string.IsNullOrWhiteSpace(response.Description)
                     ? $"Possible application error codes:{Environment.NewLine}{responseDescription}"
                     : $"{response.Description}{Environment.NewLine}{Environment.NewLine}Possible application error codes:{Environment.NewLine}{responseDescription}";
+
+                if (response.Content is null || !response.Content.TryGetValue("application/json", out var mediaType))
+                {
+                    continue;
+                }
+
+                mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
+                foreach (var code in codes)
+                {
+                    var errors = code == ApplicationErrorCodes.Common.ValidationFailed
+                        ? SingleValidationError(
+                            "field",
+                            ApplicationErrorCodes.Validation.Required,
+                            "Field is required")
+                        : null;
+
+                    mediaType.Examples[code] = new OpenApiExample
+                    {
+                        Summary = code,
+                        Value = JsonNode.Parse(JsonSerializer.Serialize(
+                            EnrichError(
+                                new ApplicationError(code, BuildExampleDetail(code), errors),
+                                status,
+                                "trace-id")))
+                    };
+                }
             }
             return Task.CompletedTask;
         });
+    }
+
+    private static string BuildExampleDetail(string errorCode)
+    {
+        var parts = errorCode.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return errorCode;
+
+        var words = parts
+            .Skip(parts[0] is "AUTH" or "COMMON" ? 1 : 0)
+            .Select(static part => part.ToLowerInvariant())
+            .ToArray();
+
+        if (words.Length == 0)
+            return errorCode;
+
+        words[0] = char.ToUpperInvariant(words[0][0]) + words[0][1..];
+        return string.Join(' ', words);
     }
 
     private static ApplicationError EnrichError(
