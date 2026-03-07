@@ -40,8 +40,8 @@ dotnet run --project src/Harmonie.API
 ```
 
 LiveKit defaults are split on purpose:
-- `LiveKit:Url` is the client-facing WebSocket URL returned by the API.
-- `LiveKit:ServerUrl` is the HTTP base URL used by the server SDK for room queries.
+- `LiveKit:PublicUrl` is the client-facing WebSocket URL returned by the API.
+- `LiveKit:InternalUrl` is the HTTP base URL used by the server SDK for room queries.
 
 When you run through `docker-compose`, the API container uses `http://livekit:7880` internally while clients still use `ws://localhost:7880`.
 

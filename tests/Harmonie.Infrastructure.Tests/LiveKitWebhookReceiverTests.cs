@@ -21,7 +21,7 @@ public sealed class LiveKitWebhookReceiverTests
     {
         var settings = Options.Create(new LiveKitSettings
         {
-            Url = "ws://localhost:7880",
+            PublicUrl = "ws://localhost:7880",
             ApiKey = ApiKey,
             ApiSecret = ApiSecret
         });

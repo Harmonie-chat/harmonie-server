@@ -18,7 +18,7 @@ public sealed class LiveKitTokenServiceTests
     {
         var settings = Options.Create(new LiveKitSettings
         {
-            Url = "ws://localhost:7880",
+            PublicUrl = "ws://localhost:7880",
             ApiKey = _apiKey,
             ApiSecret = _apiSecret,
         });

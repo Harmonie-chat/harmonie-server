@@ -66,8 +66,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
-      - LiveKit__Url=ws://localhost:7880
-      - LiveKit__ServerUrl=http://livekit:7880
+      - LiveKit__PublicUrl=ws://localhost:7880
+      - LiveKit__InternalUrl=http://livekit:7880
       - LiveKit__ApiKey=devkey
       - LiveKit__ApiSecret=devsecret-that-is-long-enough-for-hmac-signing
     ports:

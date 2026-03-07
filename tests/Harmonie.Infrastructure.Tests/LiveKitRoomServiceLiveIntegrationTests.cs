@@ -15,7 +15,8 @@ namespace Harmonie.Infrastructure.Tests;
 
 public sealed class LiveKitRoomServiceLiveIntegrationTests
 {
-    private const string DefaultLiveKitUrl = "http://localhost:7880";
+    private const string DefaultPublicLiveKitUrl = "ws://localhost:7880";
+    private const string DefaultInternalLiveKitUrl = "http://localhost:7880";
     private const string DefaultApiKey = "devkey";
     private const string DefaultApiSecret = "devsecret-that-is-long-enough-for-hmac-signing";
 
@@ -40,7 +41,7 @@ public sealed class LiveKitRoomServiceLiveIntegrationTests
 
         using var httpClient = new HttpClient();
         var roomServiceClient = new RoomServiceClient(
-            settings.Url,
+            settings.GetInternalUrl(),
             settings.ApiKey,
             settings.ApiSecret,
             httpClient);
@@ -72,7 +73,8 @@ public sealed class LiveKitRoomServiceLiveIntegrationTests
     private static LiveKitSettings CreateSettings()
         => new()
         {
-            Url = Environment.GetEnvironmentVariable("LIVEKIT_TEST_URL") ?? DefaultLiveKitUrl,
+            PublicUrl = Environment.GetEnvironmentVariable("LIVEKIT_TEST_URL") ?? DefaultPublicLiveKitUrl,
+            InternalUrl = Environment.GetEnvironmentVariable("LIVEKIT_TEST_INTERNAL_URL") ?? DefaultInternalLiveKitUrl,
             ApiKey = Environment.GetEnvironmentVariable("LIVEKIT_TEST_API_KEY") ?? DefaultApiKey,
             ApiSecret = Environment.GetEnvironmentVariable("LIVEKIT_TEST_API_SECRET") ?? DefaultApiSecret
         };

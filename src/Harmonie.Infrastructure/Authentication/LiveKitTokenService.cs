@@ -25,6 +25,6 @@ public sealed class LiveKitTokenService : ILiveKitTokenService
             .WithGrants(new VideoGrants { RoomJoin = true, Room = roomName })
             .ToJwt();
 
-        return Task.FromResult(new LiveKitRoomToken(jwt, _settings.Url, roomName));
+        return Task.FromResult(new LiveKitRoomToken(jwt, _settings.PublicUrl, roomName));
     }
 }

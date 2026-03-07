@@ -7,15 +7,15 @@ namespace Harmonie.Infrastructure.LiveKit;
 public sealed class LiveKitSdkRoomApiClient : ILiveKitRoomApiClient
 {
     private readonly LiveKitSettings _settings;
-    private readonly string _serverUrl;
+    private readonly string _internalUrl;
 
     public LiveKitSdkRoomApiClient(IOptions<LiveKitSettings> settings)
     {
         _settings = settings.Value;
-        _serverUrl = _settings.GetServerUrl();
+        _internalUrl = _settings.GetInternalUrl();
 
-        if (string.IsNullOrWhiteSpace(_serverUrl))
-            throw new InvalidOperationException("Configuration value 'LiveKit:Url' or 'LiveKit:ServerUrl' is required.");
+        if (string.IsNullOrWhiteSpace(_internalUrl))
+            throw new InvalidOperationException("Configuration value 'LiveKit:PublicUrl' or 'LiveKit:InternalUrl' is required.");
 
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
             throw new InvalidOperationException("Configuration value 'LiveKit:ApiKey' is required.");
@@ -28,7 +28,7 @@ public sealed class LiveKitSdkRoomApiClient : ILiveKitRoomApiClient
     {
         using var httpClient = new HttpClient();
         var roomServiceClient = new RoomServiceClient(
-            _serverUrl,
+            _internalUrl,
             _settings.ApiKey,
             _settings.ApiSecret,
             httpClient);
@@ -43,7 +43,7 @@ public sealed class LiveKitSdkRoomApiClient : ILiveKitRoomApiClient
     {
         using var httpClient = new HttpClient();
         var roomServiceClient = new RoomServiceClient(
-            _serverUrl,
+            _internalUrl,
             _settings.ApiKey,
             _settings.ApiSecret,
             httpClient);
