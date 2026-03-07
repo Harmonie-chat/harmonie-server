@@ -3,7 +3,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
-using Harmonie.Infrastructure.Dto;
+using Harmonie.Infrastructure.Rows;
 
 namespace Harmonie.Infrastructure.Persistence;
 
@@ -40,7 +40,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<GuildChannelDto>(command);
+        var row = await connection.QueryFirstOrDefaultAsync<GuildChannelRow>(command);
         return row is null ? null : MapToGuildChannel(row);
     }
 
@@ -110,7 +110,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<GuildChannelDto>(command);
+        var rows = await connection.QueryAsync<GuildChannelRow>(command);
         return rows.Select(MapToGuildChannel).ToArray();
     }
 
@@ -223,7 +223,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                 row.Role.HasValue ? (GuildRole)row.Role.Value : null);
     }
 
-    private static GuildChannel MapToGuildChannel(GuildChannelDto row)
+    private static GuildChannel MapToGuildChannel(GuildChannelRow row)
     {
         if (!Enum.IsDefined(typeof(GuildChannelType), row.Type))
             throw new InvalidOperationException("Stored channel type is invalid.");

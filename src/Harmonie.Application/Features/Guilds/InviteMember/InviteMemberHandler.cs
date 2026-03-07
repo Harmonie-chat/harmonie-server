@@ -11,18 +11,15 @@ public sealed class InviteMemberHandler
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<InviteMemberHandler> _logger;
 
     public InviteMemberHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
-        IUserRepository userRepository,
         ILogger<InviteMemberHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -57,8 +54,11 @@ public sealed class InviteMemberHandler
                 details);
         }
 
-        var guild = await _guildRepository.GetByIdAsync(guildId, cancellationToken);
-        if (guild is null)
+        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(
+            guildId,
+            inviterUserId,
+            cancellationToken);
+        if (guildAccess is null)
         {
             _logger.LogWarning(
                 "InviteMember failed because guild was not found. GuildId={GuildId}, InviterUserId={InviterUserId}",
@@ -70,25 +70,24 @@ public sealed class InviteMemberHandler
                 "Guild was not found");
         }
 
-        var inviterRole = await _guildMemberRepository.GetRoleAsync(
-            guildId,
-            inviterUserId,
-            cancellationToken);
-        if (inviterRole is null || inviterRole != GuildRole.Admin)
+        if (guildAccess.CallerRole is null || guildAccess.CallerRole != GuildRole.Admin)
         {
             _logger.LogWarning(
                 "InviteMember forbidden. GuildId={GuildId}, InviterUserId={InviterUserId}, InviterRole={InviterRole}",
                 guildId,
                 inviterUserId,
-                inviterRole);
+                guildAccess.CallerRole);
 
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.InviteForbidden,
                 "Only guild administrators can invite members");
         }
 
-        var invitedUser = await _userRepository.GetByIdAsync(invitedUserId, cancellationToken);
-        if (invitedUser is null)
+        var targetLookup = await _guildMemberRepository.GetInviteMemberTargetLookupAsync(
+            guildId,
+            invitedUserId,
+            cancellationToken);
+        if (!targetLookup.UserExists)
         {
             _logger.LogWarning(
                 "InviteMember target user not found. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserId={TargetUserId}",
@@ -101,11 +100,7 @@ public sealed class InviteMemberHandler
                 "Invite target user was not found");
         }
 
-        var alreadyMember = await _guildMemberRepository.IsMemberAsync(
-            guildId,
-            invitedUserId,
-            cancellationToken);
-        if (alreadyMember)
+        if (targetLookup.IsMember)
         {
             _logger.LogWarning(
                 "InviteMember target already member. GuildId={GuildId}, TargetUserId={TargetUserId}",

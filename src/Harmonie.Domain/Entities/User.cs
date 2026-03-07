@@ -1,5 +1,4 @@
 using Harmonie.Domain.Common;
-using Harmonie.Domain.Events;
 using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Domain.Entities;
@@ -81,8 +80,6 @@ public sealed class User : Entity<UserId>
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        user.AddDomainEvent(new UserCreatedEvent(user.Id, user.Email, user.Username));
-
         return Result.Success(user);
     }
     
@@ -131,8 +128,6 @@ public sealed class User : Entity<UserId>
         IsEmailVerified = false; // Require re-verification
         MarkAsUpdated();
 
-        AddDomainEvent(new UserEmailChangedEvent(Id, oldEmail, newEmail));
-
         return Result.Success();
     }
 
@@ -148,8 +143,6 @@ public sealed class User : Entity<UserId>
         Username = newUsername;
         MarkAsUpdated();
 
-        AddDomainEvent(new UserUsernameChangedEvent(Id, oldUsername, newUsername));
-
         return Result.Success();
     }
 
@@ -163,8 +156,6 @@ public sealed class User : Entity<UserId>
 
         PasswordHash = newPasswordHash;
         MarkAsUpdated();
-
-        AddDomainEvent(new UserPasswordChangedEvent(Id));
 
         return Result.Success();
     }
@@ -222,8 +213,6 @@ public sealed class User : Entity<UserId>
         IsEmailVerified = true;
         MarkAsUpdated();
 
-        AddDomainEvent(new UserEmailVerifiedEvent(Id, Email));
-
         return Result.Success();
     }
 
@@ -238,14 +227,9 @@ public sealed class User : Entity<UserId>
         IsActive = false;
         MarkAsUpdated();
 
-        AddDomainEvent(new UserDeactivatedEvent(Id));
-
         return Result.Success();
     }
 
-    /// <summary>
-    /// Reactivate the user account
-    /// </summary>
     public Result Reactivate()
     {
         if (IsActive)
@@ -253,8 +237,6 @@ public sealed class User : Entity<UserId>
 
         IsActive = true;
         MarkAsUpdated();
-
-        AddDomainEvent(new UserReactivatedEvent(Id));
 
         return Result.Success();
     }

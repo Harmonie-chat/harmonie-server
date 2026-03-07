@@ -2,7 +2,7 @@ using Dapper;
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
-using Harmonie.Infrastructure.Dto;
+using Harmonie.Infrastructure.Rows;
 using Npgsql;
 
 namespace Harmonie.Infrastructure.Persistence;
@@ -78,7 +78,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             new { TokenHash = tokenHash },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
-        var tokenRow = await conn.QueryFirstOrDefaultAsync<RefreshTokenDto>(cmd);
+        var tokenRow = await conn.QueryFirstOrDefaultAsync<RefreshTokenRow>(cmd);
 
         if (tokenRow is null)
             return null;

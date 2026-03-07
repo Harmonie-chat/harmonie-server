@@ -3,7 +3,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
-using Harmonie.Infrastructure.Dto;
+using Harmonie.Infrastructure.Rows;
 
 namespace Harmonie.Infrastructure.Persistence;
 
@@ -35,7 +35,7 @@ public sealed class GuildRepository : IGuildRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<GuildDto>(command);
+        var row = await connection.QueryFirstOrDefaultAsync<GuildRow>(command);
         return row is null ? null : MapToGuild(row);
     }
 
@@ -66,7 +66,7 @@ public sealed class GuildRepository : IGuildRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<GuildWithRoleDto>(command);
+        var row = await connection.QueryFirstOrDefaultAsync<GuildWithRoleRow>(command);
         if (row is null)
             return null;
 
@@ -149,7 +149,7 @@ public sealed class GuildRepository : IGuildRepository
         await connection.ExecuteAsync(command);
     }
 
-    private static Guild MapToGuild(GuildDto row)
+    private static Guild MapToGuild(GuildRow row)
     {
         var nameResult = GuildName.Create(row.Name);
         if (nameResult.IsFailure || nameResult.Value is null)
@@ -163,7 +163,7 @@ public sealed class GuildRepository : IGuildRepository
             row.UpdatedAtUtc);
     }
 
-    private static Guild MapToGuild(GuildWithRoleDto row)
+    private static Guild MapToGuild(GuildWithRoleRow row)
     {
         var nameResult = GuildName.Create(row.Name);
         if (nameResult.IsFailure || nameResult.Value is null)
@@ -177,7 +177,7 @@ public sealed class GuildRepository : IGuildRepository
             row.UpdatedAtUtc);
     }
 
-    private sealed class GuildWithRoleDto
+    private sealed class GuildWithRoleRow
     {
         public Guid Id { get; init; }
         public string Name { get; init; } = string.Empty;

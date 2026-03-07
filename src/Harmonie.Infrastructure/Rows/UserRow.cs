@@ -1,6 +1,6 @@
-namespace Harmonie.Infrastructure.Dto;
+namespace Harmonie.Infrastructure.Rows;
 
-public sealed record UserDto(
+public sealed record UserRow(
     Guid Id,
     string Email,
     string Username,

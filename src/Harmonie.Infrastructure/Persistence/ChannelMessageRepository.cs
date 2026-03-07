@@ -2,7 +2,7 @@ using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
-using Harmonie.Infrastructure.Dto;
+using Harmonie.Infrastructure.Rows;
 
 namespace Harmonie.Infrastructure.Persistence;
 
@@ -119,7 +119,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = (await connection.QueryAsync<ChannelMessageDto>(command)).ToArray();
+        var rows = (await connection.QueryAsync<ChannelMessageRow>(command)).ToArray();
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
 
@@ -162,7 +162,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QuerySingleOrDefaultAsync<ChannelMessageDto>(command);
+        var row = await connection.QuerySingleOrDefaultAsync<ChannelMessageRow>(command);
         return row is null ? null : MapToChannelMessage(row);
     }
 
@@ -216,7 +216,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
         await connection.ExecuteAsync(command);
     }
 
-    private static ChannelMessage MapToChannelMessage(ChannelMessageDto row)
+    private static ChannelMessage MapToChannelMessage(ChannelMessageRow row)
     {
         var contentResult = ChannelMessageContent.Create(row.Content);
         if (contentResult.IsFailure || contentResult.Value is null)

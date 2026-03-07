@@ -6,6 +6,11 @@ namespace Harmonie.Application.Interfaces;
 
 public interface IGuildMemberRepository
 {
+    Task<InviteMemberTargetLookup> GetInviteMemberTargetLookupAsync(
+        GuildId guildId,
+        UserId userId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> IsMemberAsync(
         GuildId guildId,
         UserId userId,
@@ -44,6 +49,10 @@ public sealed record UserGuildMembership(
     Guild Guild,
     GuildRole Role,
     DateTime JoinedAtUtc);
+
+public sealed record InviteMemberTargetLookup(
+    bool UserExists,
+    bool IsMember);
 
 public sealed record GuildMemberUser(
     UserId UserId,

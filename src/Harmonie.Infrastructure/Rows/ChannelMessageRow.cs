@@ -1,6 +1,6 @@
-namespace Harmonie.Infrastructure.Dto;
+namespace Harmonie.Infrastructure.Rows;
 
-public sealed class ChannelMessageDto
+public sealed class ChannelMessageRow
 {
     public Guid Id { get; init; }
 

@@ -1,6 +1,6 @@
-namespace Harmonie.Infrastructure.Dto;
+namespace Harmonie.Infrastructure.Rows;
 
-public sealed record RefreshTokenDto(
+public sealed record RefreshTokenRow(
     Guid Id,
     Guid UserId,
     string TokenHash,

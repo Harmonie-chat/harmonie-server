@@ -2,7 +2,7 @@ using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
-using Harmonie.Infrastructure.Dto;
+using Harmonie.Infrastructure.Rows;
 
 namespace Harmonie.Infrastructure.Persistence;
 
@@ -41,7 +41,7 @@ public sealed class UserRepository : IUserRepository
             new { Id = userId.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
-        var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(cmd);
+        var userRow = await conn.QueryFirstOrDefaultAsync<UserRow>(cmd);
 
         return userRow is null ? null : MapToUser(userRow);
     }
@@ -55,7 +55,7 @@ public sealed class UserRepository : IUserRepository
             new { Email = email.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
-        var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(cmd);
+        var userRow = await conn.QueryFirstOrDefaultAsync<UserRow>(cmd);
 
         return userRow is null ? null : MapToUser(userRow);
     }
@@ -69,7 +69,7 @@ public sealed class UserRepository : IUserRepository
             new { Username = username.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
-        var userRow = await conn.QueryFirstOrDefaultAsync<UserDto>(cmd);
+        var userRow = await conn.QueryFirstOrDefaultAsync<UserRow>(cmd);
 
         return userRow is null ? null : MapToUser(userRow);
     }
@@ -213,7 +213,7 @@ public sealed class UserRepository : IUserRepository
         await conn.ExecuteAsync(cmd);
     }
 
-    private static User MapToUser(UserDto userRow)
+    private static User MapToUser(UserRow userRow)
     {
         var emailResult = Email.Create(userRow.Email);
         if (emailResult.IsFailure || emailResult.Value is null)

@@ -1,6 +1,6 @@
-namespace Harmonie.Infrastructure.Dto;
+namespace Harmonie.Infrastructure.Rows;
 
-public sealed class UserGuildMembershipDto
+public sealed class UserGuildMembershipRow
 {
     public Guid GuildId { get; init; }
 
