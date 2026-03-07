@@ -98,6 +98,21 @@ public sealed class UserRepository : IUserRepository
         return await conn.ExecuteScalarAsync<bool>(cmd);
     }
 
+    public async Task<UserDuplicateCheck> CheckDuplicatesAsync(Email email, Username username, CancellationToken ct = default)
+    {
+        const string sql = """
+                           SELECT EXISTS(SELECT 1 FROM users WHERE email = @Email AND deleted_at IS NULL) AS "EmailExists",
+                                  EXISTS(SELECT 1 FROM users WHERE username = @Username AND deleted_at IS NULL) AS "UsernameExists"
+                           """;
+        var conn = await _dbSession.GetOpenConnectionAsync(ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new { Email = email.Value, Username = username.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: ct);
+        return await conn.QueryFirstAsync<UserDuplicateCheck>(cmd);
+    }
+
     public async Task AddAsync(User user, CancellationToken ct = default)
     {
         const string sql = @"

@@ -57,12 +57,8 @@ public sealed class RegisterHandlerTests
             "Test123!@#");
 
         _userRepositoryMock
-            .Setup(x => x.ExistsByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _userRepositoryMock
-            .Setup(x => x.ExistsByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.CheckDuplicatesAsync(It.IsAny<Email>(), It.IsAny<Username>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDuplicateCheck(false, false));
 
         _passwordHasherMock
             .Setup(x => x.HashPassword(It.IsAny<string>(), It.IsAny<string>()))
@@ -136,12 +132,8 @@ public sealed class RegisterHandlerTests
             "Test123!@#");
 
         _userRepositoryMock
-            .Setup(x => x.ExistsByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _userRepositoryMock
-            .Setup(x => x.ExistsByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.CheckDuplicatesAsync(It.IsAny<Email>(), It.IsAny<Username>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDuplicateCheck(false, false));
 
         _passwordHasherMock
             .Setup(x => x.HashPassword(It.IsAny<string>(), It.IsAny<string>()))
@@ -216,8 +208,8 @@ public sealed class RegisterHandlerTests
             "Test123!@#");
 
         _userRepositoryMock
-            .Setup(x => x.ExistsByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.CheckDuplicatesAsync(It.IsAny<Email>(), It.IsAny<Username>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDuplicateCheck(true, false));
 
         // Act
         var response = await _handler.HandleAsync(request);
@@ -239,12 +231,8 @@ public sealed class RegisterHandlerTests
             "Test123!@#");
 
         _userRepositoryMock
-            .Setup(x => x.ExistsByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _userRepositoryMock
-            .Setup(x => x.ExistsByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.CheckDuplicatesAsync(It.IsAny<Email>(), It.IsAny<Username>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDuplicateCheck(false, true));
 
         // Act
         var response = await _handler.HandleAsync(request);
