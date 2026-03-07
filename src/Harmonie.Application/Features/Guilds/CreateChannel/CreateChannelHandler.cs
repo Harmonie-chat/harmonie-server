@@ -10,20 +10,17 @@ namespace Harmonie.Application.Features.Guilds.CreateChannel;
 public sealed class CreateChannelHandler
 {
     private readonly IGuildRepository _guildRepository;
-    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateChannelHandler> _logger;
 
     public CreateChannelHandler(
         IGuildRepository guildRepository,
-        IGuildMemberRepository guildMemberRepository,
         IGuildChannelRepository guildChannelRepository,
         IUnitOfWork unitOfWork,
         ILogger<CreateChannelHandler> logger)
     {
         _guildRepository = guildRepository;
-        _guildMemberRepository = guildMemberRepository;
         _guildChannelRepository = guildChannelRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -44,8 +41,8 @@ public sealed class CreateChannelHandler
             name,
             channelType);
 
-        var guildExists = await _guildRepository.ExistsAsync(guildId, cancellationToken);
-        if (!guildExists)
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        if (ctx is null)
         {
             _logger.LogWarning(
                 "CreateChannel failed because guild was not found. GuildId={GuildId}",
@@ -56,26 +53,12 @@ public sealed class CreateChannelHandler
                 "Guild was not found");
         }
 
-        var role = await _guildMemberRepository.GetRoleAsync(guildId, callerId, cancellationToken);
-        if (role is null)
+        if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
             _logger.LogWarning(
-                "CreateChannel failed because caller is not a member. GuildId={GuildId}, CallerId={CallerId}",
+                "CreateChannel failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}",
                 guildId,
                 callerId);
-
-            return ApplicationResponse<CreateChannelResponse>.Fail(
-                ApplicationErrorCodes.Guild.AccessDenied,
-                "You do not have access to this guild");
-        }
-
-        if (role != GuildRole.Admin)
-        {
-            _logger.LogWarning(
-                "CreateChannel failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
-                guildId,
-                callerId,
-                role);
 
             return ApplicationResponse<CreateChannelResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
