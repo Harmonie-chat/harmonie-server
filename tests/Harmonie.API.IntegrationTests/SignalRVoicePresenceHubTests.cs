@@ -1,0 +1,271 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
+using FluentAssertions;
+using Harmonie.Application.Common;
+using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Guilds.CreateGuild;
+using Harmonie.Application.Features.Guilds.GetGuildChannels;
+using Harmonie.Application.Features.Guilds.InviteMember;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.TestHost;
+using Xunit;
+
+namespace Harmonie.API.IntegrationTests;
+
+public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private const string LiveKitApiKey = "devkey";
+    private const string LiveKitApiSecret = "devsecret-that-is-long-enough-for-hmac-signing";
+
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HttpClient _client;
+
+    public SignalRVoicePresenceHubTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task JoinGuild_WhenUserIsNotMember_ShouldReturnAccessDeniedHubException()
+    {
+        var owner = await RegisterAsync();
+        var outsider = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Voice Presence Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var guildIdParsed = Guid.TryParse(createGuildPayload!.GuildId, out var guildId);
+        guildIdParsed.Should().BeTrue();
+
+        await using var connection = CreateHubConnection(outsider.AccessToken);
+        await connection.StartAsync();
+
+        var act = async () => await connection.InvokeAsync("JoinGuild", guildId);
+
+        var exception = await act.Should().ThrowAsync<HubException>();
+        exception.Which.Message.Should().Contain(ApplicationErrorCodes.Guild.AccessDenied);
+    }
+
+    [Fact]
+    public async Task VoiceParticipantJoined_WhenMemberJoinedGuild_ShouldReceiveEvent()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+        var guildId = await CreateGuildAndInviteMemberAsync(owner, member);
+        var voiceChannelId = await GetVoiceChannelIdAsync(guildId, member.AccessToken);
+
+        await using var connection = CreateHubConnection(member.AccessToken);
+        var eventReceived = new TaskCompletionSource<SignalRVoiceParticipantJoinedEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<SignalRVoiceParticipantJoinedEvent>("VoiceParticipantJoined", payload =>
+        {
+            eventReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinGuild", Guid.Parse(guildId));
+
+        var webhookResponse = await SendLiveKitWebhookAsync(
+            CreateParticipantWebhookBody("participant_joined", voiceChannelId, member.UserId, member.Username));
+        webhookResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(eventReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(eventReceived.Task);
+
+        var eventPayload = await eventReceived.Task;
+        eventPayload.GuildId.Should().Be(guildId);
+        eventPayload.ChannelId.Should().Be(voiceChannelId);
+        eventPayload.UserId.Should().Be(member.UserId);
+        eventPayload.ParticipantName.Should().Be(member.Username);
+        eventPayload.JoinedAtUtc.Should().NotBe(default);
+    }
+
+    [Fact]
+    public async Task VoiceParticipantLeft_WhenMemberJoinedGuild_ShouldReceiveEvent()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+        var guildId = await CreateGuildAndInviteMemberAsync(owner, member);
+        var voiceChannelId = await GetVoiceChannelIdAsync(guildId, member.AccessToken);
+
+        await using var connection = CreateHubConnection(member.AccessToken);
+        var eventReceived = new TaskCompletionSource<SignalRVoiceParticipantLeftEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<SignalRVoiceParticipantLeftEvent>("VoiceParticipantLeft", payload =>
+        {
+            eventReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinGuild", Guid.Parse(guildId));
+
+        var webhookResponse = await SendLiveKitWebhookAsync(
+            CreateParticipantWebhookBody("participant_left", voiceChannelId, member.UserId, member.Username));
+        webhookResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(eventReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(eventReceived.Task);
+
+        var eventPayload = await eventReceived.Task;
+        eventPayload.GuildId.Should().Be(guildId);
+        eventPayload.ChannelId.Should().Be(voiceChannelId);
+        eventPayload.UserId.Should().Be(member.UserId);
+        eventPayload.ParticipantName.Should().Be(member.Username);
+        eventPayload.LeftAtUtc.Should().NotBe(default);
+    }
+
+    private HubConnection CreateHubConnection(string accessToken)
+    {
+        var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
+        var hubUri = new Uri(baseAddress, "/hubs/voice-presence");
+
+        return new HubConnectionBuilder()
+            .WithUrl(hubUri, options =>
+            {
+                options.Transports = HttpTransportType.LongPolling;
+                options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
+                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+            })
+            .Build();
+    }
+
+    private async Task<string> CreateGuildAndInviteMemberAsync(RegisterResponse owner, RegisterResponse member)
+    {
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Voice Presence Delivery Guild"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        return createGuildPayload.GuildId;
+    }
+
+    private async Task<string> GetVoiceChannelIdAsync(string guildId, string accessToken)
+    {
+        var channelsResponse = await SendAuthorizedGetAsync(
+            $"/api/guilds/{guildId}/channels",
+            accessToken);
+        channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
+        channelsPayload.Should().NotBeNull();
+
+        var voiceChannel = channelsPayload!.Channels.First(channel => channel.Type == "Voice");
+        return voiceChannel.ChannelId;
+    }
+
+    private async Task<HttpResponseMessage> SendLiveKitWebhookAsync(string rawBody)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhooks/livekit")
+        {
+            Content = new StringContent(rawBody, Encoding.UTF8, "application/webhook+json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CreateLiveKitWebhookToken(rawBody));
+
+        return await _client.SendAsync(request);
+    }
+
+    private static string CreateParticipantWebhookBody(
+        string eventType,
+        string channelId,
+        string userId,
+        string participantName)
+        => $$"""
+            {
+              "event": "{{eventType}}",
+              "room": {
+                "name": "channel:{{channelId}}"
+              },
+              "participant": {
+                "identity": "{{userId}}",
+                "name": "{{participantName}}"
+              },
+              "createdAt": "{{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}}"
+            }
+            """;
+
+    private static string CreateLiveKitWebhookToken(string rawBody)
+    {
+        var checksum = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(rawBody)));
+        return new Livekit.Server.Sdk.Dotnet.AccessToken(LiveKitApiKey, LiveKitApiSecret)
+            .WithSha256(checksum)
+            .ToJwt();
+    }
+
+    private async Task<RegisterResponse> RegisterAsync()
+    {
+        var request = new RegisterRequest(
+            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
+            Username: $"user{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#");
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        payload.Should().NotBeNull();
+        return payload!;
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private sealed record SignalRVoiceParticipantJoinedEvent(
+        string GuildId,
+        string ChannelId,
+        string UserId,
+        string ParticipantName,
+        DateTime JoinedAtUtc);
+
+    private sealed record SignalRVoiceParticipantLeftEvent(
+        string GuildId,
+        string ChannelId,
+        string UserId,
+        string ParticipantName,
+        DateTime LeftAtUtc);
+}

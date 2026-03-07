@@ -1,6 +1,7 @@
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure.Authentication;
 using Harmonie.Infrastructure.Configuration;
+using Harmonie.Infrastructure.LiveKit;
 using Harmonie.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
+        services.AddScoped<ILiveKitWebhookReceiver, LiveKitWebhookReceiver>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))

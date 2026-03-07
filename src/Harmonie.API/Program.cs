@@ -26,6 +26,7 @@ using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
+using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -58,6 +59,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
+builder.Services.AddScoped<IVoicePresenceNotifier, SignalRVoicePresenceNotifier>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -109,7 +111,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrWhiteSpace(accessToken)
-                    && path.StartsWithSegments("/hubs/text-channels"))
+                    && (path.StartsWithSegments("/hubs/text-channels")
+                        || path.StartsWithSegments("/hubs/voice-presence")))
                 {
                     context.Token = accessToken;
                 }
@@ -202,6 +205,7 @@ TransferOwnershipEndpoint.Map(app);
 SendMessageEndpoint.Map(app);
 GetMessagesEndpoint.Map(app);
 JoinVoiceChannelEndpoint.Map(app);
+HandleLiveKitWebhookEndpoint.Map(app);
 UpdateChannelEndpoint.Map(app);
 DeleteChannelEndpoint.Map(app);
 EditMessageEndpoint.Map(app);
@@ -209,6 +213,7 @@ DeleteMessageEndpoint.Map(app);
 GetMyProfileEndpoint.Map(app);
 UpdateMyProfileEndpoint.Map(app);
 app.MapHub<TextChannelsHub>("/hubs/text-channels");
+app.MapHub<VoicePresenceHub>("/hubs/voice-presence");
 
 // Future endpoints will be added here as features are developed
 // Example:

@@ -24,6 +24,7 @@ using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
+using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application;
@@ -62,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<JoinVoiceChannelHandler>();
         services.AddScoped<GetMyProfileHandler>();
         services.AddScoped<UpdateMyProfileHandler>();
+        services.AddScoped<HandleLiveKitWebhookHandler>();
         services.AddScoped<UpdateChannelHandler>();
         services.AddScoped<DeleteChannelHandler>();
         services.AddScoped<EditMessageHandler>();

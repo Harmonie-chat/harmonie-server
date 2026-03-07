@@ -11,6 +11,7 @@ This repository currently provides:
 - Guild creation and membership management (invite + list members)
 - Guild channel listing with default text and voice channels
 - Voice channel join token issuance via LiveKit
+- Voice presence notifications via LiveKit webhooks and SignalR
 - Text messaging (send + read with cursor-based pagination)
 - SignalR real-time delivery for text channel messages
 - Rate limiting for message posting
@@ -65,9 +66,11 @@ dotnet run --project src/Harmonie.API
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
 - `POST /api/channels/{channelId}/voice/join`
+- `POST /api/webhooks/livekit`
 - `GET /api/users/me`
 - `PUT /api/users/me`
 - `GET /hubs/text-channels` (SignalR negotiate/transport)
+- `GET /hubs/voice-presence` (SignalR negotiate/transport)
 
 In Development, OpenAPI and Scalar are enabled.
 
