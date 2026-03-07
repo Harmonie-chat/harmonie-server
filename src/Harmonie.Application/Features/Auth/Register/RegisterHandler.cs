@@ -64,12 +64,14 @@ public sealed class RegisterHandler
         }
 
         // Check for duplicates
-        if (await _userRepository.ExistsByEmailAsync(emailResult.Value, cancellationToken))
+        var duplicates = await _userRepository.CheckDuplicatesAsync(emailResult.Value, usernameResult.Value, cancellationToken);
+
+        if (duplicates.EmailExists)
             return ApplicationResponse<RegisterResponse>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateEmail,
                 $"A user with email '{emailResult.Value}' already exists");
 
-        if (await _userRepository.ExistsByUsernameAsync(usernameResult.Value, cancellationToken))
+        if (duplicates.UsernameExists)
             return ApplicationResponse<RegisterResponse>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateUsername,
                 $"A user with username '{usernameResult.Value}' already exists");
