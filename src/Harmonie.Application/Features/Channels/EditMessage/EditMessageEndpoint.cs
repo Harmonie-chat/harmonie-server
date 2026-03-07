@@ -19,12 +19,18 @@ public static class EditMessageEndpoint
             .WithSummary("Edit a message")
             .WithDescription("Updates the content of a message. Only the message author can edit their own messages.")
             .Produces<EditMessageResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Message.ContentEmpty,
+                ApplicationErrorCodes.Message.ContentTooLong,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NotFound,
+                ApplicationErrorCodes.Channel.NotText,
+                ApplicationErrorCodes.Channel.AccessDenied,
+                ApplicationErrorCodes.Message.NotFound,
+                ApplicationErrorCodes.Message.EditForbidden);
     }
 
     private static async Task<IResult> HandleAsync(

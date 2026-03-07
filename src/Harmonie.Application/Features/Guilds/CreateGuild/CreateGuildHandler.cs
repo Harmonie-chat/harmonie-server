@@ -46,15 +46,13 @@ public sealed class CreateGuildHandler
                 currentUserId,
                 guildNameResult.Error);
 
-            var details = new Dictionary<string, string[]>
-            {
-                [nameof(request.Name)] = [guildNameResult.Error ?? "Guild name is invalid"]
-            };
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
-                details);
+                EndpointExtensions.SingleValidationError(
+                    nameof(request.Name),
+                    ApplicationErrorCodes.Validation.Invalid,
+                    guildNameResult.Error ?? "Guild name is invalid"));
         }
 
         var guildResult = Guild.Create(guildNameResult.Value, currentUserId);

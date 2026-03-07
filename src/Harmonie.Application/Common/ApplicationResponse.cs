@@ -27,12 +27,12 @@ public sealed record ApplicationResponse<T>
 
     public static ApplicationResponse<T> Fail(
         string code,
-        string message,
-        IReadOnlyDictionary<string, string[]>? details = null)
+        string detail,
+        IReadOnlyDictionary<string, ApplicationValidationError[]>? errors = null)
         => new()
         {
             Success = false,
             Data = default,
-            Error = new ApplicationError(code, message, details)
+            Error = new ApplicationError(code, detail, errors)
         };
 }

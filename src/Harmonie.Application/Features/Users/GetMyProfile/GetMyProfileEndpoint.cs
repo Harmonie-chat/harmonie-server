@@ -17,9 +17,9 @@ public static class GetMyProfileEndpoint
             .WithSummary("Get my profile")
             .WithDescription("Returns the authenticated user's profile.")
             .Produces<GetMyProfileResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.User.NotFound);
     }
 
     private static async Task<IResult> HandleAsync(

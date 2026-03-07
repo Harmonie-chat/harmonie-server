@@ -19,12 +19,13 @@ public static class TransferOwnershipEndpoint
             .WithSummary("Transfer guild ownership")
             .WithDescription("Transfers ownership of the guild to an existing member. Only the current owner can perform this action.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Guild.MemberNotFound,
+                ApplicationErrorCodes.Guild.OwnerTransferToSelf);
     }
 
     private static async Task<IResult> HandleAsync(

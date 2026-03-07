@@ -19,12 +19,14 @@ public static class UpdateChannelEndpoint
             .WithSummary("Update a guild channel")
             .WithDescription("Updates the name and/or position of a channel. Only guild admins can update channels.")
             .Produces<UpdateChannelResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NotFound,
+                ApplicationErrorCodes.Channel.AccessDenied,
+                ApplicationErrorCodes.Channel.NameConflict);
     }
 
     private static async Task<IResult> HandleAsync(

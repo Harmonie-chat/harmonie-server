@@ -38,29 +38,25 @@ public sealed class RegisterHandler
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure || emailResult.Value is null)
         {
-            var details = new Dictionary<string, string[]>
-            {
-                [nameof(request.Email)] = [emailResult.Error ?? "Email format is invalid"]
-            };
-
             return ApplicationResponse<RegisterResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
-                details);
+                EndpointExtensions.SingleValidationError(
+                    nameof(request.Email),
+                    ApplicationErrorCodes.Validation.Email,
+                    emailResult.Error ?? "Email format is invalid"));
         }
 
         var usernameResult = Username.Create(request.Username);
         if (usernameResult.IsFailure || usernameResult.Value is null)
         {
-            var details = new Dictionary<string, string[]>
-            {
-                [nameof(request.Username)] = [usernameResult.Error ?? "Username format is invalid"]
-            };
-
             return ApplicationResponse<RegisterResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
-                details);
+                EndpointExtensions.SingleValidationError(
+                    nameof(request.Username),
+                    ApplicationErrorCodes.Validation.InvalidFormat,
+                    usernameResult.Error ?? "Username format is invalid"));
         }
 
         // Check for duplicates

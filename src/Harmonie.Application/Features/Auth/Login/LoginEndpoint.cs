@@ -24,10 +24,10 @@ public static class LoginEndpoint
                 return operation;
             })*/
             .Produces<LoginResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Auth.UserInactive);
     }
 
     private static async Task<IResult> HandleAsync(

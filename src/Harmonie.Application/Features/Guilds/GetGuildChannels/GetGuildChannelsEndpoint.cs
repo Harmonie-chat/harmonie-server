@@ -19,11 +19,11 @@ public static class GetGuildChannelsEndpoint
             .WithSummary("List guild channels")
             .WithDescription("Returns guild channels for an authenticated guild member.")
             .Produces<GetGuildChannelsResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied);
     }
 
     private static async Task<IResult> HandleAsync(

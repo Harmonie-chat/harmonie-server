@@ -19,11 +19,13 @@ public static class CreateChannelEndpoint
             .WithSummary("Create a guild channel")
             .WithDescription("Creates a new text or voice channel in the guild. Only guild admins can create channels.")
             .Produces<CreateChannelResponse>(StatusCodes.Status201Created)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NameConflict);
     }
 
     private static async Task<IResult> HandleAsync(

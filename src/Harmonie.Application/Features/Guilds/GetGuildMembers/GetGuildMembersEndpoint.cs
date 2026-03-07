@@ -19,11 +19,11 @@ public static class GetGuildMembersEndpoint
             .WithSummary("List guild members")
             .WithDescription("Returns guild members for an authenticated guild member.")
             .Produces<GetGuildMembersResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied);
     }
 
     private static async Task<IResult> HandleAsync(

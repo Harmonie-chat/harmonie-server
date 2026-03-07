@@ -20,10 +20,11 @@ public static class RefreshTokenEndpoint
             .WithSummary("Refresh access token")
             .WithDescription("Rotates refresh token and returns a new access token without requiring a new login.")
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidRefreshToken,
+                ApplicationErrorCodes.Auth.RefreshTokenReuseDetected,
+                ApplicationErrorCodes.Auth.UserInactive);
     }
 
     private static async Task<IResult> HandleAsync(

@@ -130,8 +130,8 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-        response.Error.Details.Should().NotBeNull();
-        response.Error.Details!.Should().ContainKey(nameof(request.DisplayName));
+        response.Error.Errors.Should().NotBeNull();
+        response.Error.Errors!.Should().ContainKey(nameof(request.DisplayName));
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(

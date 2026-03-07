@@ -47,15 +47,13 @@ public sealed class GetMessagesHandler
                     channelId,
                     currentUserId);
 
-                var details = new Dictionary<string, string[]>
-                {
-                    [nameof(request.Before)] = ["Before cursor is invalid"]
-                };
-
                 return ApplicationResponse<GetMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
-                    details);
+                    EndpointExtensions.SingleValidationError(
+                        nameof(request.Before),
+                        ApplicationErrorCodes.Validation.InvalidFormat,
+                        "Before cursor is invalid"));
             }
 
             beforeCursor = parsedCursor;

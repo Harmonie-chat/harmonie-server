@@ -19,12 +19,13 @@ public static class UpdateMemberRoleEndpoint
             .WithSummary("Update a guild member's role")
             .WithDescription("Changes the role of the specified member. Only admins can change roles. The guild owner's role cannot be changed.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Guild.MemberNotFound,
+                ApplicationErrorCodes.Guild.OwnerRoleCannotBeChanged);
     }
 
     private static async Task<IResult> HandleAsync(

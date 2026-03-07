@@ -52,6 +52,14 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     {
         var response = await _client.GetAsync("/api/users/me");
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
+        error.Status.Should().Be((int)HttpStatusCode.Unauthorized);
+        error.TraceId.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -157,8 +165,12 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-        error.Details.Should().NotBeNull();
-        error.Details!.Should().ContainKey("DisplayName");
+        error.Status.Should().Be((int)HttpStatusCode.BadRequest);
+        error.TraceId.Should().NotBeNullOrWhiteSpace();
+        error.Errors.Should().NotBeNull();
+        var fieldErrors = error.Errors!;
+        fieldErrors.Should().ContainKey("DisplayName");
+        fieldErrors["DisplayName"][0].Code.Should().Be(ApplicationErrorCodes.Validation.MaxLength);
     }
 
     [Fact]

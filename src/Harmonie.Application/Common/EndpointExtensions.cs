@@ -1,6 +1,9 @@
 using FluentValidation;
-using System.Net;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.OpenApi;
+using System.Diagnostics;
+using System.Net;
 
 namespace Harmonie.Application.Common;
 
@@ -25,7 +28,10 @@ public static class EndpointExtensions
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(e => e.ErrorMessage).ToArray()
+                    g => g.Select(e => new ApplicationValidationError(
+                        NormalizeValidationErrorCode(e.ErrorCode),
+                        e.ErrorMessage))
+                        .ToArray()
                 );
 
             return new ApplicationError(
@@ -50,7 +56,12 @@ public static class EndpointExtensions
                     ApplicationErrorCodes.Common.InvalidState,
                     "Operation succeeded but no payload was returned.");
 
-                return Results.Json(failurePayload, statusCode: StatusCodes.Status500InternalServerError);
+                return Results.Json(
+                    EnrichError(
+                        failurePayload,
+                        StatusCodes.Status500InternalServerError,
+                        Activity.Current?.Id),
+                    statusCode: StatusCodes.Status500InternalServerError);
             }
 
             return Results.Ok(response.Data);
@@ -61,7 +72,9 @@ public static class EndpointExtensions
             "An unexpected error occurred");
 
         var statusCode = (int)MapStatusCode(error.Code);
-        return Results.Json(error, statusCode: statusCode);
+        return Results.Json(
+            EnrichError(error, statusCode, Activity.Current?.Id),
+            statusCode: statusCode);
     }
 
     /// <summary>
@@ -80,12 +93,102 @@ public static class EndpointExtensions
                 ApplicationErrorCodes.Common.InvalidState,
                 "Operation succeeded but no payload was returned.");
 
-            return Results.Json(payload, statusCode: StatusCodes.Status500InternalServerError);
+            return Results.Json(
+                EnrichError(
+                    payload,
+                    StatusCodes.Status500InternalServerError,
+                    Activity.Current?.Id),
+                statusCode: StatusCodes.Status500InternalServerError);
         }
 
         var location = locationFactory(response.Data);
         return Results.Created(location, response.Data);
     }
+
+    public static Task WriteErrorAsync(
+        HttpResponse response,
+        ApplicationError error)
+    {
+        var statusCode = (int)MapStatusCode(error.Code);
+        response.StatusCode = statusCode;
+        return response.WriteAsJsonAsync(
+            EnrichError(error, statusCode, response.HttpContext.TraceIdentifier));
+    }
+
+    public static IReadOnlyDictionary<string, ApplicationValidationError[]> SingleValidationError(
+        string propertyName,
+        string code,
+        string detail)
+        => new Dictionary<string, ApplicationValidationError[]>
+        {
+            [propertyName] = [new(code, detail)]
+        };
+
+    /// <summary>
+    /// Registers typed <see cref="ApplicationError"/> responses for every distinct HTTP status derived
+    /// from <paramref name="errorCodes"/> and injects a named OpenAPI example per error code.
+    /// </summary>
+    public static RouteHandlerBuilder ProducesErrors(
+        this RouteHandlerBuilder builder,
+        params string[] errorCodes)
+    {
+        var byStatus = errorCodes
+            .GroupBy(code => (int)MapStatusCode(code))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var status in byStatus.Keys)
+            builder = builder.Produces<ApplicationError>(status);
+
+        return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+        {
+            if (operation?.Responses is not { } responses)
+                return Task.CompletedTask;
+
+            foreach (var (status, codes) in byStatus)
+            {
+                var statusKey = status.ToString();
+                if (!responses.TryGetValue(statusKey, out var response) || response is null)
+                    continue;
+
+                var responseDescription = string.Join(
+                    Environment.NewLine,
+                    codes.Select(code => $"- `{code}`"));
+
+                response.Description = string.IsNullOrWhiteSpace(response.Description)
+                    ? $"Possible application error codes:{Environment.NewLine}{responseDescription}"
+                    : $"{response.Description}{Environment.NewLine}{Environment.NewLine}Possible application error codes:{Environment.NewLine}{responseDescription}";
+            }
+            return Task.CompletedTask;
+        });
+    }
+
+    private static ApplicationError EnrichError(
+        ApplicationError error,
+        int status,
+        string? traceId)
+        => error with
+        {
+            Status = status,
+            TraceId = string.IsNullOrWhiteSpace(traceId) ? error.TraceId : traceId
+        };
+
+    public static string NormalizeValidationErrorCode(string fluentValidationCode)
+        => fluentValidationCode switch
+        {
+            "NotNullValidator" or "NotEmptyValidator" => ApplicationErrorCodes.Validation.Required,
+            "EmailValidator" => ApplicationErrorCodes.Validation.Email,
+            "MinimumLengthValidator" => ApplicationErrorCodes.Validation.MinLength,
+            "MaximumLengthValidator" => ApplicationErrorCodes.Validation.MaxLength,
+            "InclusiveBetweenValidator"
+                or "ExclusiveBetweenValidator"
+                or "GreaterThanValidator"
+                or "GreaterThanOrEqualValidator"
+                or "LessThanValidator"
+                or "LessThanOrEqualValidator" => ApplicationErrorCodes.Validation.OutOfRange,
+            "RegularExpressionValidator" => ApplicationErrorCodes.Validation.InvalidFormat,
+            "PredicateValidator" => ApplicationErrorCodes.Validation.Invalid,
+            _ => ApplicationErrorCodes.Validation.Invalid
+        };
 
     public static HttpStatusCode MapStatusCode(string errorCode)
         => errorCode switch

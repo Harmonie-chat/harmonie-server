@@ -19,12 +19,14 @@ public static class InviteMemberEndpoint
             .WithSummary("Invite a guild member")
             .WithDescription("Invites an existing user in the guild with the Member role.")
             .Produces<InviteMemberResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.InviteForbidden,
+                ApplicationErrorCodes.Guild.InviteTargetNotFound,
+                ApplicationErrorCodes.Guild.MemberAlreadyExists);
     }
 
     private static async Task<IResult> HandleAsync(

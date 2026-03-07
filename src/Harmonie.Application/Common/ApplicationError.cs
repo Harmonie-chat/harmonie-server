@@ -5,5 +5,11 @@ namespace Harmonie.Application.Common;
 /// </summary>
 public sealed record ApplicationError(
     string Code,
-    string Message,
-    IReadOnlyDictionary<string, string[]>? Details = null);
+    string Detail,
+    IReadOnlyDictionary<string, ApplicationValidationError[]>? Errors = null,
+    int? Status = null,
+    string? TraceId = null);
+
+public sealed record ApplicationValidationError(
+    string Code,
+    string Detail);

@@ -19,12 +19,13 @@ public static class DeleteChannelEndpoint
             .WithSummary("Delete a guild channel")
             .WithDescription("Deletes a guild channel. Only guild admins can delete channels. The default channel cannot be deleted.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NotFound,
+                ApplicationErrorCodes.Channel.AccessDenied,
+                ApplicationErrorCodes.Channel.CannotDeleteDefault);
     }
 
     private static async Task<IResult> HandleAsync(

@@ -13,6 +13,17 @@ public static class ApplicationErrorCodes
         public const string Unexpected = "COMMON_UNEXPECTED";
     }
 
+    public static class Validation
+    {
+        public const string Required = "VALIDATION_REQUIRED";
+        public const string Invalid = "VALIDATION_INVALID";
+        public const string InvalidFormat = "VALIDATION_INVALID_FORMAT";
+        public const string Email = "VALIDATION_EMAIL";
+        public const string MinLength = "VALIDATION_MIN_LENGTH";
+        public const string MaxLength = "VALIDATION_MAX_LENGTH";
+        public const string OutOfRange = "VALIDATION_OUT_OF_RANGE";
+    }
+
     public static class Auth
     {
         public const string InvalidCredentials = "AUTH_INVALID_CREDENTIALS";

@@ -43,15 +43,13 @@ public sealed class InviteMemberHandler
                 inviterUserId,
                 request.UserId);
 
-            var details = new Dictionary<string, string[]>
-            {
-                [nameof(request.UserId)] = ["User ID must be a valid non-empty GUID"]
-            };
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
-                details);
+                EndpointExtensions.SingleValidationError(
+                    nameof(request.UserId),
+                    ApplicationErrorCodes.Validation.InvalidFormat,
+                    "User ID must be a valid non-empty GUID"));
         }
 
         var guildAccess = await _guildRepository.GetWithCallerRoleAsync(

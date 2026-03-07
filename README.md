@@ -72,7 +72,7 @@ In Development, OpenAPI and Scalar are enabled.
 
 Endpoints return:
 - Success: feature response DTOs
-- Error: standardized `ApplicationError` payload (`code`, `message`, `details`)
+- Error: standardized JSON payload with `code`, `detail`, `status`, optional `traceId`, and optional field-level `errors`
 
 Success example:
 
@@ -92,8 +92,29 @@ Error example:
 ```json
 {
   "code": "AUTH_INVALID_CREDENTIALS",
-  "message": "Invalid email/username or password",
-  "details": null
+  "detail": "Invalid email/username or password",
+  "status": 401,
+  "traceId": "0HNHBM2G7M4SL:00000001",
+  "errors": null
+}
+```
+
+Validation error example:
+
+```json
+{
+  "code": "COMMON_VALIDATION_FAILED",
+  "detail": "Request validation failed",
+  "status": 400,
+  "traceId": "0HNHBM2G7M4SL:00000002",
+  "errors": {
+    "displayName": [
+      {
+        "code": "VALIDATION_MAX_LENGTH",
+        "detail": "Display name cannot exceed 100 characters"
+      }
+    ]
+  }
 }
 ```
 

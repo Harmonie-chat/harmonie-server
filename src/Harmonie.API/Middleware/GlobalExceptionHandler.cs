@@ -2,8 +2,6 @@ using System.Net;
 using System.Data.Common;
 using FluentValidation;
 using Harmonie.Application.Common;
-using Microsoft.AspNetCore.Mvc;
-
 namespace Harmonie.API.Middleware;
 
 public sealed class GlobalExceptionHandler
@@ -35,16 +33,19 @@ public sealed class GlobalExceptionHandler
 
         if (exception is ValidationException validationException)
         {
-            var details = validationException.Errors
+            var errors = validationException.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(e => e.ErrorMessage).ToArray());
+                    g => g.Select(e => new ApplicationValidationError(
+                        EndpointExtensions.NormalizeValidationErrorCode(e.ErrorCode),
+                        e.ErrorMessage))
+                        .ToArray());
 
             error = new ApplicationError(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
-                details);
+                errors);
         }
         else if (exception is BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest })
         {
@@ -55,16 +56,9 @@ public sealed class GlobalExceptionHandler
         else if (exception is DbException)
         {
             _logger.LogError(exception, "A database exception occurred");
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-
-            var problem = new ProblemDetails
-            {
-                Status = StatusCodes.Status500InternalServerError,
-                Title = "Internal Server Error",
-                Detail = "An unexpected server error occurred."
-            };
-
-            return context.Response.WriteAsJsonAsync(problem);
+            error = new ApplicationError(
+                ApplicationErrorCodes.Common.Unexpected,
+                "An unexpected server error occurred");
         }
         else
         {
@@ -74,10 +68,6 @@ public sealed class GlobalExceptionHandler
                 "An unexpected error occurred");
         }
 
-        var statusCode = EndpointExtensions.MapStatusCode(error.Code);
-
-        context.Response.StatusCode = (int)statusCode;
-
-        return context.Response.WriteAsJsonAsync(error);
+        return EndpointExtensions.WriteErrorAsync(context.Response, error);
     }
 }

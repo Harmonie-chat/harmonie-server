@@ -114,6 +114,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 }
 
                 return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                context.HandleResponse();
+
+                return EndpointExtensions.WriteErrorAsync(
+                    context.Response,
+                    new ApplicationError(
+                        ApplicationErrorCodes.Auth.InvalidCredentials,
+                        "Authentication is required to access this resource."));
             }
         };
 

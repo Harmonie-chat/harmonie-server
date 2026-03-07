@@ -93,14 +93,12 @@ public sealed class UpdateMyProfileHandler
         string propertyName,
         Result result)
     {
-        var details = new Dictionary<string, string[]>
-        {
-            [propertyName] = [result.Error ?? "Profile field is invalid"]
-        };
-
         return ApplicationResponse<UpdateMyProfileResponse>.Fail(
             ApplicationErrorCodes.Common.ValidationFailed,
             "Request validation failed",
-            details);
+            EndpointExtensions.SingleValidationError(
+                propertyName,
+                ApplicationErrorCodes.Validation.Invalid,
+                result.Error ?? "Profile field is invalid"));
     }
 }
