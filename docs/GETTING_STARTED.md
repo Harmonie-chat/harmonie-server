@@ -58,6 +58,7 @@ When you run through `docker-compose`, the API container uses `http://livekit:78
 - List guild channels: `GET /api/guilds/{guildId}/channels`
 - Open direct conversation: `POST /api/conversations`
 - List direct conversations: `GET /api/conversations`
+- Send direct message: `POST /api/conversations/{conversationId}/messages`
 - Send message: `POST /api/channels/{channelId}/messages`
 - Read messages: `GET /api/channels/{channelId}/messages`
 - Get current user profile: `GET /api/users/me`

@@ -14,15 +14,18 @@ public sealed class RealtimeHub : Hub
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildRepository _guildRepository;
+    private readonly IConversationRepository _conversationRepository;
 
     public RealtimeHub(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
-        IGuildRepository guildRepository)
+        IGuildRepository guildRepository,
+        IConversationRepository conversationRepository)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildRepository = guildRepository;
+        _conversationRepository = conversationRepository;
     }
 
     public async Task JoinChannel(Guid channelId)
@@ -104,11 +107,51 @@ public sealed class RealtimeHub : Hub
             Context.ConnectionAborted);
     }
 
+    public async Task JoinConversation(Guid conversationId)
+    {
+        if (conversationId == Guid.Empty)
+            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
+
+        if (!TryGetAuthenticatedUserId(out var currentUserId) || currentUserId is null)
+            throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
+
+        var parsedConversationId = ConversationId.From(conversationId);
+        var conversation = await _conversationRepository.GetByIdAsync(
+            parsedConversationId,
+            Context.ConnectionAborted);
+
+        if (conversation is null)
+            throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
+
+        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
+            throw new HubException(ApplicationErrorCodes.Conversation.AccessDenied);
+
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            GetConversationGroupName(parsedConversationId),
+            Context.ConnectionAborted);
+    }
+
+    public async Task LeaveConversation(Guid conversationId)
+    {
+        if (conversationId == Guid.Empty)
+            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
+
+        var parsedConversationId = ConversationId.From(conversationId);
+        await Groups.RemoveFromGroupAsync(
+            Context.ConnectionId,
+            GetConversationGroupName(parsedConversationId),
+            Context.ConnectionAborted);
+    }
+
     internal static string GetChannelGroupName(GuildChannelId channelId)
         => $"channel:{channelId}";
 
     internal static string GetGuildGroupName(GuildId guildId)
         => $"guild-voice:{guildId}";
+
+    internal static string GetConversationGroupName(ConversationId conversationId)
+        => $"conversation:{conversationId}";
 
     private bool TryGetAuthenticatedUserId(out UserId? userId)
     {
