@@ -12,14 +12,19 @@ public sealed class LiveKitTokenService : ILiveKitTokenService
 
     public LiveKitTokenService(IOptions<LiveKitSettings> settings) => _settings = settings.Value;
 
-    public Task<string> GenerateRoomTokenAsync(GuildChannelId channelId, UserId userId, string username, CancellationToken ct)
+    public Task<LiveKitRoomToken> GenerateRoomTokenAsync(
+        GuildChannelId channelId,
+        UserId userId,
+        string username,
+        CancellationToken ct)
     {
+        var roomName = $"channel:{channelId}";
         var jwt = new AccessToken(_settings.ApiKey, _settings.ApiSecret)
             .WithIdentity(userId.ToString())
             .WithName(username)
-            .WithGrants(new VideoGrants { RoomJoin = true, Room = $"channel:{channelId}" })
+            .WithGrants(new VideoGrants { RoomJoin = true, Room = roomName })
             .ToJwt();
 
-        return Task.FromResult(jwt);
+        return Task.FromResult(new LiveKitRoomToken(jwt, _settings.Url, roomName));
     }
 }

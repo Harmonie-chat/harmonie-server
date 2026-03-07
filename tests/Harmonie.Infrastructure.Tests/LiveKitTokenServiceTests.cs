@@ -18,7 +18,7 @@ public sealed class LiveKitTokenServiceTests
     {
         var settings = Options.Create(new LiveKitSettings
         {
-            Url = "http://localhost:7880",
+            Url = "ws://localhost:7880",
             ApiKey = _apiKey,
             ApiSecret = _apiSecret,
         });
@@ -34,8 +34,8 @@ public sealed class LiveKitTokenServiceTests
 
         var token = await _service.GenerateRoomTokenAsync(channelId, userId, username, CancellationToken.None);
 
-        token.Should().NotBeNullOrWhiteSpace();
-        token.Split('.').Should().HaveCount(3, "a JWT must have three segments");
+        token.Token.Should().NotBeNullOrWhiteSpace();
+        token.Token.Split('.').Should().HaveCount(3, "a JWT must have three segments");
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class LiveKitTokenServiceTests
         var token = await _service.GenerateRoomTokenAsync(channelId, userId, username, CancellationToken.None);
 
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
+        var jwt = handler.ReadJwtToken(token.Token);
         var sub = jwt.Subject;
 
         sub.Should().Be(userId.ToString());
@@ -64,12 +64,14 @@ public sealed class LiveKitTokenServiceTests
         var token = await _service.GenerateRoomTokenAsync(channelId, userId, username, CancellationToken.None);
 
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
+        var jwt = handler.ReadJwtToken(token.Token);
 
         // LiveKit embeds VideoGrants in the "video" claim as a JSON object
         var videoClaim = jwt.Claims.FirstOrDefault(c => c.Type == "video");
         videoClaim.Should().NotBeNull();
         videoClaim!.Value.Should().Contain($"channel:{channelId}");
+        token.Url.Should().Be("ws://localhost:7880");
+        token.RoomName.Should().Be($"channel:{channelId}");
     }
 
     [Fact]
@@ -82,6 +84,6 @@ public sealed class LiveKitTokenServiceTests
         var token1 = await _service.GenerateRoomTokenAsync(channelId1, userId, "user", CancellationToken.None);
         var token2 = await _service.GenerateRoomTokenAsync(channelId2, userId, "user", CancellationToken.None);
 
-        token1.Should().NotBe(token2);
+        token1.Token.Should().NotBe(token2.Token);
     }
 }

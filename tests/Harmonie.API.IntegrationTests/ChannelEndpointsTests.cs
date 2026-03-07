@@ -7,6 +7,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.EditMessage;
+using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Features.Guilds.CreateChannel;
@@ -572,6 +573,86 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    // ─── JoinVoiceChannel Tests ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task JoinVoiceChannel_WhenGuildMemberJoinsVoiceChannel_ShouldReturn200()
+    {
+        var owner = await RegisterAsync();
+        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Voice Join Guild");
+        var voiceChannelId = await GetDefaultVoiceChannelIdAsync(owner.AccessToken, guildId);
+
+        var joinResponse = await SendAuthorizedPostWithoutBodyAsync(
+            $"/api/channels/{voiceChannelId}/voice/join",
+            owner.AccessToken);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await joinResponse.Content.ReadFromJsonAsync<JoinVoiceChannelResponse>();
+        payload.Should().NotBeNull();
+        payload!.Token.Should().NotBeNullOrWhiteSpace();
+        payload.Url.Should().Be("ws://localhost:7880");
+        payload.RoomName.Should().Be($"channel:{voiceChannelId}");
+    }
+
+    [Fact]
+    public async Task JoinVoiceChannel_WhenChannelIsText_ShouldReturn409()
+    {
+        var owner = await RegisterAsync();
+        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "text-only-channel");
+
+        var joinResponse = await SendAuthorizedPostWithoutBodyAsync(
+            $"/api/channels/{channelId}/voice/join",
+            owner.AccessToken);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotVoice);
+    }
+
+    [Fact]
+    public async Task JoinVoiceChannel_WhenUserIsNotGuildMember_ShouldReturn403()
+    {
+        var owner = await RegisterAsync();
+        var outsider = await RegisterAsync();
+        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden Voice Join Guild");
+        var voiceChannelId = await GetDefaultVoiceChannelIdAsync(owner.AccessToken, guildId);
+
+        var joinResponse = await SendAuthorizedPostWithoutBodyAsync(
+            $"/api/channels/{voiceChannelId}/voice/join",
+            outsider.AccessToken);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
+    }
+
+    [Fact]
+    public async Task JoinVoiceChannel_WhenChannelDoesNotExist_ShouldReturn404()
+    {
+        var user = await RegisterAsync();
+
+        var joinResponse = await SendAuthorizedPostWithoutBodyAsync(
+            $"/api/channels/{Guid.NewGuid()}/voice/join",
+            user.AccessToken);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
+    }
+
+    [Fact]
+    public async Task JoinVoiceChannel_WhenNotAuthenticated_ShouldReturn401()
+    {
+        var response = await _client.PostAsync(
+            $"/api/channels/{Guid.NewGuid()}/voice/join",
+            content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task<RegisterResponse> RegisterAsync()
@@ -636,6 +717,21 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         return payload!.ChannelId;
     }
 
+    private async Task<string> GetDefaultVoiceChannelIdAsync(
+        string accessToken,
+        string guildId)
+    {
+        var response = await SendAuthorizedGetAsync(
+            $"/api/guilds/{guildId}/channels",
+            accessToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
+        payload.Should().NotBeNull();
+
+        return payload!.Channels.First(channel => channel.Type == "Voice").ChannelId;
+    }
+
     private async Task CreateChannelInGuildAsync(
         string guildId,
         CreateChannelRequest request,
@@ -687,6 +783,15 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         {
             Content = JsonContent.Create(payload, options: _jsonOptions)
         };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPostWithoutBodyAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }

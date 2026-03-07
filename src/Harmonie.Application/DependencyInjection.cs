@@ -9,6 +9,7 @@ using Harmonie.Application.Features.Channels.DeleteChannel;
 using Harmonie.Application.Features.Channels.DeleteMessage;
 using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
+using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Features.Guilds.CreateChannel;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<GetGuildMembersHandler>();
         services.AddScoped<SendMessageHandler>();
         services.AddScoped<GetMessagesHandler>();
+        services.AddScoped<JoinVoiceChannelHandler>();
         services.AddScoped<GetMyProfileHandler>();
         services.AddScoped<UpdateMyProfileHandler>();
         services.AddScoped<UpdateChannelHandler>();

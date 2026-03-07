@@ -10,6 +10,7 @@ This repository currently provides:
 - Refresh token reuse detection with family session revocation on security incident
 - Guild creation and membership management (invite + list members)
 - Guild channel listing with default text and voice channels
+- Voice channel join token issuance via LiveKit
 - Text messaging (send + read with cursor-based pagination)
 - SignalR real-time delivery for text channel messages
 - Rate limiting for message posting
@@ -23,6 +24,7 @@ This repository currently provides:
 - FluentValidation
 - Serilog
 - SignalR
+- LiveKit
 - OpenAPI + Scalar API reference
 
 ## Quick Start
@@ -62,6 +64,7 @@ dotnet run --project src/Harmonie.API
 - `GET /api/guilds/{guildId}/channels`
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
+- `POST /api/channels/{channelId}/voice/join`
 - `GET /api/users/me`
 - `PUT /api/users/me`
 - `GET /hubs/text-channels` (SignalR negotiate/transport)

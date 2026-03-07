@@ -261,6 +261,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Channel.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Channel.AccessDenied => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.Channel.NotText => HttpStatusCode.Conflict,
+            ApplicationErrorCodes.Channel.NotVoice => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Channel.NameConflict => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Channel.CannotDeleteDefault => HttpStatusCode.Conflict,
             ApplicationErrorCodes.Message.ContentEmpty => HttpStatusCode.BadRequest,
