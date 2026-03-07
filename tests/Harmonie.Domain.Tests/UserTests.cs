@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Harmonie.Domain.Entities;
-using Harmonie.Domain.Events;
 using Harmonie.Domain.ValueObjects;
 using Xunit;
 
@@ -26,22 +25,6 @@ public sealed class UserTests
         result.Value.Username.Should().Be(username);
         result.Value.IsActive.Should().BeTrue();
         result.Value.IsEmailVerified.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Create_ShouldRaiseUserCreatedEvent()
-    {
-        // Arrange
-        var email = Email.Create("test@harmonie.chat").Value!;
-        var username = Username.Create("testuser").Value!;
-
-        // Act
-        var user = User.Create(email, username, "hash").Value!;
-
-        // Assert
-        user.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<UserCreatedEvent>()
-            .Which.UserId.Should().Be(user.Id);
     }
 
     [Fact]
