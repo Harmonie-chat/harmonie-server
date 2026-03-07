@@ -1,6 +1,10 @@
 using FluentValidation;
-using System.Net;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.OpenApi;
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Harmonie.Application.Common;
 
@@ -85,6 +89,83 @@ public static class EndpointExtensions
 
         var location = locationFactory(response.Data);
         return Results.Created(location, response.Data);
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> ErrorMessages =
+        new Dictionary<string, string>
+        {
+            [ApplicationErrorCodes.Common.ValidationFailed]           = "Request validation failed",
+            [ApplicationErrorCodes.Common.DomainRuleViolation]        = "A domain rule was violated",
+            [ApplicationErrorCodes.Auth.InvalidCredentials]           = "Invalid credentials",
+            [ApplicationErrorCodes.Auth.InvalidRefreshToken]          = "The provided refresh token is invalid or expired",
+            [ApplicationErrorCodes.Auth.RefreshTokenReuseDetected]    = "Refresh token reuse was detected",
+            [ApplicationErrorCodes.Auth.UserInactive]                 = "This account is inactive",
+            [ApplicationErrorCodes.Auth.DuplicateEmail]               = "This email is already registered",
+            [ApplicationErrorCodes.Auth.DuplicateUsername]            = "This username is already taken",
+            [ApplicationErrorCodes.Guild.NotFound]                    = "Guild not found",
+            [ApplicationErrorCodes.Guild.AccessDenied]                = "You do not have access to this guild",
+            [ApplicationErrorCodes.Guild.InviteForbidden]             = "You are not allowed to invite members",
+            [ApplicationErrorCodes.Guild.InviteTargetNotFound]        = "The invited user was not found",
+            [ApplicationErrorCodes.Guild.MemberAlreadyExists]         = "This user is already a member of this guild",
+            [ApplicationErrorCodes.Guild.OwnerCannotLeave]            = "The guild owner cannot leave the guild",
+            [ApplicationErrorCodes.Guild.MemberNotFound]              = "Member not found in this guild",
+            [ApplicationErrorCodes.Guild.OwnerCannotBeRemoved]        = "The guild owner cannot be removed",
+            [ApplicationErrorCodes.Guild.OwnerRoleCannotBeChanged]    = "The guild owner's role cannot be changed",
+            [ApplicationErrorCodes.Guild.OwnerTransferToSelf]         = "Cannot transfer ownership to yourself",
+            [ApplicationErrorCodes.Channel.NotFound]                  = "Channel not found",
+            [ApplicationErrorCodes.Channel.NotText]                   = "This channel is not a text channel",
+            [ApplicationErrorCodes.Channel.AccessDenied]              = "You do not have access to this channel",
+            [ApplicationErrorCodes.Channel.NameConflict]              = "A channel with this name already exists",
+            [ApplicationErrorCodes.Channel.CannotDeleteDefault]       = "The default channel cannot be deleted",
+            [ApplicationErrorCodes.Message.ContentEmpty]              = "Message content cannot be empty",
+            [ApplicationErrorCodes.Message.ContentTooLong]            = "Message content exceeds the maximum allowed length",
+            [ApplicationErrorCodes.Message.NotFound]                  = "Message not found",
+            [ApplicationErrorCodes.Message.EditForbidden]             = "You are not allowed to edit this message",
+            [ApplicationErrorCodes.Message.DeleteForbidden]           = "You are not allowed to delete this message",
+            [ApplicationErrorCodes.User.NotFound]                     = "User not found",
+        };
+
+    /// <summary>
+    /// Registers typed <see cref="ApplicationError"/> responses for every distinct HTTP status derived
+    /// from <paramref name="errorCodes"/> and injects a named OpenAPI example per error code.
+    /// </summary>
+    public static RouteHandlerBuilder ProducesErrors(
+        this RouteHandlerBuilder builder,
+        params string[] errorCodes)
+    {
+        var byStatus = errorCodes
+            .GroupBy(code => (int)MapStatusCode(code))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var status in byStatus.Keys)
+            builder = builder.Produces<ApplicationError>(status);
+
+        return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+        {
+            if (operation?.Responses is not { } responses)
+                return Task.CompletedTask;
+
+            foreach (var (status, codes) in byStatus)
+            {
+                var statusKey = status.ToString();
+                if (!responses.TryGetValue(statusKey, out var response) || response is null)
+                    continue;
+
+                if (response.Content is null || !response.Content.TryGetValue("application/json", out var mediaType))
+                    continue;
+
+                mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
+                foreach (var code in codes)
+                {
+                    var msg = ErrorMessages.GetValueOrDefault(code, code);
+                    mediaType.Examples[code] = new OpenApiExample
+                    {
+                        Value = JsonNode.Parse(JsonSerializer.Serialize(new ApplicationError(code, msg)))
+                    };
+                }
+            }
+            return Task.CompletedTask;
+        });
     }
 
     public static HttpStatusCode MapStatusCode(string errorCode)

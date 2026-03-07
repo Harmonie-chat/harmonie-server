@@ -18,10 +18,10 @@ public static class UpdateMyProfileEndpoint
             .WithSummary("Update my profile")
             .WithDescription("Updates display name, bio, and avatar URL for the authenticated user.")
             .Produces<UpdateMyProfileResponse>(StatusCodes.Status200OK)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.User.NotFound);
     }
 
     private static async Task<IResult> HandleAsync(

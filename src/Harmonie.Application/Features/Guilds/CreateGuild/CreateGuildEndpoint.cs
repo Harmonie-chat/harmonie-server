@@ -18,9 +18,10 @@ public static class CreateGuildEndpoint
             .WithSummary("Create a guild")
             .WithDescription("Creates a guild, owner admin membership, and default channels.")
             .Produces<CreateGuildResponse>(StatusCodes.Status201Created)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Common.DomainRuleViolation);
     }
 
     private static async Task<IResult> HandleAsync(

@@ -19,12 +19,14 @@ public static class DeleteMessageEndpoint
             .WithSummary("Delete a message")
             .WithDescription("Soft-deletes a message. The message author can delete their own messages. Guild admins can delete any message.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesErrors(
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NotFound,
+                ApplicationErrorCodes.Channel.NotText,
+                ApplicationErrorCodes.Channel.AccessDenied,
+                ApplicationErrorCodes.Message.NotFound,
+                ApplicationErrorCodes.Message.DeleteForbidden);
     }
 
     private static async Task<IResult> HandleAsync(

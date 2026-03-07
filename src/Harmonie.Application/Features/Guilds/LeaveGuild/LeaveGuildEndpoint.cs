@@ -19,11 +19,11 @@ public static class LeaveGuildEndpoint
             .WithSummary("Leave a guild")
             .WithDescription("Removes the authenticated user from the guild. The guild owner cannot leave.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesErrors(
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Guild.OwnerCannotLeave);
     }
 
     private static async Task<IResult> HandleAsync(

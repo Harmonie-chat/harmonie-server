@@ -21,9 +21,11 @@ public static class RegisterEndpoint
             .WithSummary("Register a new user account")
             .WithDescription("Creates a new user with email, username, and password. Returns JWT tokens for authentication.")
             .Produces<RegisterResponse>(StatusCodes.Status201Created)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Auth.DuplicateEmail,
+                ApplicationErrorCodes.Auth.DuplicateUsername);
     }
 
     private static async Task<IResult> HandleAsync(

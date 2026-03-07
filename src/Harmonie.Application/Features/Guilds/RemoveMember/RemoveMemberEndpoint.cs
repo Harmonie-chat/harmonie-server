@@ -19,11 +19,12 @@ public static class RemoveMemberEndpoint
             .WithSummary("Remove a member from a guild")
             .WithDescription("Removes the specified user from the guild. Only admins can remove members. The guild owner cannot be removed.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesErrors(
+                ApplicationErrorCodes.Guild.NotFound,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Guild.MemberNotFound,
+                ApplicationErrorCodes.Guild.OwnerCannotBeRemoved);
     }
 
     private static async Task<IResult> HandleAsync(

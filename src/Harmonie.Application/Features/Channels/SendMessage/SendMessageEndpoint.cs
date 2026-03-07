@@ -20,13 +20,16 @@ public static class SendMessageEndpoint
             .WithSummary("Send a message")
             .WithDescription("Posts a message in a text channel.")
             .Produces<SendMessageResponse>(StatusCodes.Status201Created)
-            .Produces<ApplicationError>(StatusCodes.Status400BadRequest)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status403Forbidden)
-            .Produces<ApplicationError>(StatusCodes.Status404NotFound)
-            .Produces<ApplicationError>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status429TooManyRequests)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .ProducesErrors(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                ApplicationErrorCodes.Message.ContentEmpty,
+                ApplicationErrorCodes.Message.ContentTooLong,
+                ApplicationErrorCodes.Guild.AccessDenied,
+                ApplicationErrorCodes.Channel.NotFound,
+                ApplicationErrorCodes.Channel.NotText,
+                ApplicationErrorCodes.Channel.AccessDenied);
     }
 
     private static async Task<IResult> HandleAsync(

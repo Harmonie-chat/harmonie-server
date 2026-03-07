@@ -20,8 +20,7 @@ public static class LogoutAllEndpoint
             .WithSummary("Logout all sessions")
             .WithDescription("Revokes all active refresh tokens for the authenticated user.")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ApplicationError>(StatusCodes.Status401Unauthorized)
-            .Produces<ApplicationError>(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status401Unauthorized);
     }
 
     private static async Task<IResult> HandleAsync(
