@@ -12,6 +12,7 @@ using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
+using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendDirectMessage;
@@ -75,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<DeleteMessageHandler>();
         services.AddScoped<OpenConversationHandler>();
         services.AddScoped<ListConversationsHandler>();
+        services.AddScoped<GetDirectMessagesHandler>();
         services.AddScoped<SendDirectMessageHandler>();
         // Add more handlers as features are created
 

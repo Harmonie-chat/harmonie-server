@@ -27,6 +27,7 @@ Current mapped endpoints:
 - `GET /api/guilds/{guildId}/voice/participants`
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
+- `GET /api/conversations/{conversationId}/messages`
 - `GET /api/users/me`
 - `PUT /api/users/me`
 - `GET /hubs/realtime` (SignalR for text channels and voice presence)

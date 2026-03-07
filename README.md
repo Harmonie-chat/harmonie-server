@@ -12,6 +12,7 @@ This repository currently provides:
 - Guild channel listing with default text and voice channels
 - Direct conversation open/get by user pair
 - Direct conversation listing for the current user
+- Direct message retrieval in conversations with cursor pagination
 - Direct message sending in conversations
 - Voice channel join token issuance via LiveKit
 - Voice presence notifications via LiveKit webhooks and SignalR
@@ -77,6 +78,7 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `GET /api/channels/{channelId}/messages`
 - `POST /api/conversations`
 - `GET /api/conversations`
+- `GET /api/conversations/{conversationId}/messages`
 - `POST /api/conversations/{conversationId}/messages`
 - `POST /api/channels/{channelId}/voice/join`
 - `POST /api/webhooks/livekit`
