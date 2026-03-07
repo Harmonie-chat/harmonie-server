@@ -35,6 +35,20 @@ services:
       - harmonie-network
     restart: "no"
 
+  # LiveKit Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: harmonie-livekit
+    command:
+      - --dev
+      - --webhook-urls=http://harmonie-api:80/api/webhooks/livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-60000:50000-60000/udp"
+    networks:
+      - harmonie-network
+
   # Harmonie API
   harmonie-api:
     build:

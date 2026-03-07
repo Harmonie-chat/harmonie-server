@@ -16,6 +16,7 @@
   <ItemGroup>
     <!-- Database -->
     <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Livekit.Server.Sdk.Dotnet" Version="1.2.0" />
     <PackageReference Include="Npgsql" Version="10.0.0" />
     
     <!-- JWT -->

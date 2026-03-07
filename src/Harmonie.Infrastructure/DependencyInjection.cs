@@ -12,8 +12,10 @@ public static class DependencyInjection
     {
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.Configure<DatabaseSettings>(configuration.GetSection("Database"));
+        services.Configure<LiveKitSettings>(configuration.GetSection("LiveKit"));
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
