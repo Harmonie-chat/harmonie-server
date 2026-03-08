@@ -17,6 +17,7 @@ using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
+using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Features.Conversations.SendDirectMessage;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
@@ -83,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<OpenConversationHandler>();
         services.AddScoped<ListConversationsHandler>();
         services.AddScoped<GetDirectMessagesHandler>();
+        services.AddScoped<SearchConversationMessagesHandler>();
         services.AddScoped<EditDirectMessageHandler>();
         services.AddScoped<DeleteDirectMessageHandler>();
         services.AddScoped<SendDirectMessageHandler>();
