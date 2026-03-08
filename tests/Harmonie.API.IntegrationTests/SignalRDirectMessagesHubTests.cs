@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendDirectMessage;
 using Microsoft.AspNetCore.Http.Connections;
@@ -82,6 +83,51 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         eventPayload.Content.Should().Be("hello realtime dm");
     }
 
+    [Fact]
+    public async Task DirectMessageUpdated_WhenParticipantJoinedConversation_ShouldReceiveEvent()
+    {
+        var sender = await RegisterAsync();
+        var receiver = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
+
+        var sendResponse = await SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendDirectMessageRequest("original realtime dm"),
+            sender.AccessToken);
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendDirectMessageResponse>();
+        sendPayload.Should().NotBeNull();
+
+        await using var connection = CreateHubConnection(receiver.AccessToken);
+        var messageReceived = new TaskCompletionSource<SignalRDirectMessageUpdatedEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<SignalRDirectMessageUpdatedEvent>("DirectMessageUpdated", payload =>
+        {
+            messageReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
+
+        var editResponse = await SendAuthorizedPutAsync(
+            $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
+            new EditDirectMessageRequest("updated realtime dm"),
+            sender.AccessToken);
+        editResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(messageReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(messageReceived.Task);
+
+        var eventPayload = await messageReceived.Task;
+        eventPayload.MessageId.Should().Be(sendPayload.MessageId);
+        eventPayload.ConversationId.Should().Be(conversationId);
+        eventPayload.Content.Should().Be("updated realtime dm");
+        eventPayload.UpdatedAtUtc.Should().NotBe(default);
+    }
+
     private HubConnection CreateHubConnection(string accessToken)
     {
         var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
@@ -138,10 +184,29 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         return await _client.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
     private sealed record SignalRDirectMessageCreatedEvent(
         string MessageId,
         string ConversationId,
         string AuthorUserId,
         string Content,
         DateTime CreatedAtUtc);
+
+    private sealed record SignalRDirectMessageUpdatedEvent(
+        string MessageId,
+        string ConversationId,
+        string Content,
+        DateTime UpdatedAtUtc);
 }
