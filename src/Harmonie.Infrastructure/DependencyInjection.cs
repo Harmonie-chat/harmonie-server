@@ -22,7 +22,11 @@ public static class DependencyInjection
         services.AddScoped<ILiveKitWebhookReceiver, LiveKitWebhookReceiver>();
         services.AddScoped<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
         services.AddScoped<ILiveKitRoomService, LiveKitRoomService>();
-        services.AddScoped<IObjectStorageService, S3CompatibleObjectStorageService>();
+        var storageProvider = configuration["ObjectStorage:Provider"] ?? "s3";
+        if (string.Equals(storageProvider, "local", StringComparison.OrdinalIgnoreCase))
+            services.AddScoped<IObjectStorageService, LocalFileSystemObjectStorageService>();
+        else
+            services.AddScoped<IObjectStorageService, S3CompatibleObjectStorageService>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))

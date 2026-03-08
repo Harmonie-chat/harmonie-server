@@ -94,7 +94,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     needs: validate-pr-issue-link
-    
+
     services:
       postgres:
         image: postgres:18.2
@@ -113,11 +113,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Podman
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
-    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -129,7 +124,7 @@ jobs:
           keys:
             devkey: devsecret-that-is-long-enough-for-hmac-signing
       run: |
-        podman run -d --name harmonie-livekit \
+        docker run -d --name harmonie-livekit \
           -p 7880:7880 \
           -p 7881:7881 \
           -e LIVEKIT_CONFIG \
@@ -144,49 +139,54 @@ jobs:
         done
 
         echo "LiveKit did not become ready in time." >&2
-        podman logs harmonie-livekit || true
+        docker logs harmonie-livekit || true
         exit 1
 
-    - name: Start Garage
+    - name: Start SeaweedFS
       env:
-        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
-        GARAGE_TEST_S3_PORT: "4900"
-        GARAGE_TEST_RPC_PORT: "4901"
-        GARAGE_TEST_ADMIN_PORT: "4903"
-      run: podman compose -f docker-compose.yml -p "$GARAGE_TEST_COMPOSE_PROJECT" up -d garage
-    
+        WEED_S3_PORT: "4900"
+      run: |
+        docker compose up -d seaweedfs
+
+        for i in {1..30}; do
+          if curl -s --connect-timeout 1 http://localhost:4900 > /dev/null 2>&1; then
+            exit 0
+          fi
+          sleep 1
+        done
+
+        echo "SeaweedFS did not become ready in time." >&2
+        docker compose logs seaweedfs || true
+        exit 1
+
     - name: Restore dependencies
       run: dotnet restore
-    
+
     - name: Build
       run: dotnet build --no-restore --configuration Release
-      
+
     - name: Run database migrations
       run: dotnet run --project tools/Harmonie.Migrations/Harmonie.Migrations.csproj --configuration Release
       env:
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
         ASPNETCORE_ENVIRONMENT: Development
-    
+
     - name: Run tests
       run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage"
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
-        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
-        GARAGE_TEST_MANAGED_EXTERNALLY: "1"
-        GARAGE_TEST_S3_PORT: "4900"
-        GARAGE_TEST_RPC_PORT: "4901"
-        GARAGE_TEST_ADMIN_PORT: "4903"
+        WEED_TEST_ENDPOINT: "http://127.0.0.1:4900"
 
-    - name: Stop Garage
+    - name: Stop containers
       if: always()
       env:
-        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
-        GARAGE_TEST_S3_PORT: "4900"
-        GARAGE_TEST_RPC_PORT: "4901"
-        GARAGE_TEST_ADMIN_PORT: "4903"
-      run: podman compose -f docker-compose.yml -p "$GARAGE_TEST_COMPOSE_PROJECT" down -v
-    
+        WEED_S3_PORT: "4900"
+      run: |
+        docker compose down -v || true
+        docker stop harmonie-livekit || true
+        docker rm harmonie-livekit || true
+
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
       with:

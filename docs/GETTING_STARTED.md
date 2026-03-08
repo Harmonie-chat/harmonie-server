@@ -7,17 +7,18 @@ This guide gets the Harmonie server running locally.
 - .NET 10 SDK
 - Docker (for PostgreSQL)
 
-## 1. Start PostgreSQL
+## 1. Start Local Services
 
 ```bash
-docker-compose up -d postgres livekit
+podman compose up -d postgres livekit seaweedfs
 ```
 
 Optional checks:
 
 ```bash
-docker-compose ps
-docker-compose logs postgres
+podman compose ps
+podman compose logs postgres
+podman compose logs seaweedfs
 ```
 
 ## 2. Apply Database Migrations
@@ -83,13 +84,18 @@ Example register payload:
 dotnet test
 ```
 
-The integration suite starts an isolated Garage container through `podman
-compose`, so `podman` and `podman compose` must be installed locally.
+The E2E upload test connects to a running SeaweedFS instance. Start it before running the suite:
+
+```bash
+podman compose up -d seaweedfs
+```
+
+The repository `docker-compose.yml` embeds the minimal SeaweedFS S3 credentials config used by the test.
 
 ## Notes
 
 - OpenAPI and Scalar API reference are enabled only in Development.
 - Refresh tokens are persisted and rotated in storage.
 - Message posting is rate-limited (`40` messages/minute per authenticated user).
-- If the API cannot connect to PostgreSQL, confirm `docker-compose` is running and port `5432` is available.
+- If the API cannot connect to PostgreSQL, confirm `podman compose` is running and port `5432` is available.
 - If the voice snapshot tests fail, confirm LiveKit is running on port `7880`.

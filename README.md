@@ -36,15 +36,15 @@ This repository currently provides:
 - Serilog
 - SignalR
 - LiveKit
-- Garage (local S3-compatible object storage)
+- SeaweedFS (local S3-compatible object storage)
 - OpenAPI + Scalar API reference
 
 ## Quick Start
 
-1. Start PostgreSQL, LiveKit, and Garage:
+1. Start PostgreSQL, LiveKit, and SeaweedFS:
 
 ```bash
-podman compose up -d postgres livekit garage
+podman compose up -d postgres livekit seaweedfs
 ```
 
 2. Run migrations:
@@ -65,24 +65,25 @@ dotnet run --project src/Harmonie.API
 The default Development config uses:
 - `LiveKit:PublicUrl=ws://localhost:7880` for tokens returned to clients
 - `LiveKit:InternalUrl=http://localhost:7880` for server-to-server API calls
-- `ObjectStorage:Endpoint=http://localhost:3900` for S3-compatible object storage
+- `ObjectStorage:Endpoint=http://localhost:8333` for S3-compatible object storage (SeaweedFS)
 
-Before using uploads locally for the first time, initialize Garage:
-
-```bash
-podman compose exec -T garage /garage -c /etc/garage.toml status
-podman compose exec -T garage /garage -c /etc/garage.toml layout assign <node-id> -z local -c 10G
-podman compose exec -T garage /garage -c /etc/garage.toml layout apply --version 1
-podman compose exec -T garage /garage -c /etc/garage.toml key import --yes -n harmonie-uploads GK0123456789abcdef01234567 abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
-podman compose exec -T garage /garage -c /etc/garage.toml key allow --create-bucket harmonie-uploads
-podman compose exec -T garage /garage -c /etc/garage.toml bucket create harmonie-uploads
-podman compose exec -T garage /garage -c /etc/garage.toml bucket allow harmonie-uploads --read --write --owner --key harmonie-uploads
-```
-
-The Garage credentials above already match `appsettings.Development.json`
-and the API container environment in `docker-compose.yml`.
+`docker-compose.yml` embeds a minimal SeaweedFS S3 credentials config for local development. The credentials in `appsettings.Development.json` already match.
 
 In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http://livekit:7880` while keeping `LiveKit:PublicUrl=ws://localhost:7880` so browser clients can still connect through the published host port.
+
+### Using local filesystem storage (no external service)
+
+Set `ObjectStorage:Provider=local` in your configuration. Files are written to `ObjectStorage:LocalBasePath` and served at `ObjectStorage:LocalBaseUrl` via a `/files` static endpoint built into the API.
+
+```json
+"ObjectStorage": {
+  "Provider": "local",
+  "LocalBasePath": "/var/harmonie/uploads",
+  "LocalBaseUrl": "http://localhost:5001/files"
+}
+```
+
+No object storage service is required in this mode.
 
 4. Check endpoints:
 - `GET /health`
@@ -117,9 +118,12 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 
 In Development, OpenAPI and Scalar are enabled.
 
-`dotnet test` now includes a Garage-backed upload E2E test. Keep `podman` and
-`podman compose` available locally so the test suite can start its isolated
-Garage stack automatically.
+`dotnet test` includes a SeaweedFS-backed upload E2E test. Start SeaweedFS
+before running the suite:
+
+```bash
+podman compose up -d seaweedfs
+```
 
 ## API Response Model
 
