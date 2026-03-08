@@ -19,6 +19,7 @@ This repository currently provides:
 - Voice channel join token issuance via LiveKit
 - Voice presence notifications via LiveKit webhooks and SignalR
 - Text messaging (send + read with cursor-based pagination)
+- Guild message full-text search with optional filters and cursor pagination
 - SignalR real-time delivery for text channel messages
 - Rate limiting for message posting
 - Unit and integration tests for auth, guild flows, messaging, and real-time delivery
@@ -75,6 +76,7 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `POST /api/guilds/{guildId}/members/invite`
 - `GET /api/guilds/{guildId}/members`
 - `GET /api/guilds/{guildId}/channels`
+- `GET /api/guilds/{guildId}/messages/search`
 - `GET /api/guilds/{guildId}/voice/participants`
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`

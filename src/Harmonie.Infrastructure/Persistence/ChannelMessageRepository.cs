@@ -139,6 +139,111 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
         return new ChannelMessagePage(items, nextCursor);
     }
 
+    public async Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
+        SearchGuildMessagesQuery query,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (limit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be positive.");
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var take = limit + 1;
+        var filters = new List<string>
+        {
+            "gc.guild_id = @GuildId",
+            "cm.deleted_at_utc IS NULL",
+            "u.deleted_at IS NULL",
+            "cm.search_vector @@ sq.ts_query"
+        };
+
+        var parameters = new DynamicParameters();
+        parameters.Add("GuildId", query.GuildId.Value);
+        parameters.Add("SearchText", query.SearchText);
+        parameters.Add("Take", take);
+
+        if (query.ChannelId is not null)
+        {
+            filters.Add("cm.channel_id = @ChannelId");
+            parameters.Add("ChannelId", query.ChannelId.Value);
+        }
+
+        if (query.AuthorId is not null)
+        {
+            filters.Add("cm.author_user_id = @AuthorId");
+            parameters.Add("AuthorId", query.AuthorId.Value);
+        }
+
+        if (query.BeforeCreatedAtUtc.HasValue)
+        {
+            filters.Add("cm.created_at_utc <= @BeforeCreatedAtUtc");
+            parameters.Add("BeforeCreatedAtUtc", query.BeforeCreatedAtUtc.Value);
+        }
+
+        if (query.AfterCreatedAtUtc.HasValue)
+        {
+            filters.Add("cm.created_at_utc >= @AfterCreatedAtUtc");
+            parameters.Add("AfterCreatedAtUtc", query.AfterCreatedAtUtc.Value);
+        }
+
+        if (query.Cursor is not null)
+        {
+            filters.Add("(cm.created_at_utc, cm.id) < (@CursorCreatedAtUtc, @CursorMessageId)");
+            parameters.Add("CursorCreatedAtUtc", query.Cursor.CreatedAtUtc);
+            parameters.Add("CursorMessageId", query.Cursor.MessageId.Value);
+        }
+
+        var whereClause = string.Join(Environment.NewLine + "  AND ", filters);
+        var sql = $"""
+                   WITH search_query AS (
+                       SELECT websearch_to_tsquery('simple', @SearchText) AS ts_query
+                   )
+                   SELECT cm.id AS "MessageId",
+                          cm.channel_id AS "ChannelId",
+                          gc.name AS "ChannelName",
+                          cm.author_user_id AS "AuthorUserId",
+                          u.username AS "AuthorUsername",
+                          u.display_name AS "AuthorDisplayName",
+                          cm.content AS "Content",
+                          cm.created_at_utc AS "CreatedAtUtc",
+                          cm.updated_at_utc AS "UpdatedAtUtc"
+                   FROM channel_messages cm
+                   INNER JOIN guild_channels gc ON gc.id = cm.channel_id
+                   INNER JOIN users u ON u.id = cm.author_user_id
+                   CROSS JOIN search_query sq
+                   WHERE {whereClause}
+                   ORDER BY cm.created_at_utc DESC, cm.id DESC
+                   LIMIT @Take
+                   """;
+
+        var command = new CommandDefinition(
+            sql,
+            parameters,
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = (await connection.QueryAsync<ChannelMessageSearchRow>(command)).ToArray();
+        var hasMore = rows.Length > limit;
+        var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
+
+        var items = pageRows
+            .Select(MapToSearchGuildMessagesItem)
+            .OrderBy(x => x.CreatedAtUtc)
+            .ThenBy(x => x.MessageId.Value)
+            .ToArray();
+
+        ChannelMessageCursor? nextCursor = null;
+        if (hasMore && items.Length > 0)
+        {
+            var oldestItem = items[0];
+            nextCursor = new ChannelMessageCursor(oldestItem.CreatedAtUtc, oldestItem.MessageId);
+        }
+
+        return new SearchGuildMessagesPage(items, nextCursor);
+    }
+
     public async Task<ChannelMessage?> GetByIdAsync(
         ChannelMessageId messageId,
         CancellationToken cancellationToken = default)
@@ -229,5 +334,23 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             contentResult.Value,
             row.CreatedAtUtc,
             row.UpdatedAtUtc);
+    }
+
+    private static SearchGuildMessagesItem MapToSearchGuildMessagesItem(ChannelMessageSearchRow row)
+    {
+        var contentResult = MessageContent.Create(row.Content);
+        if (contentResult.IsFailure || contentResult.Value is null)
+            throw new InvalidOperationException("Stored channel message search content is invalid.");
+
+        return new SearchGuildMessagesItem(
+            MessageId: ChannelMessageId.From(row.MessageId),
+            ChannelId: GuildChannelId.From(row.ChannelId),
+            ChannelName: row.ChannelName,
+            AuthorUserId: UserId.From(row.AuthorUserId),
+            AuthorUsername: row.AuthorUsername,
+            AuthorDisplayName: row.AuthorDisplayName,
+            Content: contentResult.Value,
+            CreatedAtUtc: row.CreatedAtUtc,
+            UpdatedAtUtc: row.UpdatedAtUtc);
     }
 }
