@@ -22,6 +22,10 @@ public interface IDirectMessageRepository
     Task UpdateContentAsync(
         DirectMessage message,
         CancellationToken cancellationToken = default);
+
+    Task SoftDeleteAsync(
+        DirectMessage message,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record DirectMessageCursor(

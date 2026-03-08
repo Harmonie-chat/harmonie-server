@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Conversations.DeleteDirectMessage;
 using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Features.Conversations.OpenConversation;
@@ -334,6 +335,129 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task DeleteDirectMessage_WhenAuthorDeletesOwnMessage_ShouldReturn204()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "delete me", caller.AccessToken);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WhenConversationDoesNotExist_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WhenCallerIsNotParticipant_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var outsider = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "delete me", participantOne.AccessToken);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            outsider.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WhenCallerIsNotAuthor_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "delete me", participantOne.AccessToken);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            participantTwo.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.DeleteForbidden);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WhenMessageDoesNotExist_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{Guid.NewGuid()}",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WhenDeleted_ShouldBeExcludedFromReadEndpoint()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var visibleMessage = await SendDirectMessageAsync(conversationId, "keep me", target.AccessToken);
+        await Task.Delay(20);
+        var deletedMessage = await SendDirectMessageAsync(conversationId, "delete me", caller.AccessToken);
+
+        var deleteResponse = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{deletedMessage.MessageId}",
+            caller.AccessToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await SendAuthorizedGetAsync(
+            $"/api/conversations/{conversationId}/messages",
+            caller.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await listResponse.Content.ReadFromJsonAsync<GetDirectMessagesResponse>();
+        payload.Should().NotBeNull();
+        payload!.Items.Should().ContainSingle();
+        payload.Items[0].MessageId.Should().Be(visibleMessage.MessageId);
+    }
+
+    [Fact]
+    public async Task DeleteDirectMessage_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var response = await _client.DeleteAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
     {
         var response = await SendAuthorizedPostAsync(
@@ -409,6 +533,15 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         {
             Content = JsonContent.Create(payload)
         };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }

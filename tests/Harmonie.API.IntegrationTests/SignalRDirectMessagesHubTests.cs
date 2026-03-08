@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Conversations.DeleteDirectMessage;
 using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendDirectMessage;
@@ -128,6 +129,48 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         eventPayload.UpdatedAtUtc.Should().NotBe(default);
     }
 
+    [Fact]
+    public async Task DirectMessageDeleted_WhenParticipantJoinedConversation_ShouldReceiveEvent()
+    {
+        var sender = await RegisterAsync();
+        var receiver = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
+
+        var sendResponse = await SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendDirectMessageRequest("delete realtime dm"),
+            sender.AccessToken);
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendDirectMessageResponse>();
+        sendPayload.Should().NotBeNull();
+
+        await using var connection = CreateHubConnection(receiver.AccessToken);
+        var messageReceived = new TaskCompletionSource<SignalRDirectMessageDeletedEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On<SignalRDirectMessageDeletedEvent>("DirectMessageDeleted", payload =>
+        {
+            messageReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
+
+        var deleteResponse = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
+            sender.AccessToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(messageReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(messageReceived.Task);
+
+        var eventPayload = await messageReceived.Task;
+        eventPayload.MessageId.Should().Be(sendPayload.MessageId);
+        eventPayload.ConversationId.Should().Be(conversationId);
+    }
+
     private HubConnection CreateHubConnection(string accessToken)
     {
         var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
@@ -197,6 +240,15 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         return await _client.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
     private sealed record SignalRDirectMessageCreatedEvent(
         string MessageId,
         string ConversationId,
@@ -209,4 +261,8 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         string ConversationId,
         string Content,
         DateTime UpdatedAtUtc);
+
+    private sealed record SignalRDirectMessageDeletedEvent(
+        string MessageId,
+        string ConversationId);
 }

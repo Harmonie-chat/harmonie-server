@@ -11,6 +11,10 @@ public interface IDirectMessageNotifier
     Task NotifyMessageUpdatedAsync(
         DirectMessageUpdatedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMessageDeletedAsync(
+        DirectMessageDeletedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record DirectMessageCreatedNotification(
@@ -25,3 +29,7 @@ public sealed record DirectMessageUpdatedNotification(
     ConversationId ConversationId,
     string Content,
     DateTime UpdatedAtUtc);
+
+public sealed record DirectMessageDeletedNotification(
+    DirectMessageId MessageId,
+    ConversationId ConversationId);

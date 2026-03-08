@@ -195,6 +195,32 @@ public sealed class DirectMessageRepository : IDirectMessageRepository
         await connection.ExecuteAsync(command);
     }
 
+    public async Task SoftDeleteAsync(
+        DirectMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE direct_messages
+                           SET updated_at_utc = @UpdatedAtUtc,
+                               deleted_at_utc = @DeletedAtUtc
+                           WHERE id = @Id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                message.UpdatedAtUtc,
+                message.DeletedAtUtc,
+                Id = message.Id.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static DirectMessage MapToDirectMessage(DirectMessageRow row)
     {
         var contentResult = MessageContent.Create(row.Content);

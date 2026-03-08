@@ -46,6 +46,21 @@ public sealed class SignalRDirectMessageNotifier : IDirectMessageNotifier
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
             .SendAsync("DirectMessageUpdated", payload, cancellationToken);
     }
+
+    public async Task NotifyMessageDeletedAsync(
+        DirectMessageDeletedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new DirectMessageDeletedEvent(
+            MessageId: notification.MessageId.ToString(),
+            ConversationId: notification.ConversationId.ToString());
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
+            .SendAsync("DirectMessageDeleted", payload, cancellationToken);
+    }
 }
 
 public sealed record DirectMessageCreatedEvent(
@@ -60,3 +75,7 @@ public sealed record DirectMessageUpdatedEvent(
     string ConversationId,
     string Content,
     DateTime UpdatedAtUtc);
+
+public sealed record DirectMessageDeletedEvent(
+    string MessageId,
+    string ConversationId);
