@@ -59,17 +59,23 @@ services:
   # Garage S3-compatible object storage
   garage:
     image: dxflrs/garage:v2.0.0
-    container_name: harmonie-garage
     environment:
-      GARAGE_ADMIN_TOKEN: harmonie-admin-token
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-harmonie-admin-token}
+      GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN:-harmonie-metrics-token}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     ports:
-      - "3900:3900"
-      - "3901:3901"
-      - "3903:3903"
+      - "${GARAGE_S3_PORT:-3900}:3900"
+      - "${GARAGE_RPC_PORT:-3901}:3901"
+      - "${GARAGE_ADMIN_PORT:-3903}:3903"
     volumes:
-      - ./ops/garage/garage.toml:/etc/garage.toml:ro
       - garage-meta:/var/lib/garage/meta
       - garage-data:/var/lib/garage/data
+    configs:
+      - source: garage-config
+        target: /etc/garage.toml
+    command:
+      - /garage
+      - server
     networks:
       - harmonie-network
 
@@ -92,8 +98,8 @@ services:
       - ObjectStorage__PublicBaseUrl=http://localhost:3900/harmonie-uploads
       - ObjectStorage__BucketName=harmonie-uploads
       - ObjectStorage__Region=garage
-      - ObjectStorage__AccessKeyId=change-me
-      - ObjectStorage__SecretAccessKey=change-me
+      - ObjectStorage__AccessKeyId=GK0123456789abcdef01234567
+      - ObjectStorage__SecretAccessKey=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
       - ObjectStorage__ForcePathStyle=true
       - ObjectStorage__CreateBucketIfMissing=true
     ports:
@@ -121,3 +127,28 @@ volumes:
 networks:
   harmonie-network:
     driver: bridge
+
+configs:
+  garage-config:
+    content: |
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+      db_engine = "sqlite"
+      metadata_auto_snapshot_interval = "6h"
+      replication_factor = 1
+      consistency_mode = "consistent"
+
+      rpc_bind_addr = "[::]:3901"
+      rpc_public_addr = "garage:3901"
+      rpc_secret = "${GARAGE_RPC_SECRET:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+
+      compression_level = 2
+
+      [s3_api]
+      s3_region = "garage"
+      api_bind_addr = "[::]:3900"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
+      admin_token = "${GARAGE_ADMIN_TOKEN:-harmonie-admin-token}"
+      metrics_token = "${GARAGE_METRICS_TOKEN:-harmonie-metrics-token}"

@@ -83,6 +83,9 @@ Example register payload:
 dotnet test
 ```
 
+The integration suite starts an isolated Garage container through `podman
+compose`, so `podman` and `podman compose` must be installed locally.
+
 ## Notes
 
 - OpenAPI and Scalar API reference are enabled only in Development.

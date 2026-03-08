@@ -112,6 +112,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Podman
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -124,7 +129,7 @@ jobs:
           keys:
             devkey: devsecret-that-is-long-enough-for-hmac-signing
       run: |
-        docker run -d --name harmonie-livekit \
+        podman run -d --name harmonie-livekit \
           -p 7880:7880 \
           -p 7881:7881 \
           -e LIVEKIT_CONFIG \
@@ -139,8 +144,16 @@ jobs:
         done
 
         echo "LiveKit did not become ready in time." >&2
-        docker logs harmonie-livekit || true
+        podman logs harmonie-livekit || true
         exit 1
+
+    - name: Start Garage
+      env:
+        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
+        GARAGE_TEST_S3_PORT: "4900"
+        GARAGE_TEST_RPC_PORT: "4901"
+        GARAGE_TEST_ADMIN_PORT: "4903"
+      run: podman compose -f docker-compose.yml -p "$GARAGE_TEST_COMPOSE_PROJECT" up -d garage
     
     - name: Restore dependencies
       run: dotnet restore
@@ -159,6 +172,20 @@ jobs:
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
+        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
+        GARAGE_TEST_MANAGED_EXTERNALLY: "1"
+        GARAGE_TEST_S3_PORT: "4900"
+        GARAGE_TEST_RPC_PORT: "4901"
+        GARAGE_TEST_ADMIN_PORT: "4903"
+
+    - name: Stop Garage
+      if: always()
+      env:
+        GARAGE_TEST_COMPOSE_PROJECT: harmonie-upload-e2e
+        GARAGE_TEST_S3_PORT: "4900"
+        GARAGE_TEST_RPC_PORT: "4901"
+        GARAGE_TEST_ADMIN_PORT: "4903"
+      run: podman compose -f docker-compose.yml -p "$GARAGE_TEST_COMPOSE_PROJECT" down -v
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4

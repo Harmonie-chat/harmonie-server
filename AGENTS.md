@@ -98,6 +98,7 @@ When picking up a GitHub issue:
 
 ## Practical Command Guidance (PowerShell)
 
+- Prefer `podman` / `podman compose` over Docker / Docker Compose for local container workflows in this repository.
 - Prefer filtered recursive listing:
 `Get-ChildItem -Recurse -File | Where-Object { $_.FullName -notmatch '\\(bin|obj|out|artifacts|TestResults)\\' -and $_.FullName -notmatch '\\\\.git\\\\' }`
 
@@ -108,4 +109,4 @@ When picking up a GitHub issue:
 - `docs/ARCHITECTURE.md`
 - `docs/VERTICAL_SLICE_ARCHITECTURE.md`
 
-Last updated: 2026-03-01
+Last updated: 2026-03-08

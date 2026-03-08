@@ -2,11 +2,11 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.S3.Util;
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace Harmonie.Infrastructure.ObjectStorage;
 
@@ -31,7 +31,9 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
         var config = new AmazonS3Config
         {
             ServiceURL = _settings.Endpoint,
-            ForcePathStyle = _settings.ForcePathStyle
+            ForcePathStyle = _settings.ForcePathStyle,
+            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
         };
 
         if (!string.IsNullOrWhiteSpace(_settings.Region))
@@ -47,7 +49,8 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (!await EnsureReadyAsync(cancellationToken))
+        var client = _client;
+        if (client is null || !await EnsureReadyAsync(cancellationToken))
             return ObjectStorageUploadResult.Failed("Object storage is not configured.");
 
         try
@@ -65,7 +68,7 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
             if (request.SizeBytes >= 0)
                 putObjectRequest.Headers.ContentLength = request.SizeBytes;
 
-            await _client!.PutObjectAsync(putObjectRequest, cancellationToken);
+            await client.PutObjectAsync(putObjectRequest, cancellationToken);
             return ObjectStorageUploadResult.Succeeded();
         }
         catch (Exception ex)
@@ -84,12 +87,13 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
         string storageKey,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(storageKey) || !await EnsureReadyAsync(cancellationToken))
+        var client = _client;
+        if (client is null || string.IsNullOrWhiteSpace(storageKey) || !await EnsureReadyAsync(cancellationToken))
             return;
 
         try
         {
-            await _client!.DeleteObjectAsync(
+            await client.DeleteObjectAsync(
                 new DeleteObjectRequest
                 {
                     BucketName = _settings.BucketName,
@@ -126,7 +130,8 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
 
     private async Task<bool> EnsureReadyAsync(CancellationToken cancellationToken)
     {
-        if (_client is null)
+        var client = _client;
+        if (client is null)
             return false;
 
         if (_bucketInitializationAttempted)
@@ -136,28 +141,7 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
 
         try
         {
-            var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_client, _settings.BucketName);
-            if (!bucketExists)
-            {
-                if (!_settings.CreateBucketIfMissing)
-                {
-                    _logger.LogWarning(
-                        "Object storage bucket does not exist and auto-creation is disabled. Bucket={BucketName}",
-                        _settings.BucketName);
-
-                    _bucketInitializationSucceeded = false;
-                    return false;
-                }
-
-                await _client.PutBucketAsync(
-                    new PutBucketRequest
-                    {
-                        BucketName = _settings.BucketName,
-                        UseClientRegion = true
-                    },
-                    cancellationToken);
-            }
-
+            await EnsureBucketExistsAsync(client, cancellationToken);
             _bucketInitializationSucceeded = true;
             return true;
         }
@@ -171,6 +155,61 @@ public sealed class S3CompatibleObjectStorageService : IObjectStorageService, ID
 
             _bucketInitializationSucceeded = false;
             return false;
+        }
+    }
+
+    private async Task EnsureBucketExistsAsync(
+        IAmazonS3 client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.GetBucketLocationAsync(
+                new GetBucketLocationRequest
+                {
+                    BucketName = _settings.BucketName
+                },
+                cancellationToken);
+        }
+        catch (AmazonS3Exception ex) when (
+            ex.StatusCode == HttpStatusCode.NotFound ||
+            string.Equals(ex.ErrorCode, "NoSuchBucket", StringComparison.Ordinal))
+        {
+            if (!_settings.CreateBucketIfMissing)
+            {
+                _logger.LogWarning(
+                    "Object storage bucket does not exist and auto-creation is disabled. Bucket={BucketName}",
+                    _settings.BucketName);
+
+                throw;
+            }
+
+            await CreateBucketAsync(client, cancellationToken);
+        }
+    }
+
+    private async Task CreateBucketAsync(
+        IAmazonS3 client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.PutBucketAsync(
+                new PutBucketRequest
+                {
+                    BucketName = _settings.BucketName,
+                    UseClientRegion = true
+                },
+                cancellationToken);
+        }
+        catch (AmazonS3Exception ex) when (
+            ex.StatusCode == HttpStatusCode.Conflict ||
+            string.Equals(ex.ErrorCode, "BucketAlreadyOwnedByYou", StringComparison.Ordinal) ||
+            string.Equals(ex.ErrorCode, "BucketAlreadyExists", StringComparison.Ordinal))
+        {
+            _logger.LogDebug(
+                "Object storage bucket already exists. Bucket={BucketName}",
+                _settings.BucketName);
         }
     }
 

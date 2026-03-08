@@ -44,7 +44,7 @@ This repository currently provides:
 1. Start PostgreSQL, LiveKit, and Garage:
 
 ```bash
-docker compose up -d postgres livekit garage
+podman compose up -d postgres livekit garage
 ```
 
 2. Run migrations:
@@ -67,7 +67,20 @@ The default Development config uses:
 - `LiveKit:InternalUrl=http://localhost:7880` for server-to-server API calls
 - `ObjectStorage:Endpoint=http://localhost:3900` for S3-compatible object storage
 
-Before using uploads locally, initialize Garage and create an S3 key + bucket as described in `ops/garage/README.md`.
+Before using uploads locally for the first time, initialize Garage:
+
+```bash
+podman compose exec -T garage /garage -c /etc/garage.toml status
+podman compose exec -T garage /garage -c /etc/garage.toml layout assign <node-id> -z local -c 10G
+podman compose exec -T garage /garage -c /etc/garage.toml layout apply --version 1
+podman compose exec -T garage /garage -c /etc/garage.toml key import --yes -n harmonie-uploads GK0123456789abcdef01234567 abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
+podman compose exec -T garage /garage -c /etc/garage.toml key allow --create-bucket harmonie-uploads
+podman compose exec -T garage /garage -c /etc/garage.toml bucket create harmonie-uploads
+podman compose exec -T garage /garage -c /etc/garage.toml bucket allow harmonie-uploads --read --write --owner --key harmonie-uploads
+```
+
+The Garage credentials above already match `appsettings.Development.json`
+and the API container environment in `docker-compose.yml`.
 
 In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http://livekit:7880` while keeping `LiveKit:PublicUrl=ws://localhost:7880` so browser clients can still connect through the published host port.
 
@@ -103,6 +116,10 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `GET /hubs/realtime` (SignalR negotiate/transport for text channels and voice presence)
 
 In Development, OpenAPI and Scalar are enabled.
+
+`dotnet test` now includes a Garage-backed upload E2E test. Keep `podman` and
+`podman compose` available locally so the test suite can start its isolated
+Garage stack automatically.
 
 ## API Response Model
 
@@ -163,7 +180,7 @@ All agent-specific tooling is grouped under `agents/`.
 1. Build the agent image:
 
 ```bash
-docker build -f agents/Dockerfile.codex -t harmonie-codex .
+podman build -f agents/Dockerfile.codex -t harmonie-codex .
 ```
 
 2. Start an interactive shell with the repository mounted:
@@ -171,7 +188,7 @@ docker build -f agents/Dockerfile.codex -t harmonie-codex .
 PowerShell:
 
 ```powershell
-docker run --rm -it `
+podman run --rm -it `
   --entrypoint bash `
   -v "${PWD}:/workspace" `
   -v "${env:USERPROFILE}\.codex:/root/.codex" `
