@@ -356,7 +356,7 @@ public sealed class EditMessageHandlerTests
 
     private static ChannelMessage CreateMessage(GuildChannelId channelId, UserId authorId)
     {
-        var contentResult = ChannelMessageContent.Create("original content");
+        var contentResult = MessageContent.Create("original content");
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Failed to create message content for tests.");
 

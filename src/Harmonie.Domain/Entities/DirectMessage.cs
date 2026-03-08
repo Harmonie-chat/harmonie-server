@@ -9,7 +9,7 @@ public sealed class DirectMessage : Entity<DirectMessageId>
 
     public UserId AuthorUserId { get; private set; }
 
-    public ChannelMessageContent Content { get; private set; }
+    public MessageContent Content { get; private set; }
 
     public DateTime? DeletedAtUtc { get; private set; }
 
@@ -17,7 +17,7 @@ public sealed class DirectMessage : Entity<DirectMessageId>
         DirectMessageId id,
         ConversationId conversationId,
         UserId authorUserId,
-        ChannelMessageContent content,
+        MessageContent content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc,
         DateTime? deletedAtUtc)
@@ -34,7 +34,7 @@ public sealed class DirectMessage : Entity<DirectMessageId>
     public static Result<DirectMessage> Create(
         ConversationId conversationId,
         UserId authorUserId,
-        ChannelMessageContent content)
+        MessageContent content)
     {
         if (conversationId is null)
             return Result.Failure<DirectMessage>("Conversation ID is required");
@@ -55,7 +55,7 @@ public sealed class DirectMessage : Entity<DirectMessageId>
             deletedAtUtc: null));
     }
 
-    public Result UpdateContent(ChannelMessageContent newContent)
+    public Result UpdateContent(MessageContent newContent)
     {
         if (newContent is null)
             return Result.Failure("New content is required");
@@ -79,7 +79,7 @@ public sealed class DirectMessage : Entity<DirectMessageId>
         DirectMessageId id,
         ConversationId conversationId,
         UserId authorUserId,
-        ChannelMessageContent content,
+        MessageContent content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc,
         DateTime? deletedAtUtc)

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendDirectMessage;
@@ -222,6 +223,117 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task EditDirectMessage_WhenAuthorEditsOwnMessage_ShouldReturnUpdatedMessage()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "original direct", caller.AccessToken);
+
+        var response = await SendAuthorizedPutAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            new EditDirectMessageRequest("updated direct"),
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<EditDirectMessageResponse>();
+        payload.Should().NotBeNull();
+        payload!.MessageId.Should().Be(message.MessageId);
+        payload.ConversationId.Should().Be(conversationId);
+        payload.AuthorUserId.Should().Be(caller.UserId);
+        payload.Content.Should().Be("updated direct");
+        payload.UpdatedAtUtc.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task EditDirectMessage_WhenConversationDoesNotExist_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+
+        var response = await SendAuthorizedPutAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}",
+            new EditDirectMessageRequest("updated direct"),
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
+    }
+
+    [Fact]
+    public async Task EditDirectMessage_WhenCallerIsNotParticipant_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var outsider = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "original direct", participantOne.AccessToken);
+
+        var response = await SendAuthorizedPutAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            new EditDirectMessageRequest("intrusion"),
+            outsider.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
+    }
+
+    [Fact]
+    public async Task EditDirectMessage_WhenCallerIsNotAuthor_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var message = await SendDirectMessageAsync(conversationId, "original direct", participantOne.AccessToken);
+
+        var response = await SendAuthorizedPutAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}",
+            new EditDirectMessageRequest("edited by someone else"),
+            participantTwo.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.EditForbidden);
+    }
+
+    [Fact]
+    public async Task EditDirectMessage_WhenMessageDoesNotExist_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+
+        var response = await SendAuthorizedPutAsync(
+            $"/api/conversations/{conversationId}/messages/{Guid.NewGuid()}",
+            new EditDirectMessageRequest("updated direct"),
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+    }
+
+    [Fact]
+    public async Task EditDirectMessage_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var response = await _client.PutAsJsonAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}",
+            new EditDirectMessageRequest("updated direct"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
     {
         var response = await SendAuthorizedPostAsync(
@@ -284,6 +396,19 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         string accessToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        {
+            Content = JsonContent.Create(payload)
+        };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }

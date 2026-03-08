@@ -14,6 +14,14 @@ public interface IDirectMessageRepository
         DirectMessageCursor? cursor,
         int limit,
         CancellationToken cancellationToken = default);
+
+    Task<DirectMessage?> GetByIdAsync(
+        DirectMessageId messageId,
+        CancellationToken cancellationToken = default);
+
+    Task UpdateContentAsync(
+        DirectMessage message,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record DirectMessageCursor(

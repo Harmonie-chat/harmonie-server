@@ -9,13 +9,13 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
 
     public UserId AuthorUserId { get; private set; }
 
-    public ChannelMessageContent Content { get; private set; }
+    public MessageContent Content { get; private set; }
 
     private ChannelMessage(
         ChannelMessageId id,
         GuildChannelId channelId,
         UserId authorUserId,
-        ChannelMessageContent content,
+        MessageContent content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc)
     {
@@ -30,7 +30,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
     public static Result<ChannelMessage> Create(
         GuildChannelId channelId,
         UserId authorUserId,
-        ChannelMessageContent content)
+        MessageContent content)
     {
         if (channelId is null)
             return Result.Failure<ChannelMessage>("Channel ID is required");
@@ -48,7 +48,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
             updatedAtUtc: null));
     }
 
-    public Result UpdateContent(ChannelMessageContent newContent)
+    public Result UpdateContent(MessageContent newContent)
     {
         if (newContent is null)
             return Result.Failure("New content is required");
@@ -62,7 +62,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         ChannelMessageId id,
         GuildChannelId channelId,
         UserId authorUserId,
-        ChannelMessageContent content,
+        MessageContent content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc)
     {

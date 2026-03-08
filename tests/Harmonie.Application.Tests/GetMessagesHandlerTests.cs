@@ -137,7 +137,7 @@ public sealed class GetMessagesHandlerTests
         string content,
         DateTime createdAtUtc)
     {
-        var contentResult = ChannelMessageContent.Create(content);
+        var contentResult = MessageContent.Create(content);
         if (contentResult.IsFailure)
             throw new InvalidOperationException("Failed to create message content for tests.");
 

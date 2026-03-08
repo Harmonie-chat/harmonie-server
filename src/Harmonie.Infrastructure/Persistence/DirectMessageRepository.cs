@@ -141,9 +141,63 @@ public sealed class DirectMessageRepository : IDirectMessageRepository
         return new DirectMessagePage(items, nextCursor);
     }
 
+    public async Task<DirectMessage?> GetByIdAsync(
+        DirectMessageId messageId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT id AS "Id",
+                                  conversation_id AS "ConversationId",
+                                  author_user_id AS "AuthorUserId",
+                                  content AS "Content",
+                                  created_at_utc AS "CreatedAtUtc",
+                                  updated_at_utc AS "UpdatedAtUtc",
+                                  deleted_at_utc AS "DeletedAtUtc"
+                           FROM direct_messages
+                           WHERE id = @MessageId
+                             AND deleted_at_utc IS NULL
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { MessageId = messageId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QuerySingleOrDefaultAsync<DirectMessageRow>(command);
+        return row is null ? null : MapToDirectMessage(row);
+    }
+
+    public async Task UpdateContentAsync(
+        DirectMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE direct_messages
+                           SET content = @Content,
+                               updated_at_utc = @UpdatedAtUtc
+                           WHERE id = @Id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                Content = message.Content.Value,
+                message.UpdatedAtUtc,
+                Id = message.Id.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private static DirectMessage MapToDirectMessage(DirectMessageRow row)
     {
-        var contentResult = ChannelMessageContent.Create(row.Content);
+        var contentResult = MessageContent.Create(row.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Stored direct message content is invalid.");
 

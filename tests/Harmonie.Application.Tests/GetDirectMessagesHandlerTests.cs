@@ -133,7 +133,7 @@ public sealed class GetDirectMessagesHandlerTests
         string content,
         DateTime createdAtUtc)
     {
-        var contentResult = ChannelMessageContent.Create(content);
+        var contentResult = MessageContent.Create(content);
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Failed to create test direct message content.");
 

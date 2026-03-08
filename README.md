@@ -13,6 +13,7 @@ This repository currently provides:
 - Direct conversation open/get by user pair
 - Direct conversation listing for the current user
 - Direct message retrieval in conversations with cursor pagination
+- Direct message editing in conversations
 - Direct message sending in conversations
 - Voice channel join token issuance via LiveKit
 - Voice presence notifications via LiveKit webhooks and SignalR
@@ -79,6 +80,7 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `POST /api/conversations`
 - `GET /api/conversations`
 - `GET /api/conversations/{conversationId}/messages`
+- `PUT /api/conversations/{conversationId}/messages/{messageId}`
 - `POST /api/conversations/{conversationId}/messages`
 - `POST /api/channels/{channelId}/voice/join`
 - `POST /api/webhooks/livekit`

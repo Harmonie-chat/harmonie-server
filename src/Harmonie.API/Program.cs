@@ -14,6 +14,7 @@ using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
+using Harmonie.Application.Features.Conversations.EditDirectMessage;
 using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
@@ -221,6 +222,7 @@ UpdateMyProfileEndpoint.Map(app);
 OpenConversationEndpoint.Map(app);
 ListConversationsEndpoint.Map(app);
 GetDirectMessagesEndpoint.Map(app);
+EditDirectMessageEndpoint.Map(app);
 SendDirectMessageEndpoint.Map(app);
 app.MapHub<RealtimeHub>("/hubs/realtime");
 

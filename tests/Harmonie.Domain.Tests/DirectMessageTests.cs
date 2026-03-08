@@ -10,7 +10,7 @@ public sealed class DirectMessageTests
     [Fact]
     public void Create_WithValidInput_ShouldSucceed()
     {
-        var contentResult = ChannelMessageContent.Create("hello there");
+        var contentResult = MessageContent.Create("hello there");
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 
@@ -27,7 +27,7 @@ public sealed class DirectMessageTests
     [Fact]
     public void Delete_WhenMessageAlreadyDeleted_ShouldFail()
     {
-        var contentResult = ChannelMessageContent.Create("hello there");
+        var contentResult = MessageContent.Create("hello there");
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 

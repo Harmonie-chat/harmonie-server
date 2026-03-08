@@ -43,7 +43,7 @@ public sealed class EditMessageHandler
             messageId,
             callerId);
 
-        var contentResult = ChannelMessageContent.Create(request.Content);
+        var contentResult = MessageContent.Create(request.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
         {
             _logger.LogWarning(
@@ -179,7 +179,7 @@ public sealed class EditMessageHandler
         if (rawContent is null || rawContent.Trim().Length == 0)
             return ApplicationErrorCodes.Message.ContentEmpty;
 
-        return rawContent.Trim().Length > ChannelMessageContent.MaxLength
+        return rawContent.Trim().Length > MessageContent.MaxLength
             ? ApplicationErrorCodes.Message.ContentTooLong
             : ApplicationErrorCodes.Common.DomainRuleViolation;
     }

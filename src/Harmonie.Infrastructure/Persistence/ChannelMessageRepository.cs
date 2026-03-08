@@ -218,7 +218,7 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
 
     private static ChannelMessage MapToChannelMessage(ChannelMessageRow row)
     {
-        var contentResult = ChannelMessageContent.Create(row.Content);
+        var contentResult = MessageContent.Create(row.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Stored channel message content is invalid.");
 

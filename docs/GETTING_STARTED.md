@@ -59,6 +59,7 @@ When you run through `docker-compose`, the API container uses `http://livekit:78
 - Open direct conversation: `POST /api/conversations`
 - List direct conversations: `GET /api/conversations`
 - Read direct messages: `GET /api/conversations/{conversationId}/messages`
+- Edit direct message: `PUT /api/conversations/{conversationId}/messages/{messageId}`
 - Send direct message: `POST /api/conversations/{conversationId}/messages`
 - Send message: `POST /api/channels/{channelId}/messages`
 - Read messages: `GET /api/channels/{channelId}/messages`
