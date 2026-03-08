@@ -52,7 +52,7 @@ public sealed class UpdateChannelHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channelId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChannelAccessContext?)null);
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var request = new UpdateChannelRequest(Name: "new-name");
         var response = await _handler.HandleAsync(channelId, callerId, request);
 
         response.Success.Should().BeFalse();
@@ -70,7 +70,7 @@ public sealed class UpdateChannelHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var request = new UpdateChannelRequest(Name: "new-name");
         var response = await _handler.HandleAsync(channel.Id, callerId, request);
 
         response.Success.Should().BeFalse();
@@ -88,7 +88,7 @@ public sealed class UpdateChannelHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var request = new UpdateChannelRequest(Name: "new-name");
         var response = await _handler.HandleAsync(channel.Id, callerId, request);
 
         response.Success.Should().BeFalse();
@@ -114,7 +114,7 @@ public sealed class UpdateChannelHandlerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "existing-channel" };
+        var request = new UpdateChannelRequest(Name: "existing-channel");
         var response = await _handler.HandleAsync(channel.Id, adminId, request);
 
         response.Success.Should().BeFalse();
@@ -140,7 +140,7 @@ public sealed class UpdateChannelHandlerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var request = new UpdateChannelRequest(Name: "new-name");
         var response = await _handler.HandleAsync(channel.Id, adminId, request);
 
         response.Success.Should().BeTrue();
@@ -160,7 +160,7 @@ public sealed class UpdateChannelHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
 
-        var request = new UpdateChannelRequest { PositionIsSet = true, Position = 5 };
+        var request = new UpdateChannelRequest(Position: 5);
         var response = await _handler.HandleAsync(channel.Id, adminId, request);
 
         response.Success.Should().BeTrue();
@@ -187,7 +187,7 @@ public sealed class UpdateChannelHandlerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var request = new UpdateChannelRequest { NameIsSet = true, Name = "new-name" };
+        var request = new UpdateChannelRequest(Name: "new-name");
         await _handler.HandleAsync(channel.Id, adminId, request);
 
         _guildChannelRepositoryMock.Verify(
@@ -221,6 +221,37 @@ public sealed class UpdateChannelHandlerTests
                 It.IsAny<string>(),
                 It.IsAny<GuildChannelId>(),
                 It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _guildChannelRepositoryMock.Verify(
+            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _unitOfWorkMock.Verify(
+            x => x.BeginAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenFieldsAreExplicitlyNull_ShouldTreatThemAsNotProvided()
+    {
+        var channel = CreateChannel("unchanged", position: 2);
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
+
+        var request = new UpdateChannelRequest(Name: null, Position: null);
+        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Name.Should().Be("unchanged");
+        response.Data.Position.Should().Be(2);
+
+        _guildChannelRepositoryMock.Verify(
+            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

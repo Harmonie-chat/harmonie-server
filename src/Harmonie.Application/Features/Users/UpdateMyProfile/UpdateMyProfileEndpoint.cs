@@ -17,6 +17,24 @@ public static class UpdateMyProfileEndpoint
             .RequireAuthorization()
             .WithSummary("Update my profile")
             .WithDescription("Updates display name, bio, and avatar URL for the authenticated user.")
+            .WithJsonRequestBodyDocumentation(
+                "Partial profile update. Omit a field to keep its current value. Send null for bio or avatarUrl to clear the value.",
+                typeof(UpdateMyProfileOpenApiRequest),
+                (
+                    "updateDisplayName",
+                    "Update only the display name",
+                    new
+                    {
+                        displayName = "Alice Harmonie"
+                    }),
+                (
+                    "clearProfileFields",
+                    "Clear bio and avatar URL",
+                    new
+                    {
+                        bio = (string?)null,
+                        avatarUrl = (string?)null
+                    }))
             .Produces<UpdateMyProfileResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -46,4 +64,9 @@ public static class UpdateMyProfileEndpoint
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
+
+    internal sealed record UpdateMyProfileOpenApiRequest(
+        string? DisplayName,
+        string? Bio,
+        string? AvatarUrl);
 }

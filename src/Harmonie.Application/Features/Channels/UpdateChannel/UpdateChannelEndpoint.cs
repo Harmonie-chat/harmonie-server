@@ -18,6 +18,22 @@ public static class UpdateChannelEndpoint
             .RequireAuthorization()
             .WithSummary("Update a guild channel")
             .WithDescription("Updates the name and/or position of a channel. Only guild admins can update channels.")
+            .WithJsonRequestBodyDocumentation(
+                "Partial channel update. Omit a field, or send it as null, to keep its current value.",
+                (
+                    "renameChannel",
+                    "Rename a channel",
+                    new
+                    {
+                        name = "announcements"
+                    }),
+                (
+                    "moveChannel",
+                    "Move a channel",
+                    new
+                    {
+                        position = 3
+                    }))
             .Produces<UpdateChannelResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,

@@ -74,7 +74,7 @@ public sealed class UpdateChannelHandler
 
         var channel = ctx.Channel;
 
-        if (request.NameIsSet && request.Name is not null)
+        if (request.Name is not null)
         {
             var nameConflict = await _guildChannelRepository.ExistsByNameInGuildAsync(
                 channel.GuildId,
@@ -104,7 +104,7 @@ public sealed class UpdateChannelHandler
             }
         }
 
-        if (request.PositionIsSet && request.Position is not null)
+        if (request.Position is not null)
         {
             var positionResult = channel.UpdatePosition(request.Position.Value);
             if (positionResult.IsFailure)
@@ -115,9 +115,12 @@ public sealed class UpdateChannelHandler
             }
         }
 
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _guildChannelRepository.UpdateAsync(channel, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (request.Name is not null || request.Position is not null)
+        {
+            await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+            await _guildChannelRepository.UpdateAsync(channel, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
 
         _logger.LogInformation(
             "UpdateChannel succeeded. ChannelId={ChannelId}, CallerId={CallerId}",

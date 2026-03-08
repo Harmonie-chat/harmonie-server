@@ -11,11 +11,11 @@ public sealed class UpdateChannelValidator : AbstractValidator<UpdateChannelRequ
             .WithMessage("Channel name cannot be empty")
             .MaximumLength(100)
             .WithMessage("Channel name cannot exceed 100 characters")
-            .When(x => x.NameIsSet);
+            .When(x => x.Name is not null);
 
         RuleFor(x => x.Position)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Channel position cannot be negative")
-            .When(x => x.PositionIsSet && x.Position is not null);
+            .When(x => x.Position is not null);
     }
 }

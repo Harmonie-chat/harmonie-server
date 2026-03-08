@@ -107,6 +107,24 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task UpdateChannel_WhenFieldsAreExplicitlyNull_ShouldTreatThemAsNotProvided()
+    {
+        var owner = await RegisterAsync();
+        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "stable-channel", position: 3);
+
+        var updateResponse = await SendAuthorizedPatchAsync(
+            $"/api/channels/{channelId}",
+            new { name = (string?)null, position = (int?)null },
+            owner.AccessToken);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await updateResponse.Content.ReadFromJsonAsync<UpdateChannelResponse>();
+        payload.Should().NotBeNull();
+        payload!.Name.Should().Be("stable-channel");
+        payload.Position.Should().Be(3);
+    }
+
+    [Fact]
     public async Task UpdateChannel_WhenMemberTriesToUpdate_ShouldReturn403()
     {
         var owner = await RegisterAsync();

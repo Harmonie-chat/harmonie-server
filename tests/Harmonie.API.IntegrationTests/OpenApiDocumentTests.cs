@@ -81,4 +81,71 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         conflictExamples?[ApplicationErrorCodes.Auth.DuplicateUsername]?["value"]?["detail"]?.GetValue<string>()
             .Should().Be("Duplicate username");
     }
+
+    [Fact]
+    public async Task OpenApiDocument_ShouldDescribePartialUpdateRequestBodies()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var document = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+        document.Should().NotBeNull();
+
+        if (document is null)
+            throw new InvalidOperationException("The OpenAPI document could not be parsed.");
+
+        var updateMyProfileSchema = ResolveRequestBodySchema(document, "/api/users/me", "put");
+        updateMyProfileSchema.Should().NotBeNull();
+        updateMyProfileSchema!["properties"]?["displayName"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["bio"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["avatarUrl"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["displayNameIsSet"].Should().BeNull();
+        updateMyProfileSchema["properties"]?["bioIsSet"].Should().BeNull();
+        updateMyProfileSchema["properties"]?["avatarUrlIsSet"].Should().BeNull();
+
+        var updateChannelSchema = ResolveRequestBodySchema(document, "/api/channels/{channelId}", "patch");
+        updateChannelSchema.Should().NotBeNull();
+        updateChannelSchema!["properties"]?["name"].Should().NotBeNull();
+        updateChannelSchema["properties"]?["position"].Should().NotBeNull();
+        updateChannelSchema["properties"]?["nameIsSet"].Should().BeNull();
+        updateChannelSchema["properties"]?["positionIsSet"].Should().BeNull();
+
+        var updateMyProfileRequestBody = document["paths"]?["/api/users/me"]?["put"]?["requestBody"];
+        updateMyProfileRequestBody.Should().NotBeNull();
+        updateMyProfileRequestBody!["description"]?.GetValue<string>()
+            .Should().Contain("Omit a field to keep its current value");
+        updateMyProfileRequestBody["content"]?["application/json"]?["example"]?["displayName"]?.GetValue<string>()
+            .Should().Be("Alice Harmonie");
+        updateMyProfileRequestBody["content"]?["application/json"]?["examples"]?["clearProfileFields"]?["value"]?
+            .ToJsonString().Should().Contain("\"bio\":null");
+
+        var updateChannelRequestBody = document["paths"]?["/api/channels/{channelId}"]?["patch"]?["requestBody"];
+        updateChannelRequestBody.Should().NotBeNull();
+        updateChannelRequestBody!["description"]?.GetValue<string>()
+            .Should().Contain("send it as null");
+        updateChannelRequestBody["content"]?["application/json"]?["example"]?["name"]?.GetValue<string>()
+            .Should().Be("announcements");
+    }
+
+    private static JsonNode? ResolveRequestBodySchema(JsonNode document, string path, string method)
+    {
+        var schema = document["paths"]?[path]?[method]?["requestBody"]?["content"]?["application/json"]?["schema"];
+        if (schema is null)
+            return null;
+
+        var reference = schema["$ref"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(reference))
+            return schema;
+
+        const string componentsPrefix = "#/components/schemas/";
+        if (!reference.StartsWith(componentsPrefix, StringComparison.Ordinal))
+            return schema;
+
+        var schemaName = reference[componentsPrefix.Length..];
+        return document["components"]?["schemas"]?[schemaName];
+    }
 }
