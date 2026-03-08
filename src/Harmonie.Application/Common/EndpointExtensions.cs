@@ -194,20 +194,35 @@ public static class EndpointExtensions
         this RouteHandlerBuilder builder,
         string description,
         params (string Name, string Summary, object Value)[] examples)
+        => builder.WithJsonRequestBodyDocumentation(description, null, examples);
+
+    public static RouteHandlerBuilder WithJsonRequestBodyDocumentation(
+        this RouteHandlerBuilder builder,
+        string description,
+        Type? schemaType = null,
+        params (string Name, string Summary, object Value)[] examples)
     {
-        return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+        return builder.AddOpenApiOperationTransformer(async (operation, context, cancellationToken) =>
         {
             if (operation?.RequestBody?.Content is null
                 || !operation.RequestBody.Content.TryGetValue("application/json", out var mediaType)
                 || mediaType is null)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             operation.RequestBody.Description = description;
 
+            if (schemaType is not null)
+            {
+                var bodyParameter = context.Description.ParameterDescriptions
+                    .FirstOrDefault(parameter => string.Equals(parameter.Source?.Id, "Body", StringComparison.Ordinal));
+
+                mediaType.Schema = await context.GetOrCreateSchemaAsync(schemaType, bodyParameter, cancellationToken);
+            }
+
             if (examples.Length == 0)
-                return Task.CompletedTask;
+                return;
 
             mediaType.Example = JsonNode.Parse(JsonSerializer.Serialize(examples[0].Value));
             mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
@@ -221,7 +236,6 @@ public static class EndpointExtensions
                 };
             }
 
-            return Task.CompletedTask;
         });
     }
 

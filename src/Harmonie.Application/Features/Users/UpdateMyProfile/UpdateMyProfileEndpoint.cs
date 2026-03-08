@@ -17,9 +17,9 @@ public static class UpdateMyProfileEndpoint
             .RequireAuthorization()
             .WithSummary("Update my profile")
             .WithDescription("Updates display name, bio, and avatar URL for the authenticated user.")
-            .Accepts<UpdateMyProfileOpenApiRequest>("application/json")
             .WithJsonRequestBodyDocumentation(
                 "Partial profile update. Omit a field to keep its current value. Send null for bio or avatarUrl to clear the value.",
+                typeof(UpdateMyProfileOpenApiRequest),
                 (
                     "updateDisplayName",
                     "Update only the display name",
