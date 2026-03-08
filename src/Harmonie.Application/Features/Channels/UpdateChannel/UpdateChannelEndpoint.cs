@@ -18,6 +18,7 @@ public static class UpdateChannelEndpoint
             .RequireAuthorization()
             .WithSummary("Update a guild channel")
             .WithDescription("Updates the name and/or position of a channel. Only guild admins can update channels.")
+            .Accepts<UpdateChannelOpenApiRequest>("application/json")
             .Produces<UpdateChannelResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -66,4 +67,8 @@ public static class UpdateChannelEndpoint
         var response = await handler.HandleAsync(parsedChannelId, callerId, request, cancellationToken);
         return response.ToHttpResult();
     }
+
+    internal sealed record UpdateChannelOpenApiRequest(
+        string? Name,
+        int? Position);
 }

@@ -17,6 +17,7 @@ public static class UpdateMyProfileEndpoint
             .RequireAuthorization()
             .WithSummary("Update my profile")
             .WithDescription("Updates display name, bio, and avatar URL for the authenticated user.")
+            .Accepts<UpdateMyProfileOpenApiRequest>("application/json")
             .Produces<UpdateMyProfileResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -46,4 +47,9 @@ public static class UpdateMyProfileEndpoint
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
+
+    internal sealed record UpdateMyProfileOpenApiRequest(
+        string? DisplayName,
+        string? Bio,
+        string? AvatarUrl);
 }
