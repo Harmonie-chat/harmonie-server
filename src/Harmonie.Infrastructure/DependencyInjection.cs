@@ -2,6 +2,7 @@ using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure.Authentication;
 using Harmonie.Infrastructure.Configuration;
 using Harmonie.Infrastructure.LiveKit;
+using Harmonie.Infrastructure.ObjectStorage;
 using Harmonie.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,12 +15,14 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.Configure<DatabaseSettings>(configuration.GetSection("Database"));
         services.Configure<LiveKitSettings>(configuration.GetSection("LiveKit"));
+        services.Configure<ObjectStorageSettings>(configuration.GetSection("ObjectStorage"));
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
         services.AddScoped<ILiveKitWebhookReceiver, LiveKitWebhookReceiver>();
         services.AddScoped<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
         services.AddScoped<ILiveKitRoomService, LiveKitRoomService>();
+        services.AddScoped<IObjectStorageService, LocalFileSystemObjectStorageService>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -35,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IChannelMessageRepository, ChannelMessageRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
+        services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         return services;
     }
 }

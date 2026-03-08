@@ -94,7 +94,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     needs: validate-pr-issue-link
-    
+
     services:
       postgres:
         image: postgres:18.2
@@ -112,7 +112,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -141,25 +141,31 @@ jobs:
         echo "LiveKit did not become ready in time." >&2
         docker logs harmonie-livekit || true
         exit 1
-    
+
     - name: Restore dependencies
       run: dotnet restore
-    
+
     - name: Build
       run: dotnet build --no-restore --configuration Release
-      
+
     - name: Run database migrations
       run: dotnet run --project tools/Harmonie.Migrations/Harmonie.Migrations.csproj --configuration Release
       env:
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
         ASPNETCORE_ENVIRONMENT: Development
-    
+
     - name: Run tests
       run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage"
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
-    
+
+    - name: Stop containers
+      if: always()
+      run: |
+        docker stop harmonie-livekit || true
+        docker rm harmonie-livekit || true
+
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
       with:

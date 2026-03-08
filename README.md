@@ -22,6 +22,7 @@ This repository currently provides:
 - Text messaging (send + read with cursor-based pagination)
 - Guild message full-text search with optional filters and cursor pagination
 - User search by username/display name with optional guild scoping
+- File upload with persisted metadata and local filesystem storage
 - SignalR real-time delivery for text channel messages
 - Rate limiting for message posting
 - Unit and integration tests for auth, guild flows, messaging, and real-time delivery
@@ -42,7 +43,7 @@ This repository currently provides:
 1. Start PostgreSQL and LiveKit:
 
 ```bash
-docker-compose up -d postgres livekit
+podman compose up -d postgres livekit
 ```
 
 2. Run migrations:
@@ -63,8 +64,27 @@ dotnet run --project src/Harmonie.API
 The default Development config uses:
 - `LiveKit:PublicUrl=ws://localhost:7880` for tokens returned to clients
 - `LiveKit:InternalUrl=http://localhost:7880` for server-to-server API calls
+- `ObjectStorage:LocalBasePath=uploads` for uploaded files on disk
+- `ObjectStorage:LocalBaseUrl=http://localhost:5000/files` for public file URLs returned by the API
+
+The API serves uploaded files itself from `/files/*`. In `docker-compose`, the
+API container stores them in `/app/uploads`, backed by the `uploads-data`
+volume.
 
 In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http://livekit:7880` while keeping `LiveKit:PublicUrl=ws://localhost:7880` so browser clients can still connect through the published host port.
+
+### Upload Storage
+
+```json
+"ObjectStorage": {
+  "LocalBasePath": "/var/harmonie/uploads",
+  "LocalBaseUrl": "http://localhost:5001/files"
+}
+```
+
+No external object storage service is required right now. If upload volume or
+deployment topology eventually justifies it, the storage abstraction can later
+be backed by an S3-compatible service.
 
 4. Check endpoints:
 - `GET /health`
@@ -89,6 +109,7 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `PUT /api/conversations/{conversationId}/messages/{messageId}`
 - `DELETE /api/conversations/{conversationId}/messages/{messageId}`
 - `POST /api/conversations/{conversationId}/messages`
+- `POST /api/uploads`
 - `POST /api/channels/{channelId}/voice/join`
 - `POST /api/webhooks/livekit`
 - `GET /api/users/me`
@@ -97,6 +118,9 @@ In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http:
 - `GET /hubs/realtime` (SignalR negotiate/transport for text channels and voice presence)
 
 In Development, OpenAPI and Scalar are enabled.
+
+`dotnet test` includes a local-filesystem upload E2E test. No external object
+storage service is required for the current suite.
 
 ## API Response Model
 
@@ -157,7 +181,7 @@ All agent-specific tooling is grouped under `agents/`.
 1. Build the agent image:
 
 ```bash
-docker build -f agents/Dockerfile.codex -t harmonie-codex .
+podman build -f agents/Dockerfile.codex -t harmonie-codex .
 ```
 
 2. Start an interactive shell with the repository mounted:
@@ -165,7 +189,7 @@ docker build -f agents/Dockerfile.codex -t harmonie-codex .
 PowerShell:
 
 ```powershell
-docker run --rm -it `
+podman run --rm -it `
   --entrypoint bash `
   -v "${PWD}:/workspace" `
   -v "${env:USERPROFILE}\.codex:/root/.codex" `

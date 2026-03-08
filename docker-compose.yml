@@ -70,8 +70,13 @@ services:
       - LiveKit__InternalUrl=http://livekit:7880
       - LiveKit__ApiKey=devkey
       - LiveKit__ApiSecret=devsecret-that-is-long-enough-for-hmac-signing
+      - Uploads__MaxFileSizeBytes=26214400
+      - ObjectStorage__LocalBasePath=/app/uploads
+      - ObjectStorage__LocalBaseUrl=http://localhost:5001/files
     ports:
       - "5001:80"
+    volumes:
+      - uploads-data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +89,8 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
+  uploads-data:
     driver: local
 
 networks:

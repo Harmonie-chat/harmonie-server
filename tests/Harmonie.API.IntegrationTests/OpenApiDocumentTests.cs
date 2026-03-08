@@ -131,9 +131,42 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
             .Should().Be("announcements");
     }
 
+    [Fact]
+    public async Task OpenApiDocument_ShouldDescribeUploadFileAsMultipartFormData()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var document = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+        document.Should().NotBeNull();
+
+        var requestBody = document!["paths"]?["/api/uploads"]?["post"]?["requestBody"];
+        requestBody.Should().NotBeNull();
+        requestBody!["content"]?["multipart/form-data"].Should().NotBeNull();
+
+        var schema = requestBody["content"]?["multipart/form-data"]?["schema"];
+        schema.Should().NotBeNull();
+
+        var resolvedSchema = ResolveSchema(document!, schema);
+        resolvedSchema.Should().NotBeNull();
+        resolvedSchema!["properties"]?["file"].Should().NotBeNull();
+    }
+
     private static JsonNode? ResolveRequestBodySchema(JsonNode document, string path, string method)
     {
         var schema = document["paths"]?[path]?[method]?["requestBody"]?["content"]?["application/json"]?["schema"];
+        if (schema is null)
+            return null;
+
+        return ResolveSchema(document, schema);
+    }
+
+    private static JsonNode? ResolveSchema(JsonNode document, JsonNode? schema)
+    {
         if (schema is null)
             return null;
 

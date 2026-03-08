@@ -73,6 +73,11 @@ public static class ApplicationErrorCodes
         public const string NotFound = "USER_NOT_FOUND";
     }
 
+    public static class Upload
+    {
+        public const string StorageUnavailable = "UPLOAD_STORAGE_UNAVAILABLE";
+    }
+
     public static class Conversation
     {
         public const string NotFound = "CONVERSATION_NOT_FOUND";

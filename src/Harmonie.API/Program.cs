@@ -36,6 +36,7 @@ using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.SearchUsers;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
+using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Harmonie.Application.Interfaces;
 using Harmonie.Infrastructure;
@@ -48,6 +49,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +64,7 @@ builder.Host.UseSerilog();
 
 // Add layers
 builder.Services.AddApplication();
+builder.Services.Configure<UploadOptions>(builder.Configuration.GetSection("Uploads"));
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
@@ -182,6 +185,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+var localBasePath = app.Configuration["ObjectStorage:LocalBasePath"] ?? "uploads";
+if (!Path.IsPathRooted(localBasePath))
+    localBasePath = Path.GetFullPath(localBasePath);
+Directory.CreateDirectory(localBasePath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(localBasePath),
+    RequestPath = "/files"
+});
+
 // ============================================================
 // MAP ENDPOINTS - Vertical Slice Architecture
 // ============================================================
@@ -225,6 +238,7 @@ DeleteMessageEndpoint.Map(app);
 GetMyProfileEndpoint.Map(app);
 SearchUsersEndpoint.Map(app);
 UpdateMyProfileEndpoint.Map(app);
+UploadFileEndpoint.Map(app);
 OpenConversationEndpoint.Map(app);
 ListConversationsEndpoint.Map(app);
 GetDirectMessagesEndpoint.Map(app);
