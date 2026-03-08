@@ -113,6 +113,65 @@ public sealed class UserRepository : IUserRepository
         return await conn.QueryFirstAsync<UserDuplicateCheck>(cmd);
     }
 
+    public async Task<IReadOnlyList<SearchUserResult>> SearchUsersAsync(
+        SearchUsersQuery query,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (query.Limit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(query.Limit), "Limit must be positive.");
+
+        var conn = await _dbSession.GetOpenConnectionAsync(ct);
+        var parameters = new DynamicParameters();
+        parameters.Add("PrefixPattern", $"{query.SearchText}%");
+        parameters.Add("ContainsPattern", $"%{query.SearchText}%");
+        parameters.Add("Limit", query.Limit);
+
+        var guildJoin = string.Empty;
+        if (query.GuildId is not null)
+        {
+            guildJoin = "INNER JOIN guild_members gm ON gm.user_id = u.id AND gm.guild_id = @GuildId";
+            parameters.Add("GuildId", query.GuildId.Value);
+        }
+
+        var sql = $"""
+                   SELECT u.id AS "UserId",
+                          u.username AS "Username",
+                          u.display_name AS "DisplayName",
+                          u.avatar_url AS "AvatarUrl",
+                          u.is_active AS "IsActive"
+                   FROM users u
+                   {guildJoin}
+                   WHERE u.deleted_at IS NULL
+                     AND u.is_active = TRUE
+                     AND (
+                         u.username ILIKE @PrefixPattern
+                         OR COALESCE(u.display_name, '') ILIKE @PrefixPattern
+                         OR u.username ILIKE @ContainsPattern
+                         OR COALESCE(u.display_name, '') ILIKE @ContainsPattern)
+                   ORDER BY CASE
+                                WHEN u.username ILIKE @PrefixPattern THEN 0
+                                WHEN COALESCE(u.display_name, '') ILIKE @PrefixPattern THEN 1
+                                WHEN u.username ILIKE @ContainsPattern THEN 2
+                                WHEN COALESCE(u.display_name, '') ILIKE @ContainsPattern THEN 3
+                                ELSE 4
+                            END,
+                            u.username ASC,
+                            u.id ASC
+                   LIMIT @Limit
+                   """;
+
+        var cmd = new CommandDefinition(
+            sql,
+            parameters,
+            transaction: _dbSession.Transaction,
+            cancellationToken: ct);
+
+        var rows = await conn.QueryAsync<SearchUserRow>(cmd);
+        return rows.Select(MapToSearchUserResult).ToArray();
+    }
+
     public async Task AddAsync(User user, CancellationToken ct = default)
     {
         const string sql = @"
@@ -251,5 +310,19 @@ public sealed class UserRepository : IUserRepository
             userRow.Bio,
             userRow.CreatedAtUtc,
             userRow.UpdatedAtUtc);
+    }
+
+    private static SearchUserResult MapToSearchUserResult(SearchUserRow row)
+    {
+        var usernameResult = Username.Create(row.Username);
+        if (usernameResult.IsFailure || usernameResult.Value is null)
+            throw new InvalidOperationException("Stored search username is invalid.");
+
+        return new SearchUserResult(
+            UserId: UserId.From(row.UserId),
+            Username: usernameResult.Value,
+            DisplayName: row.DisplayName,
+            AvatarUrl: row.AvatarUrl,
+            IsActive: row.IsActive);
     }
 }

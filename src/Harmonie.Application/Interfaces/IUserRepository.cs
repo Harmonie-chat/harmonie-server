@@ -5,6 +5,18 @@ namespace Harmonie.Application.Interfaces;
 
 public sealed record UserDuplicateCheck(bool EmailExists, bool UsernameExists);
 
+public sealed record SearchUsersQuery(
+    string SearchText,
+    GuildId? GuildId,
+    int Limit);
+
+public sealed record SearchUserResult(
+    UserId UserId,
+    Username Username,
+    string? DisplayName,
+    string? AvatarUrl,
+    bool IsActive);
+
 /// <summary>
 /// Repository interface for User aggregate.
 /// This is a "port" in Hexagonal Architecture - the infrastructure layer provides the implementation.
@@ -40,6 +52,13 @@ public interface IUserRepository
     /// Check email and username uniqueness in a single query
     /// </summary>
     Task<UserDuplicateCheck> CheckDuplicatesAsync(Email email, Username username, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Search active users by username or display name, optionally scoped to a guild.
+    /// </summary>
+    Task<IReadOnlyList<SearchUserResult>> SearchUsersAsync(
+        SearchUsersQuery query,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Add a new user
