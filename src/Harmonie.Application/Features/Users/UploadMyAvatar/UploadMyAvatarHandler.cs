@@ -13,15 +13,18 @@ public sealed class UploadMyAvatarHandler
 
     private readonly IUserRepository _userRepository;
     private readonly IObjectStorageService _objectStorageService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UploadMyAvatarHandler> _logger;
 
     public UploadMyAvatarHandler(
         IUserRepository userRepository,
         IObjectStorageService objectStorageService,
+        IUnitOfWork unitOfWork,
         ILogger<UploadMyAvatarHandler> logger)
     {
         _userRepository = userRepository;
         _objectStorageService = objectStorageService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -87,6 +90,7 @@ public sealed class UploadMyAvatarHandler
 
         try
         {
+            await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
             await _userRepository.UpdateProfileAsync(
                 user.Id,
                 displayNameIsSet: false,
@@ -97,6 +101,7 @@ public sealed class UploadMyAvatarHandler
                 avatarUrl: avatarUrl,
                 user.UpdatedAtUtc,
                 cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch
         {

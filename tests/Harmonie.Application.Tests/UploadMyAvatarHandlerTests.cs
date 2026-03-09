@@ -16,12 +16,24 @@ public sealed class UploadMyAvatarHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly UploadMyAvatarHandler _handler;
 
     public UploadMyAvatarHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _objectStorageServiceMock = new Mock<IObjectStorageService>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _transactionMock = new Mock<IUnitOfWorkTransaction>();
+
+        _transactionMock
+            .Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _unitOfWorkMock
+            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_transactionMock.Object);
 
         _objectStorageServiceMock
             .Setup(x => x.BuildPublicUrl(It.IsAny<string>()))
@@ -30,6 +42,7 @@ public sealed class UploadMyAvatarHandlerTests
         _handler = new UploadMyAvatarHandler(
             _userRepositoryMock.Object,
             _objectStorageServiceMock.Object,
+            _unitOfWorkMock.Object,
             NullLogger<UploadMyAvatarHandler>.Instance);
     }
 
@@ -124,6 +137,8 @@ public sealed class UploadMyAvatarHandlerTests
                 It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
