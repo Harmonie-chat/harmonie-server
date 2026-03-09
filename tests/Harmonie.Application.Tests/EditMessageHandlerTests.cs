@@ -366,6 +366,7 @@ public sealed class EditMessageHandlerTests
             authorId,
             contentResult.Value,
             DateTime.UtcNow,
-            updatedAtUtc: null);
+            updatedAtUtc: null,
+            deletedAtUtc: null);
     }
 }

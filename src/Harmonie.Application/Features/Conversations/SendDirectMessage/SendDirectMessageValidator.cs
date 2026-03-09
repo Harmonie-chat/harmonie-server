@@ -10,7 +10,7 @@ public sealed class SendDirectMessageValidator : AbstractValidator<SendDirectMes
         RuleFor(x => x.Content)
             .NotEmpty()
             .WithMessage("Content is required")
-            .Must(content => content is null || content.Trim().Length <= MessageContent.MaxLength)
+            .MaximumLength(MessageContent.MaxLength)
             .WithMessage($"Content cannot exceed {MessageContent.MaxLength} characters");
     }
 }

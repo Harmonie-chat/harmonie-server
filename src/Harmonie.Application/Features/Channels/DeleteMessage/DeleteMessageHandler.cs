@@ -104,8 +104,16 @@ public sealed class DeleteMessageHandler
                 "You can only delete your own messages unless you are a guild admin");
         }
 
+        var deleteResult = message.Delete();
+        if (deleteResult.IsFailure)
+        {
+            return ApplicationResponse<bool>.Fail(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                deleteResult.Error ?? "Message deletion failed");
+        }
+
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _channelMessageRepository.DeleteAsync(messageId, cancellationToken);
+        await _channelMessageRepository.SoftDeleteAsync(message, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation(
@@ -123,18 +131,12 @@ public sealed class DeleteMessageHandler
     private async Task NotifyMessageDeletedSafelyAsync(
         TextChannelMessageDeletedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _textChannelNotifier.NotifyMessageDeletedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "DeleteMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-                notification.MessageId,
-                notification.ChannelId);
-        }
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _textChannelNotifier.NotifyMessageDeletedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "DeleteMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+            notification.MessageId,
+            notification.ChannelId);
     }
 }

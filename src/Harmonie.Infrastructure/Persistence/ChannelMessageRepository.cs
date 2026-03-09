@@ -1,3 +1,4 @@
+using System.Text;
 using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
@@ -151,72 +152,71 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
-        var filters = new List<string>
-        {
-            "gc.guild_id = @GuildId",
-            "cm.deleted_at_utc IS NULL",
-            "u.deleted_at IS NULL",
-            "cm.search_vector @@ sq.ts_query"
-        };
 
         var parameters = new DynamicParameters();
         parameters.Add("GuildId", query.GuildId.Value);
         parameters.Add("SearchText", query.SearchText);
         parameters.Add("Take", take);
 
+        var sqlBuilder = new StringBuilder(
+            """
+            WITH search_query AS (
+                SELECT websearch_to_tsquery('simple', @SearchText) AS ts_query
+            )
+            SELECT cm.id AS "MessageId",
+                   cm.channel_id AS "ChannelId",
+                   gc.name AS "ChannelName",
+                   cm.author_user_id AS "AuthorUserId",
+                   u.username AS "AuthorUsername",
+                   u.display_name AS "AuthorDisplayName",
+                   cm.content AS "Content",
+                   cm.created_at_utc AS "CreatedAtUtc",
+                   cm.updated_at_utc AS "UpdatedAtUtc"
+            FROM channel_messages cm
+            INNER JOIN guild_channels gc ON gc.id = cm.channel_id
+            INNER JOIN users u ON u.id = cm.author_user_id
+            CROSS JOIN search_query sq
+            WHERE gc.guild_id = @GuildId
+              AND cm.deleted_at_utc IS NULL
+              AND u.deleted_at IS NULL
+              AND cm.search_vector @@ sq.ts_query
+            """);
+        sqlBuilder.AppendLine();
+
         if (query.ChannelId is not null)
         {
-            filters.Add("cm.channel_id = @ChannelId");
+            sqlBuilder.AppendLine("  AND cm.channel_id = @ChannelId");
             parameters.Add("ChannelId", query.ChannelId.Value);
         }
 
         if (query.AuthorId is not null)
         {
-            filters.Add("cm.author_user_id = @AuthorId");
+            sqlBuilder.AppendLine("  AND cm.author_user_id = @AuthorId");
             parameters.Add("AuthorId", query.AuthorId.Value);
         }
 
         if (query.BeforeCreatedAtUtc.HasValue)
         {
-            filters.Add("cm.created_at_utc <= @BeforeCreatedAtUtc");
+            sqlBuilder.AppendLine("  AND cm.created_at_utc <= @BeforeCreatedAtUtc");
             parameters.Add("BeforeCreatedAtUtc", query.BeforeCreatedAtUtc.Value);
         }
 
         if (query.AfterCreatedAtUtc.HasValue)
         {
-            filters.Add("cm.created_at_utc >= @AfterCreatedAtUtc");
+            sqlBuilder.AppendLine("  AND cm.created_at_utc >= @AfterCreatedAtUtc");
             parameters.Add("AfterCreatedAtUtc", query.AfterCreatedAtUtc.Value);
         }
 
         if (query.Cursor is not null)
         {
-            filters.Add("(cm.created_at_utc, cm.id) < (@CursorCreatedAtUtc, @CursorMessageId)");
+            sqlBuilder.AppendLine("  AND (cm.created_at_utc, cm.id) < (@CursorCreatedAtUtc, @CursorMessageId)");
             parameters.Add("CursorCreatedAtUtc", query.Cursor.CreatedAtUtc);
             parameters.Add("CursorMessageId", query.Cursor.MessageId.Value);
         }
 
-        var whereClause = string.Join(Environment.NewLine + "  AND ", filters);
-        var sql = $"""
-                   WITH search_query AS (
-                       SELECT websearch_to_tsquery('simple', @SearchText) AS ts_query
-                   )
-                   SELECT cm.id AS "MessageId",
-                          cm.channel_id AS "ChannelId",
-                          gc.name AS "ChannelName",
-                          cm.author_user_id AS "AuthorUserId",
-                          u.username AS "AuthorUsername",
-                          u.display_name AS "AuthorDisplayName",
-                          cm.content AS "Content",
-                          cm.created_at_utc AS "CreatedAtUtc",
-                          cm.updated_at_utc AS "UpdatedAtUtc"
-                   FROM channel_messages cm
-                   INNER JOIN guild_channels gc ON gc.id = cm.channel_id
-                   INNER JOIN users u ON u.id = cm.author_user_id
-                   CROSS JOIN search_query sq
-                   WHERE {whereClause}
-                   ORDER BY cm.created_at_utc DESC, cm.id DESC
-                   LIMIT @Take
-                   """;
+        sqlBuilder.AppendLine("ORDER BY cm.created_at_utc DESC, cm.id DESC");
+        sqlBuilder.AppendLine("LIMIT @Take");
+        var sql = sqlBuilder.ToString();
 
         var command = new CommandDefinition(
             sql,
@@ -297,13 +297,14 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
         await connection.ExecuteAsync(command);
     }
 
-    public async Task DeleteAsync(
-        ChannelMessageId messageId,
+    public async Task SoftDeleteAsync(
+        ChannelMessage message,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
                            UPDATE channel_messages
-                           SET deleted_at_utc = @DeletedAtUtc
+                           SET deleted_at_utc = @DeletedAtUtc,
+                               updated_at_utc = @UpdatedAtUtc
                            WHERE id = @Id
                            """;
 
@@ -312,8 +313,9 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             sql,
             new
             {
-                DeletedAtUtc = DateTime.UtcNow,
-                Id = messageId.Value
+                message.DeletedAtUtc,
+                message.UpdatedAtUtc,
+                Id = message.Id.Value
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
@@ -333,7 +335,8 @@ public sealed class ChannelMessageRepository : IChannelMessageRepository
             UserId.From(row.AuthorUserId),
             contentResult.Value,
             row.CreatedAtUtc,
-            row.UpdatedAtUtc);
+            row.UpdatedAtUtc,
+            row.DeletedAtUtc);
     }
 
     private static SearchGuildMessagesItem MapToSearchGuildMessagesItem(ChannelMessageSearchRow row)

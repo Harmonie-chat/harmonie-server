@@ -5,6 +5,7 @@ using System.Text;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
 using Harmonie.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -12,7 +13,15 @@ namespace Harmonie.Infrastructure.Authentication;
 public sealed class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _jwtSettings;
-    public JwtTokenService(IOptions<JwtSettings> jwtSettings) => _jwtSettings = jwtSettings.Value;
+    private readonly ILogger<JwtTokenService> _logger;
+
+    public JwtTokenService(
+        IOptions<JwtSettings> jwtSettings,
+        ILogger<JwtTokenService> logger)
+    {
+        _jwtSettings = jwtSettings.Value;
+        _logger = logger;
+    }
     
     public string GenerateAccessToken(UserId userId, Email email, Username username)
     {
@@ -82,6 +91,10 @@ public sealed class JwtTokenService : IJwtTokenService
                 userId = UserId.From(guid);
             return true;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Access token validation failed.");
+            return false;
+        }
     }
 }

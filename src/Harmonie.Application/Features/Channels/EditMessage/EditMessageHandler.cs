@@ -53,7 +53,7 @@ public sealed class EditMessageHandler
                 callerId,
                 contentResult.Error);
 
-            var code = ResolveContentErrorCode(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
             return ApplicationResponse<EditMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
@@ -140,12 +140,20 @@ public sealed class EditMessageHandler
             messageId,
             callerId);
 
+        var updatedAtUtc = message.UpdatedAtUtc;
+        if (updatedAtUtc is null)
+        {
+            return ApplicationResponse<EditMessageResponse>.Fail(
+                ApplicationErrorCodes.Common.InvalidState,
+                "Message edit succeeded but updated timestamp is missing");
+        }
+
         await NotifyMessageUpdatedSafelyAsync(
             new TextChannelMessageUpdatedNotification(
                 message.Id,
                 message.ChannelId,
                 message.Content.Value,
-                message.UpdatedAtUtc!.Value));
+                updatedAtUtc.Value));
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
             MessageId: message.Id.ToString(),
@@ -159,28 +167,12 @@ public sealed class EditMessageHandler
     private async Task NotifyMessageUpdatedSafelyAsync(
         TextChannelMessageUpdatedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _textChannelNotifier.NotifyMessageUpdatedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "EditMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-                notification.MessageId,
-                notification.ChannelId);
-        }
-    }
-
-    private static string ResolveContentErrorCode(string? rawContent)
-    {
-        if (rawContent is null || rawContent.Trim().Length == 0)
-            return ApplicationErrorCodes.Message.ContentEmpty;
-
-        return rawContent.Trim().Length > MessageContent.MaxLength
-            ? ApplicationErrorCodes.Message.ContentTooLong
-            : ApplicationErrorCodes.Common.DomainRuleViolation;
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _textChannelNotifier.NotifyMessageUpdatedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "EditMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+            notification.MessageId,
+            notification.ChannelId);
     }
 }

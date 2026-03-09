@@ -52,7 +52,7 @@ public sealed class EditDirectMessageHandler
                 callerId,
                 contentResult.Error);
 
-            var code = ResolveContentErrorCode(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
             return ApplicationResponse<EditDirectMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
@@ -153,28 +153,12 @@ public sealed class EditDirectMessageHandler
     private async Task NotifyMessageUpdatedSafelyAsync(
         DirectMessageUpdatedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _directMessageNotifier.NotifyMessageUpdatedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "EditDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-                notification.MessageId,
-                notification.ConversationId);
-        }
-    }
-
-    private static string ResolveContentErrorCode(string? rawContent)
-    {
-        if (rawContent is null || rawContent.Trim().Length == 0)
-            return ApplicationErrorCodes.Message.ContentEmpty;
-
-        return rawContent.Trim().Length > MessageContent.MaxLength
-            ? ApplicationErrorCodes.Message.ContentTooLong
-            : ApplicationErrorCodes.Common.DomainRuleViolation;
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _directMessageNotifier.NotifyMessageUpdatedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "EditDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+            notification.MessageId,
+            notification.ConversationId);
     }
 }

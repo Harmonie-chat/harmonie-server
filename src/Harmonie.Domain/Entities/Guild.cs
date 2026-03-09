@@ -62,4 +62,15 @@ public sealed class Guild : Entity<GuildId>
             createdAtUtc,
             updatedAtUtc);
     }
+
+    public Result UpdateName(GuildName newName)
+    {
+        if (Name == newName)
+            return Result.Success();
+
+        Name = newName;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
 }

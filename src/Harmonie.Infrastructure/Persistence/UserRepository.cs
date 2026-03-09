@@ -1,3 +1,4 @@
+using System.Text;
 using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
@@ -128,39 +129,45 @@ public sealed class UserRepository : IUserRepository
         parameters.Add("ContainsPattern", $"%{query.SearchText}%");
         parameters.Add("Limit", query.Limit);
 
-        var guildJoin = string.Empty;
+        var sqlBuilder = new StringBuilder(
+            """
+            SELECT u.id AS "UserId",
+                   u.username AS "Username",
+                   u.display_name AS "DisplayName",
+                   u.avatar_url AS "AvatarUrl",
+                   u.is_active AS "IsActive"
+            FROM users u
+            """);
+        sqlBuilder.AppendLine();
+
         if (query.GuildId is not null)
         {
-            guildJoin = "INNER JOIN guild_members gm ON gm.user_id = u.id AND gm.guild_id = @GuildId";
+            sqlBuilder.AppendLine("INNER JOIN guild_members gm ON gm.user_id = u.id AND gm.guild_id = @GuildId");
             parameters.Add("GuildId", query.GuildId.Value);
         }
 
-        var sql = $"""
-                   SELECT u.id AS "UserId",
-                          u.username AS "Username",
-                          u.display_name AS "DisplayName",
-                          u.avatar_url AS "AvatarUrl",
-                          u.is_active AS "IsActive"
-                   FROM users u
-                   {guildJoin}
-                   WHERE u.deleted_at IS NULL
-                     AND u.is_active = TRUE
-                     AND (
-                         u.username ILIKE @PrefixPattern
-                         OR COALESCE(u.display_name, '') ILIKE @PrefixPattern
-                         OR u.username ILIKE @ContainsPattern
-                         OR COALESCE(u.display_name, '') ILIKE @ContainsPattern)
-                   ORDER BY CASE
-                                WHEN u.username ILIKE @PrefixPattern THEN 0
-                                WHEN COALESCE(u.display_name, '') ILIKE @PrefixPattern THEN 1
-                                WHEN u.username ILIKE @ContainsPattern THEN 2
-                                WHEN COALESCE(u.display_name, '') ILIKE @ContainsPattern THEN 3
-                                ELSE 4
-                            END,
-                            u.username ASC,
-                            u.id ASC
-                   LIMIT @Limit
-                   """;
+        sqlBuilder.AppendLine(
+            """
+            WHERE u.deleted_at IS NULL
+              AND u.is_active = TRUE
+              AND (
+                  u.username ILIKE @PrefixPattern
+                  OR COALESCE(u.display_name, '') ILIKE @PrefixPattern
+                  OR u.username ILIKE @ContainsPattern
+                  OR COALESCE(u.display_name, '') ILIKE @ContainsPattern)
+            ORDER BY CASE
+                         WHEN u.username ILIKE @PrefixPattern THEN 0
+                         WHEN COALESCE(u.display_name, '') ILIKE @PrefixPattern THEN 1
+                         WHEN u.username ILIKE @ContainsPattern THEN 2
+                         WHEN COALESCE(u.display_name, '') ILIKE @ContainsPattern THEN 3
+                         ELSE 4
+                     END,
+                     u.username ASC,
+                     u.id ASC
+            LIMIT @Limit
+            """);
+
+        var sql = sqlBuilder.ToString();
 
         var cmd = new CommandDefinition(
             sql,

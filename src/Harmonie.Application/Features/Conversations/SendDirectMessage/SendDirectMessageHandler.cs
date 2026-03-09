@@ -50,7 +50,7 @@ public sealed class SendDirectMessageHandler
                 currentUserId,
                 contentResult.Error);
 
-            var code = ResolveContentErrorCode(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
             return ApplicationResponse<SendDirectMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
@@ -98,11 +98,9 @@ public sealed class SendDirectMessageHandler
                 messageResult.Error ?? "Unable to create direct message");
         }
 
-        await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
-        {
-            await _directMessageRepository.AddAsync(messageResult.Value, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+        await _directMessageRepository.AddAsync(messageResult.Value, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         await NotifyMessageCreatedSafelyAsync(
             new DirectMessageCreatedNotification(
@@ -129,28 +127,12 @@ public sealed class SendDirectMessageHandler
     private async Task NotifyMessageCreatedSafelyAsync(
         DirectMessageCreatedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _directMessageNotifier.NotifyMessageCreatedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "SendDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-                notification.MessageId,
-                notification.ConversationId);
-        }
-    }
-
-    private static string ResolveContentErrorCode(string? rawContent)
-    {
-        if (rawContent is null || rawContent.Trim().Length == 0)
-            return ApplicationErrorCodes.Message.ContentEmpty;
-
-        return rawContent.Trim().Length > MessageContent.MaxLength
-            ? ApplicationErrorCodes.Message.ContentTooLong
-            : ApplicationErrorCodes.Common.DomainRuleViolation;
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _directMessageNotifier.NotifyMessageCreatedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "SendDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+            notification.MessageId,
+            notification.ConversationId);
     }
 }

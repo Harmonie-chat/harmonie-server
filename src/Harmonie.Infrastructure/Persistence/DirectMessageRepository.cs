@@ -1,3 +1,4 @@
+using System.Text;
 using Dapper;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Entities;
@@ -154,57 +155,55 @@ public sealed class DirectMessageRepository : IDirectMessageRepository
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
 
-        var filters = new List<string>
-        {
-            "dm.conversation_id = @ConversationId",
-            "dm.deleted_at_utc IS NULL",
-            "dm.search_vector @@ sq.ts_query"
-        };
-
         var parameters = new DynamicParameters();
         parameters.Add("ConversationId", query.ConversationId.Value);
         parameters.Add("SearchText", query.SearchText);
         parameters.Add("Take", take);
 
+        var sqlBuilder = new StringBuilder(
+            """
+            WITH search_query AS (
+                SELECT websearch_to_tsquery('simple', @SearchText) AS ts_query
+            )
+            SELECT dm.id AS "MessageId",
+                   dm.author_user_id AS "AuthorUserId",
+                   u.username AS "AuthorUsername",
+                   u.display_name AS "AuthorDisplayName",
+                   u.avatar_url AS "AuthorAvatarUrl",
+                   dm.content AS "Content",
+                   dm.created_at_utc AS "CreatedAtUtc",
+                   dm.updated_at_utc AS "UpdatedAtUtc"
+            FROM direct_messages dm
+            INNER JOIN users u ON u.id = dm.author_user_id
+            CROSS JOIN search_query sq
+            WHERE dm.conversation_id = @ConversationId
+              AND dm.deleted_at_utc IS NULL
+              AND dm.search_vector @@ sq.ts_query
+            """);
+        sqlBuilder.AppendLine();
+
         if (query.BeforeCreatedAtUtc.HasValue)
         {
-            filters.Add("dm.created_at_utc <= @BeforeCreatedAtUtc");
+            sqlBuilder.AppendLine("  AND dm.created_at_utc <= @BeforeCreatedAtUtc");
             parameters.Add("BeforeCreatedAtUtc", query.BeforeCreatedAtUtc.Value);
         }
 
         if (query.AfterCreatedAtUtc.HasValue)
         {
-            filters.Add("dm.created_at_utc >= @AfterCreatedAtUtc");
+            sqlBuilder.AppendLine("  AND dm.created_at_utc >= @AfterCreatedAtUtc");
             parameters.Add("AfterCreatedAtUtc", query.AfterCreatedAtUtc.Value);
         }
 
         if (query.Cursor is not null)
         {
-            filters.Add("(dm.created_at_utc, dm.id) < (@CursorCreatedAtUtc, @CursorMessageId)");
+            sqlBuilder.AppendLine("  AND (dm.created_at_utc, dm.id) < (@CursorCreatedAtUtc, @CursorMessageId)");
             parameters.Add("CursorCreatedAtUtc", query.Cursor.CreatedAtUtc);
             parameters.Add("CursorMessageId", query.Cursor.MessageId.Value);
         }
 
-        var whereClause = string.Join(Environment.NewLine + "  AND ", filters);
-        var sql = $"""
-                   WITH search_query AS (
-                       SELECT websearch_to_tsquery('simple', @SearchText) AS ts_query
-                   )
-                   SELECT dm.id AS "MessageId",
-                          dm.author_user_id AS "AuthorUserId",
-                          u.username AS "AuthorUsername",
-                          u.display_name AS "AuthorDisplayName",
-                          u.avatar_url AS "AuthorAvatarUrl",
-                          dm.content AS "Content",
-                          dm.created_at_utc AS "CreatedAtUtc",
-                          dm.updated_at_utc AS "UpdatedAtUtc"
-                   FROM direct_messages dm
-                   INNER JOIN users u ON u.id = dm.author_user_id
-                   CROSS JOIN search_query sq
-                   WHERE {whereClause}
-                   ORDER BY dm.created_at_utc DESC, dm.id DESC
-                   LIMIT @Take
-                   """;
+        sqlBuilder.AppendLine("ORDER BY dm.created_at_utc DESC, dm.id DESC");
+        sqlBuilder.AppendLine("LIMIT @Take");
+        var sql = sqlBuilder.ToString();
 
         var command = new CommandDefinition(
             sql,

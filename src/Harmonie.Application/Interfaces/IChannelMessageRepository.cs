@@ -28,8 +28,8 @@ public interface IChannelMessageRepository
         ChannelMessage message,
         CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(
-        ChannelMessageId messageId,
+    Task SoftDeleteAsync(
+        ChannelMessage message,
         CancellationToken cancellationToken = default);
 }
 

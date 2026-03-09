@@ -218,7 +218,12 @@ public sealed class DeleteMessageHandlerTests
         await _handler.HandleAsync(channel.Id, messageId, authorId);
 
         _channelMessageRepositoryMock.Verify(
-            x => x.DeleteAsync(messageId, It.IsAny<CancellationToken>()),
+            x => x.SoftDeleteAsync(
+                It.Is<ChannelMessage>(m =>
+                    m.Id == message.Id
+                    && m.DeletedAtUtc != null
+                    && m.UpdatedAtUtc != null),
+                It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
@@ -269,7 +274,12 @@ public sealed class DeleteMessageHandlerTests
         await _handler.HandleAsync(channel.Id, messageId, adminId);
 
         _channelMessageRepositoryMock.Verify(
-            x => x.DeleteAsync(messageId, It.IsAny<CancellationToken>()),
+            x => x.SoftDeleteAsync(
+                It.Is<ChannelMessage>(m =>
+                    m.Id == message.Id
+                    && m.DeletedAtUtc != null
+                    && m.UpdatedAtUtc != null),
+                It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
@@ -356,6 +366,7 @@ public sealed class DeleteMessageHandlerTests
             authorId,
             contentResult.Value,
             DateTime.UtcNow,
-            updatedAtUtc: null);
+            updatedAtUtc: null,
+            deletedAtUtc: null);
     }
 }

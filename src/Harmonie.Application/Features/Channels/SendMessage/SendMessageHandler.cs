@@ -51,7 +51,7 @@ public sealed class SendMessageHandler
                 currentUserId,
                 contentResult.Error);
 
-            var code = ResolveContentErrorCode(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
             return ApplicationResponse<SendMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
@@ -113,11 +113,9 @@ public sealed class SendMessageHandler
                 messageResult.Error ?? "Unable to create channel message");
         }
 
-        await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
-        {
-            await _channelMessageRepository.AddAsync(messageResult.Value, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+        await _channelMessageRepository.AddAsync(messageResult.Value, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         await NotifyMessageCreatedSafelyAsync(
             new TextChannelMessageCreatedNotification(
@@ -143,31 +141,15 @@ public sealed class SendMessageHandler
         return ApplicationResponse<SendMessageResponse>.Ok(payload);
     }
 
-    private static string ResolveContentErrorCode(string? rawContent)
-    {
-        if (rawContent is null || rawContent.Trim().Length == 0)
-            return ApplicationErrorCodes.Message.ContentEmpty;
-
-        return rawContent.Trim().Length > MessageContent.MaxLength
-            ? ApplicationErrorCodes.Message.ContentTooLong
-            : ApplicationErrorCodes.Common.DomainRuleViolation;
-    }
-
     private async Task NotifyMessageCreatedSafelyAsync(
         TextChannelMessageCreatedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _textChannelNotifier.NotifyMessageCreatedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "SendMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-                notification.MessageId,
-                notification.ChannelId);
-        }
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _textChannelNotifier.NotifyMessageCreatedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "SendMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+            notification.MessageId,
+            notification.ChannelId);
     }
 }

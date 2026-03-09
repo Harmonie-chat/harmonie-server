@@ -43,7 +43,7 @@ public sealed class LoginHandler
         else if (usernameResult.IsSuccess && usernameResult.Value is not null)
             user = await _userRepository.GetByUsernameAsync(usernameResult.Value, cancellationToken);
 
-        if (user == null)
+        if (user is null)
             return ApplicationResponse<LoginResponse>.Fail(
                 ApplicationErrorCodes.Auth.InvalidCredentials,
                 "Invalid email/username or password");

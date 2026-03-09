@@ -118,18 +118,12 @@ public sealed class DeleteDirectMessageHandler
     private async Task NotifyMessageDeletedSafelyAsync(
         DirectMessageDeletedNotification notification)
     {
-        try
-        {
-            using var notificationCts = new CancellationTokenSource(NotificationTimeout);
-            await _directMessageNotifier.NotifyMessageDeletedAsync(notification, notificationCts.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "DeleteDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-                notification.MessageId,
-                notification.ConversationId);
-        }
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _directMessageNotifier.NotifyMessageDeletedAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "DeleteDirectMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+            notification.MessageId,
+            notification.ConversationId);
     }
 }

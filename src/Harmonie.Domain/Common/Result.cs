@@ -12,9 +12,9 @@ public sealed class Result
 
     private Result(bool isSuccess, string? error)
     {
-        if (isSuccess && error != null)
+        if (isSuccess && error is not null)
             throw new InvalidOperationException("Success result cannot have an error");
-        if (!isSuccess && error == null)
+        if (!isSuccess && error is null)
             throw new InvalidOperationException("Failure result must have an error");
 
         IsSuccess = isSuccess;
@@ -26,6 +26,30 @@ public sealed class Result
 
     public static Result<T> Success<T>(T value) => Result<T>.Success(value);
     public static Result<T> Failure<T>(string error) => Result<T>.Failure(error);
+
+    public Result Bind(Func<Result> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+
+        return IsSuccess
+            ? binder()
+            : Failure(GetRequiredError());
+    }
+
+    public TResult Match<TResult>(
+        Func<TResult> onSuccess,
+        Func<string, TResult> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
+        return IsSuccess
+            ? onSuccess()
+            : onFailure(GetRequiredError());
+    }
+
+    private string GetRequiredError() =>
+        Error ?? throw new InvalidOperationException("Failure result must have an error");
 }
 
 /// <summary>
@@ -40,11 +64,11 @@ public sealed class Result<T>
 
     private Result(bool isSuccess, T? value, string? error)
     {
-        if (isSuccess && value == null)
+        if (isSuccess && value is null)
             throw new InvalidOperationException("Success result must have a value");
-        if (isSuccess && error != null)
+        if (isSuccess && error is not null)
             throw new InvalidOperationException("Success result cannot have an error");
-        if (!isSuccess && error == null)
+        if (!isSuccess && error is null)
             throw new InvalidOperationException("Failure result must have an error");
 
         IsSuccess = isSuccess;
@@ -60,9 +84,29 @@ public sealed class Result<T>
     /// </summary>
     public Result<TNew> Map<TNew>(Func<T, TNew> mapper)
     {
-        return IsSuccess 
-            ? Result<TNew>.Success(mapper(Value!))
-            : Result<TNew>.Failure(Error!);
+        ArgumentNullException.ThrowIfNull(mapper);
+
+        return IsSuccess
+            ? Result<TNew>.Success(mapper(GetRequiredValue()))
+            : Result<TNew>.Failure(GetRequiredError());
+    }
+
+    public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+
+        return IsSuccess
+            ? binder(GetRequiredValue())
+            : Result<TNew>.Failure(GetRequiredError());
+    }
+
+    public Result Bind(Func<T, Result> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+
+        return IsSuccess
+            ? binder(GetRequiredValue())
+            : Result.Failure(GetRequiredError());
     }
 
     /// <summary>
@@ -70,7 +114,10 @@ public sealed class Result<T>
     /// </summary>
     public Result<T> OnSuccess(Action<T> action)
     {
-        if (IsSuccess) action(Value!);
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (IsSuccess)
+            action(GetRequiredValue());
         return this;
     }
 
@@ -79,7 +126,38 @@ public sealed class Result<T>
     /// </summary>
     public Result<T> OnFailure(Action<string> action)
     {
-        if (IsFailure) action(Error!);
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (IsFailure)
+            action(GetRequiredError());
         return this;
+    }
+
+    public TResult Match<TResult>(
+        Func<T, TResult> onSuccess,
+        Func<string, TResult> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
+        return IsSuccess
+            ? onSuccess(GetRequiredValue())
+            : onFailure(GetRequiredError());
+    }
+
+    private T GetRequiredValue()
+    {
+        if (Value is null)
+            throw new InvalidOperationException("Success result must have a value");
+
+        return Value;
+    }
+
+    private string GetRequiredError()
+    {
+        if (Error is null)
+            throw new InvalidOperationException("Failure result must have an error");
+
+        return Error;
     }
 }

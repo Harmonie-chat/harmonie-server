@@ -147,6 +147,7 @@ public sealed class GetMessagesHandlerTests
             authorUserId,
             contentResult.Value!,
             createdAtUtc,
-            updatedAtUtc: null);
+            updatedAtUtc: null,
+            deletedAtUtc: null);
     }
 }

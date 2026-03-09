@@ -1,4 +1,5 @@
 using FluentValidation;
+using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
 
@@ -9,7 +10,7 @@ public sealed class SendMessageValidator : AbstractValidator<SendMessageRequest>
         RuleFor(x => x.Content)
             .NotNull()
             .WithMessage("Message content is required")
-            .MaximumLength(4000)
-            .WithMessage("Message content cannot exceed 4000 characters");
+            .MaximumLength(MessageContent.MaxLength)
+            .WithMessage($"Message content cannot exceed {MessageContent.MaxLength} characters");
     }
 }

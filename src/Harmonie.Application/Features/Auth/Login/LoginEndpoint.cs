@@ -38,7 +38,7 @@ public static class LoginEndpoint
     {
         // Validate request
         var validationError = await request.ValidateAsync(validator, cancellationToken);
-        if (validationError != null)
+        if (validationError is not null)
             return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult();
 
         // Handle login

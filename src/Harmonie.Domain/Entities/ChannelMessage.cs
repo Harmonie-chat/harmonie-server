@@ -11,13 +11,16 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
 
     public MessageContent Content { get; private set; }
 
+    public DateTime? DeletedAtUtc { get; private set; }
+
     private ChannelMessage(
         ChannelMessageId id,
         GuildChannelId channelId,
         UserId authorUserId,
         MessageContent content,
         DateTime createdAtUtc,
-        DateTime? updatedAtUtc)
+        DateTime? updatedAtUtc,
+        DateTime? deletedAtUtc)
     {
         Id = id;
         ChannelId = channelId;
@@ -25,6 +28,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         Content = content;
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
+        DeletedAtUtc = deletedAtUtc;
     }
 
     public static Result<ChannelMessage> Create(
@@ -45,7 +49,8 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
             authorUserId,
             content,
             DateTime.UtcNow,
-            updatedAtUtc: null));
+            updatedAtUtc: null,
+            deletedAtUtc: null));
     }
 
     public Result UpdateContent(MessageContent newContent)
@@ -58,13 +63,24 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         return Result.Success();
     }
 
+    public Result Delete()
+    {
+        if (DeletedAtUtc is not null)
+            return Result.Failure("Message is already deleted");
+
+        DeletedAtUtc = DateTime.UtcNow;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
     public static ChannelMessage Rehydrate(
         ChannelMessageId id,
         GuildChannelId channelId,
         UserId authorUserId,
         MessageContent content,
         DateTime createdAtUtc,
-        DateTime? updatedAtUtc)
+        DateTime? updatedAtUtc,
+        DateTime? deletedAtUtc)
     {
         ArgumentNullException.ThrowIfNull(id);
         ArgumentNullException.ThrowIfNull(channelId);
@@ -77,6 +93,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
             authorUserId,
             content,
             createdAtUtc,
-            updatedAtUtc);
+            updatedAtUtc,
+            deletedAtUtc);
     }
 }

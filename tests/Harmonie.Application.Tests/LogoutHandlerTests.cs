@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -24,7 +25,8 @@ public sealed class LogoutHandlerTests
 
         _handler = new LogoutHandler(
             _refreshTokenRepositoryMock.Object,
-            _jwtTokenServiceMock.Object);
+            _jwtTokenServiceMock.Object,
+            NullLogger<LogoutHandler>.Instance);
     }
 
     [Fact]
