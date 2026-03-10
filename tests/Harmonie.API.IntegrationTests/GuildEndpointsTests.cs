@@ -234,7 +234,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var promoteResponse = await SendAuthorizedPatchAsync(
+        var promoteResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{admin.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
@@ -692,12 +692,38 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         return await _client.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+        string uri,
+        TRequest payload,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        {
+            Content = JsonContent.Create(payload, options: _jsonOptions)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
     private async Task<HttpResponseMessage> SendAuthorizedPatchRawAsync(
         string uri,
         string json,
         string accessToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
+        {
+            Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedPutRawAsync(
+        string uri,
+        string json,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
         {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         };
@@ -1007,7 +1033,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var updateRoleResponse = await SendAuthorizedPatchAsync(
+        var updateRoleResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
@@ -1034,12 +1060,12 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             new InviteMemberRequest(otherAdmin.UserId),
             owner.AccessToken);
 
-        await SendAuthorizedPatchAsync(
+        await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
 
-        var demoteResponse = await SendAuthorizedPatchAsync(
+        var demoteResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{otherAdmin.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Member),
             owner.AccessToken);
@@ -1072,7 +1098,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             new InviteMemberRequest(target.UserId),
             owner.AccessToken);
 
-        var updateRoleResponse = await SendAuthorizedPatchAsync(
+        var updateRoleResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{target.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             member.AccessToken);
@@ -1097,7 +1123,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var updateRoleResponse = await SendAuthorizedPatchAsync(
+        var updateRoleResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/{owner.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Member),
             owner.AccessToken);
@@ -1115,7 +1141,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         var nonExistentGuildId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
 
-        var updateRoleResponse = await SendAuthorizedPatchAsync(
+        var updateRoleResponse = await SendAuthorizedPutAsync(
             $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             user.AccessToken);
@@ -1132,7 +1158,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         var nonExistentGuildId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
 
-        var updateRoleResponse = await _client.PatchAsJsonAsync(
+        var updateRoleResponse = await _client.PutAsJsonAsync(
             $"/api/guilds/{nonExistentGuildId}/members/{targetId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin));
         updateRoleResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -1158,7 +1184,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
 
-        var updateRoleResponse = await SendAuthorizedPatchRawAsync(
+        var updateRoleResponse = await SendAuthorizedPutRawAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{member.UserId}/role",
             """{"role":"Owner"}""",
             owner.AccessToken);

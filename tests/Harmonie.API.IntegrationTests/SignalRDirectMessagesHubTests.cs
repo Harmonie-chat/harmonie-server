@@ -112,7 +112,7 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         await connection.StartAsync();
         await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
-        var editResponse = await SendAuthorizedPutAsync(
+        var editResponse = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
             new EditDirectMessageRequest("updated realtime dm"),
             sender.AccessToken);
@@ -227,12 +227,12 @@ public sealed class SignalRDirectMessagesHubTests : IClassFixture<WebApplication
         return await _client.SendAsync(request);
     }
 
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
         string uri,
         TRequest payload,
         string accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
         {
             Content = JsonContent.Create(payload)
         };

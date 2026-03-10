@@ -12,7 +12,7 @@ public static class UpdateMemberRoleEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/api/guilds/{guildId}/members/{userId}/role", HandleAsync)
+        app.MapPut("/api/guilds/{guildId}/members/{userId}/role", HandleAsync)
             .WithName("UpdateMemberRole")
             .WithTags("Guilds")
             .RequireAuthorization()

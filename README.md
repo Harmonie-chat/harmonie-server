@@ -107,7 +107,7 @@ be backed by an S3-compatible service.
 - `GET /api/conversations`
 - `GET /api/conversations/{conversationId}/messages`
 - `GET /api/conversations/{conversationId}/messages/search`
-- `PUT /api/conversations/{conversationId}/messages/{messageId}`
+- `PATCH /api/conversations/{conversationId}/messages/{messageId}`
 - `DELETE /api/conversations/{conversationId}/messages/{messageId}`
 - `POST /api/conversations/{conversationId}/messages`
 - `POST /api/uploads`

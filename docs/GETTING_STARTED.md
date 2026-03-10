@@ -68,7 +68,7 @@ In `docker-compose`, the API stores them in the `uploads-data` volume.
 - Open direct conversation: `POST /api/conversations`
 - List direct conversations: `GET /api/conversations`
 - Read direct messages: `GET /api/conversations/{conversationId}/messages`
-- Edit direct message: `PUT /api/conversations/{conversationId}/messages/{messageId}`
+- Edit direct message: `PATCH /api/conversations/{conversationId}/messages/{messageId}`
 - Delete direct message: `DELETE /api/conversations/{conversationId}/messages/{messageId}`
 - Send direct message: `POST /api/conversations/{conversationId}/messages`
 - Send message: `POST /api/channels/{channelId}/messages`

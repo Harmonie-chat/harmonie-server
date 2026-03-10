@@ -29,7 +29,7 @@ Current mapped endpoints:
 - `POST /api/channels/{channelId}/messages`
 - `GET /api/channels/{channelId}/messages`
 - `GET /api/conversations/{conversationId}/messages`
-- `PUT /api/conversations/{conversationId}/messages/{messageId}`
+- `PATCH /api/conversations/{conversationId}/messages/{messageId}`
 - `DELETE /api/conversations/{conversationId}/messages/{messageId}`
 - `GET /api/users/me`
 - `PUT /api/users/me`

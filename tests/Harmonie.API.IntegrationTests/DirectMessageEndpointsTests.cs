@@ -232,7 +232,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
         var message = await SendDirectMessageAsync(conversationId, "original direct", caller.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}",
             new EditDirectMessageRequest("updated direct"),
             caller.AccessToken);
@@ -253,7 +253,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
     {
         var caller = await RegisterAsync();
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}",
             new EditDirectMessageRequest("updated direct"),
             caller.AccessToken);
@@ -274,7 +274,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
         var message = await SendDirectMessageAsync(conversationId, "original direct", participantOne.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}",
             new EditDirectMessageRequest("intrusion"),
             outsider.AccessToken);
@@ -294,7 +294,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
         var message = await SendDirectMessageAsync(conversationId, "original direct", participantOne.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}",
             new EditDirectMessageRequest("edited by someone else"),
             participantTwo.AccessToken);
@@ -313,7 +313,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         var target = await RegisterAsync();
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{Guid.NewGuid()}",
             new EditDirectMessageRequest("updated direct"),
             caller.AccessToken);
@@ -328,7 +328,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
     [Fact]
     public async Task EditDirectMessage_WithoutAuthentication_ShouldReturnUnauthorized()
     {
-        var response = await _client.PutAsJsonAsync(
+        var response = await _client.PatchAsJsonAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}",
             new EditDirectMessageRequest("updated direct"));
 
@@ -524,12 +524,12 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         return await _client.SendAsync(request);
     }
 
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
         string uri,
         TRequest payload,
         string accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
         {
             Content = JsonContent.Create(payload)
         };

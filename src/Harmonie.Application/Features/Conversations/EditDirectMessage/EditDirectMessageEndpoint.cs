@@ -12,7 +12,7 @@ public static class EditDirectMessageEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/conversations/{conversationId}/messages/{messageId}", HandleAsync)
+        app.MapPatch("/api/conversations/{conversationId}/messages/{messageId}", HandleAsync)
             .WithName("EditDirectMessage")
             .WithTags("Conversations")
             .RequireAuthorization()
