@@ -45,6 +45,9 @@ public sealed class GetMyProfileHandlerTests
         response.Data.DisplayName.Should().Be("Alice");
         response.Data.Bio.Should().Be("Hello Harmonie");
         response.Data.AvatarUrl.Should().Be("https://cdn.harmonie.chat/avatar.png");
+        response.Data.Theme.Should().Be("default");
+        response.Data.Language.Should().BeNull();
+        response.Data.Avatar.Should().BeNull();
     }
 
     [Fact]
@@ -62,6 +65,47 @@ public sealed class GetMyProfileHandlerTests
         response.Data.Should().BeNull();
         response.Error.Should().NotBeNull();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenUserHasAvatarAppearance_ShouldReturnAvatarObject()
+    {
+        var user = CreateUser();
+        user.UpdateAvatarColor("#FFF4D6");
+        user.UpdateAvatarIcon("star");
+        user.UpdateAvatarBg("#1F2937");
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Avatar.Should().NotBeNull();
+        response.Data.Avatar!.Color.Should().Be("#FFF4D6");
+        response.Data.Avatar.Icon.Should().Be("star");
+        response.Data.Avatar.Bg.Should().Be("#1F2937");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenUserHasThemeAndLanguage_ShouldReturnThem()
+    {
+        var user = CreateUser();
+        user.UpdateTheme("dark");
+        user.UpdateLanguage("fr");
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Theme.Should().Be("dark");
+        response.Data.Language.Should().Be("fr");
     }
 
     private static User CreateUser()

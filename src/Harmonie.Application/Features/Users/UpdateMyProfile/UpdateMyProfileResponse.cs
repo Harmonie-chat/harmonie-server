@@ -5,4 +5,7 @@ public sealed record UpdateMyProfileResponse(
     string Username,
     string? DisplayName,
     string? Bio,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    AvatarAppearanceDto? Avatar,
+    string Theme,
+    string? Language);

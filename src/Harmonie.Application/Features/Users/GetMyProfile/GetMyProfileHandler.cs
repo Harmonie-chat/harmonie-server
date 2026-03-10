@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -38,12 +39,19 @@ public sealed class GetMyProfileHandler
                 "User profile was not found");
         }
 
+        var avatar = user.AvatarColor is not null || user.AvatarIcon is not null || user.AvatarBg is not null
+            ? new AvatarAppearanceDto(user.AvatarColor, user.AvatarIcon, user.AvatarBg)
+            : null;
+
         var payload = new GetMyProfileResponse(
             UserId: user.Id.ToString(),
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarUrl: user.AvatarUrl);
+            AvatarUrl: user.AvatarUrl,
+            Avatar: avatar,
+            Theme: user.Theme,
+            Language: user.Language);
 
         _logger.LogInformation(
             "GetMyProfile succeeded for user {UserId}",

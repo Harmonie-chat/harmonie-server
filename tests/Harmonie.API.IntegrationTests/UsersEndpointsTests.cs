@@ -7,6 +7,7 @@ using System.Text;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -45,6 +46,9 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.DisplayName.Should().BeNull();
         payload.Bio.Should().BeNull();
         payload.AvatarUrl.Should().BeNull();
+        payload.Theme.Should().Be("default");
+        payload.Language.Should().BeNull();
+        payload.Avatar.Should().BeNull();
     }
 
     [Fact]
@@ -81,7 +85,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     {
         var user = await RegisterAsync();
 
-        var seedResponse = await SendAuthorizedPutAsync(
+        var seedResponse = await SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -92,7 +96,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             "/api/users/me",
             new { displayName = "Updated Name" },
             user.AccessToken);
@@ -121,7 +125,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     {
         var user = await RegisterAsync();
 
-        var seedResponse = await SendAuthorizedPutAsync(
+        var seedResponse = await SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -132,7 +136,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -155,7 +159,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     {
         var user = await RegisterAsync();
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPatchAsync(
             "/api/users/me",
             new { displayName = new string('x', 101) },
             user.AccessToken);
@@ -176,11 +180,130 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     [Fact]
     public async Task UpdateMyProfile_WithoutAuthentication_ShouldReturnUnauthorized()
     {
-        var response = await _client.PutAsJsonAsync(
+        var response = await _client.PatchAsJsonAsync(
             "/api/users/me",
             new { displayName = "NoAuth" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithThemeAndLanguage_ShouldUpdateThemeAndLanguage()
+    {
+        var user = await RegisterAsync();
+
+        var response = await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { theme = "dark", language = "fr" },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Theme.Should().Be("dark");
+        payload.Language.Should().Be("fr");
+
+        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        profile.Should().NotBeNull();
+        profile!.Theme.Should().Be("dark");
+        profile.Language.Should().Be("fr");
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithAvatarAppearance_ShouldReturnNestedAvatarObject()
+    {
+        var user = await RegisterAsync();
+
+        var response = await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Avatar.Should().NotBeNull();
+        payload.Avatar!.Color.Should().Be("#FFF4D6");
+        payload.Avatar.Icon.Should().Be("star");
+        payload.Avatar.Bg.Should().Be("#1F2937");
+
+        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        profile.Should().NotBeNull();
+        profile!.Avatar.Should().NotBeNull();
+        profile.Avatar!.Color.Should().Be("#FFF4D6");
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithPartialAvatarAppearance_ShouldKeepOmittedSubFields()
+    {
+        var user = await RegisterAsync();
+
+        await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
+            user.AccessToken);
+
+        var response = await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = new { color = "#UPDATED" } },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Avatar.Should().NotBeNull();
+        payload.Avatar!.Color.Should().Be("#UPDATED");
+        payload.Avatar.Icon.Should().Be("star");
+        payload.Avatar.Bg.Should().Be("#1F2937");
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithNullAvatar_ShouldClearAllAvatarFields()
+    {
+        var user = await RegisterAsync();
+
+        await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
+            user.AccessToken);
+
+        var response = await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = (object?)null },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Avatar.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithExplicitNullLanguage_ShouldClearLanguage()
+    {
+        var user = await RegisterAsync();
+
+        await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { language = "fr" },
+            user.AccessToken);
+
+        var response = await SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { language = (string?)null },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<UpdateMyProfileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Language.Should().BeNull();
     }
 
     private async Task<RegisterResponse> RegisterAsync()
@@ -206,12 +329,12 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         return await _client.SendAsync(request);
     }
 
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
+    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
         string uri,
         TRequest payload,
         string accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
         {
             Content = JsonContent.Create(payload)
         };

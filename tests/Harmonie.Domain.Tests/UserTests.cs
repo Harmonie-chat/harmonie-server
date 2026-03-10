@@ -25,6 +25,8 @@ public sealed class UserTests
         result.Value.Username.Should().Be(username);
         result.Value.IsActive.Should().BeTrue();
         result.Value.IsEmailVerified.Should().BeFalse();
+        result.Value.Theme.Should().Be("default");
+        result.Value.Language.Should().BeNull();
     }
 
     [Fact]
@@ -98,5 +100,125 @@ public sealed class UserTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Avatar URL is too long");
+    }
+
+    [Fact]
+    public void UpdateTheme_WithValidValue_ShouldSucceed()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateTheme("dark");
+
+        result.IsSuccess.Should().BeTrue();
+        user.Theme.Should().Be("dark");
+    }
+
+    [Fact]
+    public void UpdateTheme_WithEmptyValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateTheme("");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Theme cannot be empty");
+    }
+
+    [Fact]
+    public void UpdateTheme_WithTooLongValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateTheme(new string('t', 51));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Theme is too long");
+    }
+
+    [Fact]
+    public void UpdateLanguage_WithNull_ShouldClear()
+    {
+        var user = CreateUser();
+        user.UpdateLanguage("fr");
+
+        var result = user.UpdateLanguage(null);
+
+        result.IsSuccess.Should().BeTrue();
+        user.Language.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateLanguage_WithTooLongValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateLanguage("toolongvalue");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Language is too long");
+    }
+
+    [Fact]
+    public void UpdateAvatarColor_WithValidValue_ShouldSucceed()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateAvatarColor("#FFF4D6");
+
+        result.IsSuccess.Should().BeTrue();
+        user.AvatarColor.Should().Be("#FFF4D6");
+    }
+
+    [Fact]
+    public void UpdateAvatarColor_WithNull_ShouldClear()
+    {
+        var user = CreateUser();
+        user.UpdateAvatarColor("#FFF4D6");
+
+        var result = user.UpdateAvatarColor(null);
+
+        result.IsSuccess.Should().BeTrue();
+        user.AvatarColor.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateAvatarColor_WithTooLongValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateAvatarColor(new string('c', 51));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Avatar color is too long");
+    }
+
+    [Fact]
+    public void UpdateAvatarIcon_WithTooLongValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateAvatarIcon(new string('i', 51));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Avatar icon is too long");
+    }
+
+    [Fact]
+    public void UpdateAvatarBg_WithTooLongValue_ShouldFail()
+    {
+        var user = CreateUser();
+
+        var result = user.UpdateAvatarBg(new string('b', 51));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Avatar background is too long");
+    }
+
+    private static User CreateUser()
+    {
+        return User.Create(
+            Email.Create("test@harmonie.chat").Value!,
+            Username.Create("testuser").Value!,
+            "hash").Value!;
     }
 }

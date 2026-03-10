@@ -145,6 +145,11 @@ public sealed class OpenConversationHandlerTests
             lastLoginAtUtc: null,
             displayName: null,
             bio: null,
+            avatarColor: null,
+            avatarIcon: null,
+            avatarBg: null,
+            theme: "default",
+            language: null,
             createdAtUtc: DateTime.UtcNow,
             updatedAtUtc: DateTime.UtcNow);
     }

@@ -54,6 +54,31 @@ public sealed class User : Entity<UserId>
     /// </summary>
     public string? Bio { get; private set; }
 
+    /// <summary>
+    /// Avatar appearance color
+    /// </summary>
+    public string? AvatarColor { get; private set; }
+
+    /// <summary>
+    /// Avatar appearance icon
+    /// </summary>
+    public string? AvatarIcon { get; private set; }
+
+    /// <summary>
+    /// Avatar appearance background
+    /// </summary>
+    public string? AvatarBg { get; private set; }
+
+    /// <summary>
+    /// UI theme preference
+    /// </summary>
+    public string Theme { get; private set; } = "default";
+
+    /// <summary>
+    /// Language preference (ISO 639-1)
+    /// </summary>
+    public string? Language { get; private set; }
+
     // Private constructor for EF Core / Dapper
     private User() { }
 
@@ -94,6 +119,11 @@ public sealed class User : Entity<UserId>
         DateTime? lastLoginAtUtc,
         string? displayName,
         string? bio,
+        string? avatarColor,
+        string? avatarIcon,
+        string? avatarBg,
+        string theme,
+        string? language,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc
     )
@@ -110,6 +140,11 @@ public sealed class User : Entity<UserId>
             LastLoginAtUtc = lastLoginAtUtc,
             DisplayName = displayName,
             Bio = bio,
+            AvatarColor = avatarColor,
+            AvatarIcon = avatarIcon,
+            AvatarBg = avatarBg,
+            Theme = theme,
+            Language = language,
             CreatedAtUtc = createdAtUtc,
             UpdatedAtUtc = updatedAtUtc
         };
@@ -199,6 +234,59 @@ public sealed class User : Entity<UserId>
         Bio = bio;
         MarkAsUpdated();
 
+        return Result.Success();
+    }
+
+    public Result UpdateAvatarColor(string? avatarColor)
+    {
+        if (avatarColor?.Length > 50)
+            return Result.Failure("Avatar color is too long");
+
+        AvatarColor = avatarColor;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public Result UpdateAvatarIcon(string? avatarIcon)
+    {
+        if (avatarIcon?.Length > 50)
+            return Result.Failure("Avatar icon is too long");
+
+        AvatarIcon = avatarIcon;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public Result UpdateAvatarBg(string? avatarBg)
+    {
+        if (avatarBg?.Length > 50)
+            return Result.Failure("Avatar background is too long");
+
+        AvatarBg = avatarBg;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public Result UpdateTheme(string theme)
+    {
+        if (string.IsNullOrWhiteSpace(theme))
+            return Result.Failure("Theme cannot be empty");
+
+        if (theme.Length > 50)
+            return Result.Failure("Theme is too long");
+
+        Theme = theme;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public Result UpdateLanguage(string? language)
+    {
+        if (language?.Length > 10)
+            return Result.Failure("Language is too long");
+
+        Language = language;
+        MarkAsUpdated();
         return Result.Success();
     }
 

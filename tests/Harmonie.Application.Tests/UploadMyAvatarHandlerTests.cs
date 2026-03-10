@@ -130,11 +130,11 @@ public sealed class UploadMyAvatarHandlerTests
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
-                user.Id,
-                false, null,
-                false, null,
-                true, It.Is<string?>(url => url != null && url.StartsWith("https://files.test/avatars/")),
-                It.IsAny<DateTime?>(),
+                It.Is<ProfileUpdateParameters>(p =>
+                    p.AvatarUrlIsSet == true &&
+                    p.AvatarUrl != null && p.AvatarUrl.StartsWith("https://files.test/avatars/") &&
+                    p.DisplayNameIsSet == false &&
+                    p.BioIsSet == false),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -158,11 +158,7 @@ public sealed class UploadMyAvatarHandlerTests
 
         _userRepositoryMock
             .Setup(x => x.UpdateProfileAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<bool>(), It.IsAny<string?>(),
-                It.IsAny<bool>(), It.IsAny<string?>(),
-                It.IsAny<bool>(), It.IsAny<string?>(),
-                It.IsAny<DateTime?>(),
+                It.IsAny<ProfileUpdateParameters>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 

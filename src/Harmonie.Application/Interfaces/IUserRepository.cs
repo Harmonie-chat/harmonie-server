@@ -17,6 +17,18 @@ public sealed record SearchUserResult(
     string? AvatarUrl,
     bool IsActive);
 
+public sealed record ProfileUpdateParameters(
+    UserId UserId,
+    bool DisplayNameIsSet, string? DisplayName,
+    bool BioIsSet, string? Bio,
+    bool AvatarUrlIsSet, string? AvatarUrl,
+    bool AvatarColorIsSet, string? AvatarColor,
+    bool AvatarIconIsSet, string? AvatarIcon,
+    bool AvatarBgIsSet, string? AvatarBg,
+    bool ThemeIsSet, string? Theme,
+    bool LanguageIsSet, string? Language,
+    DateTime? UpdatedAtUtc);
+
 /// <summary>
 /// Repository interface for User aggregate.
 /// This is a "port" in Hexagonal Architecture - the infrastructure layer provides the implementation.
@@ -74,14 +86,7 @@ public interface IUserRepository
     /// Update only profile fields for an existing user.
     /// </summary>
     Task UpdateProfileAsync(
-        UserId userId,
-        bool displayNameIsSet,
-        string? displayName,
-        bool bioIsSet,
-        string? bio,
-        bool avatarUrlIsSet,
-        string? avatarUrl,
-        DateTime? updatedAtUtc,
+        ProfileUpdateParameters parameters,
         CancellationToken cancellationToken = default);
 
     /// <summary>

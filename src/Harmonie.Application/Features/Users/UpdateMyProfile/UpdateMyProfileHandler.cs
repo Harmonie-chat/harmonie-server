@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Common;
 using Harmonie.Domain.ValueObjects;
@@ -42,45 +43,102 @@ public sealed class UpdateMyProfileHandler
 
         if (request.DisplayNameIsSet)
         {
-            var displayNameUpdateResult = user.UpdateDisplayName(request.DisplayName);
-            if (displayNameUpdateResult.IsFailure)
-                return BuildValidationFailure(nameof(request.DisplayName), displayNameUpdateResult);
+            var result = user.UpdateDisplayName(request.DisplayName);
+            if (result.IsFailure)
+                return BuildValidationFailure(nameof(request.DisplayName), result);
         }
 
         if (request.BioIsSet)
         {
-            var bioUpdateResult = user.UpdateBio(request.Bio);
-            if (bioUpdateResult.IsFailure)
-                return BuildValidationFailure(nameof(request.Bio), bioUpdateResult);
+            var result = user.UpdateBio(request.Bio);
+            if (result.IsFailure)
+                return BuildValidationFailure(nameof(request.Bio), result);
         }
 
         if (request.AvatarUrlIsSet)
         {
-            var avatarUrlUpdateResult = user.UpdateAvatar(request.AvatarUrl);
-            if (avatarUrlUpdateResult.IsFailure)
-                return BuildValidationFailure(nameof(request.AvatarUrl), avatarUrlUpdateResult);
+            var result = user.UpdateAvatar(request.AvatarUrl);
+            if (result.IsFailure)
+                return BuildValidationFailure(nameof(request.AvatarUrl), result);
         }
 
-        if (request.DisplayNameIsSet || request.BioIsSet || request.AvatarUrlIsSet)
+        if (request.AvatarColorIsSet)
         {
-            await _userRepository.UpdateProfileAsync(
-                user.Id,
-                request.DisplayNameIsSet,
-                request.DisplayName,
-                request.BioIsSet,
-                request.Bio,
-                request.AvatarUrlIsSet,
-                request.AvatarUrl,
-                user.UpdatedAtUtc,
-                cancellationToken);
+            var result = user.UpdateAvatarColor(request.AvatarColor);
+            if (result.IsFailure)
+                return BuildValidationFailure("Avatar.Color", result);
         }
+
+        if (request.AvatarIconIsSet)
+        {
+            var result = user.UpdateAvatarIcon(request.AvatarIcon);
+            if (result.IsFailure)
+                return BuildValidationFailure("Avatar.Icon", result);
+        }
+
+        if (request.AvatarBgIsSet)
+        {
+            var result = user.UpdateAvatarBg(request.AvatarBg);
+            if (result.IsFailure)
+                return BuildValidationFailure("Avatar.Bg", result);
+        }
+
+        if (request.ThemeIsSet)
+        {
+            var result = user.UpdateTheme(request.Theme!);
+            if (result.IsFailure)
+                return BuildValidationFailure(nameof(request.Theme), result);
+        }
+
+        if (request.LanguageIsSet)
+        {
+            var result = user.UpdateLanguage(request.Language);
+            if (result.IsFailure)
+                return BuildValidationFailure(nameof(request.Language), result);
+        }
+
+        var anyFieldSet = request.DisplayNameIsSet || request.BioIsSet || request.AvatarUrlIsSet
+            || request.AvatarColorIsSet || request.AvatarIconIsSet || request.AvatarBgIsSet
+            || request.ThemeIsSet || request.LanguageIsSet;
+
+        if (anyFieldSet)
+        {
+            var parameters = new ProfileUpdateParameters(
+                UserId: user.Id,
+                DisplayNameIsSet: request.DisplayNameIsSet,
+                DisplayName: request.DisplayName,
+                BioIsSet: request.BioIsSet,
+                Bio: request.Bio,
+                AvatarUrlIsSet: request.AvatarUrlIsSet,
+                AvatarUrl: request.AvatarUrl,
+                AvatarColorIsSet: request.AvatarColorIsSet,
+                AvatarColor: request.AvatarColor,
+                AvatarIconIsSet: request.AvatarIconIsSet,
+                AvatarIcon: request.AvatarIcon,
+                AvatarBgIsSet: request.AvatarBgIsSet,
+                AvatarBg: request.AvatarBg,
+                ThemeIsSet: request.ThemeIsSet,
+                Theme: request.Theme,
+                LanguageIsSet: request.LanguageIsSet,
+                Language: request.Language,
+                UpdatedAtUtc: user.UpdatedAtUtc);
+
+            await _userRepository.UpdateProfileAsync(parameters, cancellationToken);
+        }
+
+        var avatar = user.AvatarColor is not null || user.AvatarIcon is not null || user.AvatarBg is not null
+            ? new AvatarAppearanceDto(user.AvatarColor, user.AvatarIcon, user.AvatarBg)
+            : null;
 
         var payload = new UpdateMyProfileResponse(
             UserId: user.Id.ToString(),
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarUrl: user.AvatarUrl);
+            AvatarUrl: user.AvatarUrl,
+            Avatar: avatar,
+            Theme: user.Theme,
+            Language: user.Language);
 
         _logger.LogInformation(
             "UpdateMyProfile succeeded for user {UserId}",

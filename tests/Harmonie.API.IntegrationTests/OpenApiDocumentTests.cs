@@ -98,14 +98,19 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         if (document is null)
             throw new InvalidOperationException("The OpenAPI document could not be parsed.");
 
-        var updateMyProfileSchema = ResolveRequestBodySchema(document, "/api/users/me", "put");
+        var updateMyProfileSchema = ResolveRequestBodySchema(document, "/api/users/me", "patch");
         updateMyProfileSchema.Should().NotBeNull();
         updateMyProfileSchema!["properties"]?["displayName"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["bio"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["avatarUrl"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["avatar"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["theme"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["language"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["displayNameIsSet"].Should().BeNull();
         updateMyProfileSchema["properties"]?["bioIsSet"].Should().BeNull();
         updateMyProfileSchema["properties"]?["avatarUrlIsSet"].Should().BeNull();
+        updateMyProfileSchema["properties"]?["avatarIsSet"].Should().BeNull();
+        updateMyProfileSchema["properties"]?["themeIsSet"].Should().BeNull();
 
         var updateChannelSchema = ResolveRequestBodySchema(document, "/api/channels/{channelId}", "patch");
         updateChannelSchema.Should().NotBeNull();
@@ -114,7 +119,7 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         updateChannelSchema["properties"]?["nameIsSet"].Should().BeNull();
         updateChannelSchema["properties"]?["positionIsSet"].Should().BeNull();
 
-        var updateMyProfileRequestBody = document["paths"]?["/api/users/me"]?["put"]?["requestBody"];
+        var updateMyProfileRequestBody = document["paths"]?["/api/users/me"]?["patch"]?["requestBody"];
         updateMyProfileRequestBody.Should().NotBeNull();
         updateMyProfileRequestBody!["description"]?.GetValue<string>()
             .Should().Contain("Omit a field to keep its current value");

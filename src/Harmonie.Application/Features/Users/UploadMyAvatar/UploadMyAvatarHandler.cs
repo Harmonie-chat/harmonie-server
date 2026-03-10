@@ -92,14 +92,17 @@ public sealed class UploadMyAvatarHandler
         {
             await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
             await _userRepository.UpdateProfileAsync(
-                user.Id,
-                displayNameIsSet: false,
-                displayName: null,
-                bioIsSet: false,
-                bio: null,
-                avatarUrlIsSet: true,
-                avatarUrl: avatarUrl,
-                user.UpdatedAtUtc,
+                new ProfileUpdateParameters(
+                    UserId: user.Id,
+                    DisplayNameIsSet: false, DisplayName: null,
+                    BioIsSet: false, Bio: null,
+                    AvatarUrlIsSet: true, AvatarUrl: avatarUrl,
+                    AvatarColorIsSet: false, AvatarColor: null,
+                    AvatarIconIsSet: false, AvatarIcon: null,
+                    AvatarBgIsSet: false, AvatarBg: null,
+                    ThemeIsSet: false, Theme: null,
+                    LanguageIsSet: false, Language: null,
+                    UpdatedAtUtc: user.UpdatedAtUtc),
                 cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }

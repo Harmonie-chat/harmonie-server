@@ -11,14 +11,14 @@ public static class UpdateMyProfileEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/users/me", HandleAsync)
+        app.MapPatch("/api/users/me", HandleAsync)
             .WithName("UpdateMyProfile")
             .WithTags("Users")
             .RequireAuthorization()
             .WithSummary("Update my profile")
-            .WithDescription("Updates display name, bio, and avatar URL for the authenticated user.")
+            .WithDescription("Partially updates the authenticated user's profile. Omit a field to keep its current value; send null to clear a nullable field.")
             .WithJsonRequestBodyDocumentation(
-                "Partial profile update. Omit a field to keep its current value. Send null for bio or avatarUrl to clear the value.",
+                "Partial profile update. Omit a field to keep its current value. Send null for nullable fields to clear the value. Theme cannot be null.",
                 typeof(UpdateMyProfileOpenApiRequest),
                 (
                     "updateDisplayName",
@@ -28,12 +28,28 @@ public static class UpdateMyProfileEndpoint
                         displayName = "Alice Harmonie"
                     }),
                 (
+                    "updateAvatarAppearance",
+                    "Update avatar appearance",
+                    new
+                    {
+                        avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" }
+                    }),
+                (
+                    "updateThemeAndLanguage",
+                    "Update theme and language",
+                    new
+                    {
+                        theme = "dark",
+                        language = "fr"
+                    }),
+                (
                     "clearProfileFields",
-                    "Clear bio and avatar URL",
+                    "Clear bio, avatar URL, and avatar appearance",
                     new
                     {
                         bio = (string?)null,
-                        avatarUrl = (string?)null
+                        avatarUrl = (string?)null,
+                        avatar = (object?)null
                     }))
             .Produces<UpdateMyProfileResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
@@ -62,5 +78,13 @@ public static class UpdateMyProfileEndpoint
     internal sealed record UpdateMyProfileOpenApiRequest(
         string? DisplayName,
         string? Bio,
-        string? AvatarUrl);
+        string? AvatarUrl,
+        UpdateMyProfileOpenApiAvatarRequest? Avatar,
+        string? Theme,
+        string? Language);
+
+    internal sealed record UpdateMyProfileOpenApiAvatarRequest(
+        string? Color,
+        string? Icon,
+        string? Bg);
 }

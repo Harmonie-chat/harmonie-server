@@ -54,14 +54,11 @@ public sealed class UpdateMyProfileHandlerTests
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
-                user.Id,
-                true,
-                "Updated Name",
-                false,
-                null,
-                false,
-                null,
-                It.IsAny<DateTime?>(),
+                It.Is<ProfileUpdateParameters>(p =>
+                    p.DisplayNameIsSet == true &&
+                    p.DisplayName == "Updated Name" &&
+                    p.BioIsSet == false &&
+                    p.AvatarUrlIsSet == false),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -98,14 +95,12 @@ public sealed class UpdateMyProfileHandlerTests
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
-                user.Id,
-                false,
-                null,
-                true,
-                null,
-                true,
-                null,
-                It.IsAny<DateTime?>(),
+                It.Is<ProfileUpdateParameters>(p =>
+                    p.DisplayNameIsSet == false &&
+                    p.BioIsSet == true &&
+                    p.Bio == null &&
+                    p.AvatarUrlIsSet == true &&
+                    p.AvatarUrl == null),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -135,14 +130,7 @@ public sealed class UpdateMyProfileHandlerTests
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<DateTime?>(),
+                It.IsAny<ProfileUpdateParameters>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -170,16 +158,171 @@ public sealed class UpdateMyProfileHandlerTests
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>(),
-                It.IsAny<DateTime?>(),
+                It.IsAny<ProfileUpdateParameters>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenThemeIsSet_ShouldUpdateTheme()
+    {
+        var user = CreateUser();
+        var request = new UpdateMyProfileRequest
+        {
+            Theme = "dark",
+            ThemeIsSet = true
+        };
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Theme.Should().Be("dark");
+
+        _userRepositoryMock.Verify(
+            x => x.UpdateProfileAsync(
+                It.Is<ProfileUpdateParameters>(p =>
+                    p.ThemeIsSet == true &&
+                    p.Theme == "dark"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenLanguageIsExplicitlyNull_ShouldClearLanguage()
+    {
+        var user = CreateUser();
+        user.UpdateLanguage("fr");
+
+        var request = new UpdateMyProfileRequest
+        {
+            Language = null,
+            LanguageIsSet = true
+        };
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Language.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAvatarAppearanceIsSet_ShouldUpdateAvatarFields()
+    {
+        var user = CreateUser();
+        var request = new UpdateMyProfileRequest
+        {
+            AvatarIsSet = true,
+            AvatarColor = "#FFF4D6",
+            AvatarColorIsSet = true,
+            AvatarIcon = "star",
+            AvatarIconIsSet = true,
+            AvatarBg = "#1F2937",
+            AvatarBgIsSet = true
+        };
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Avatar.Should().NotBeNull();
+        response.Data.Avatar!.Color.Should().Be("#FFF4D6");
+        response.Data.Avatar.Icon.Should().Be("star");
+        response.Data.Avatar.Bg.Should().Be("#1F2937");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAvatarAppearanceIsPartial_ShouldOnlyUpdateProvidedSubFields()
+    {
+        var user = CreateUser();
+        user.UpdateAvatarColor("#INITIAL");
+        user.UpdateAvatarIcon("heart");
+        user.UpdateAvatarBg("#000000");
+
+        var request = new UpdateMyProfileRequest
+        {
+            AvatarIsSet = true,
+            AvatarColor = "#UPDATED",
+            AvatarColorIsSet = true,
+            AvatarIconIsSet = false,
+            AvatarBgIsSet = false
+        };
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Avatar.Should().NotBeNull();
+        response.Data.Avatar!.Color.Should().Be("#UPDATED");
+        response.Data.Avatar.Icon.Should().Be("heart");
+        response.Data.Avatar.Bg.Should().Be("#000000");
+
+        _userRepositoryMock.Verify(
+            x => x.UpdateProfileAsync(
+                It.Is<ProfileUpdateParameters>(p =>
+                    p.AvatarColorIsSet == true &&
+                    p.AvatarColor == "#UPDATED" &&
+                    p.AvatarIconIsSet == false &&
+                    p.AvatarBgIsSet == false),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNoFieldIsSet_ShouldNotCallRepository()
+    {
+        var user = CreateUser();
+        var request = new UpdateMyProfileRequest();
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+
+        _userRepositoryMock.Verify(
+            x => x.UpdateProfileAsync(
+                It.IsAny<ProfileUpdateParameters>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAllAvatarFieldsAreNull_ShouldReturnNullAvatar()
+    {
+        var user = CreateUser();
+        var request = new UpdateMyProfileRequest();
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var response = await _handler.HandleAsync(request, user.Id);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Avatar.Should().BeNull();
+        response.Data.Theme.Should().Be("default");
+        response.Data.Language.Should().BeNull();
     }
 
     private static User CreateUser()
