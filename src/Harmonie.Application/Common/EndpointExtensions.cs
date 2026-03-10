@@ -14,6 +14,8 @@ namespace Harmonie.Application.Common;
 /// </summary>
 public static class EndpointExtensions
 {
+    private static readonly JsonSerializerOptions OpenApiExampleSerializerOptions = new(JsonSerializerDefaults.Web);
+
     /// <summary>
     /// Validate a request using FluentValidation and return a standardized error payload.
     /// </summary>
@@ -178,11 +180,11 @@ public static class EndpointExtensions
                     mediaType.Examples[code] = new OpenApiExample
                     {
                         Summary = code,
-                        Value = JsonNode.Parse(JsonSerializer.Serialize(
+                        Value = ToOpenApiJsonNode(
                             EnrichError(
                                 new ApplicationError(code, BuildExampleDetail(code), errors),
                                 status,
-                                "trace-id")))
+                                "trace-id"))
                     };
                 }
             }
@@ -224,7 +226,7 @@ public static class EndpointExtensions
             if (examples.Length == 0)
                 return;
 
-            mediaType.Example = JsonNode.Parse(JsonSerializer.Serialize(examples[0].Value));
+            mediaType.Example = ToOpenApiJsonNode(examples[0].Value);
             mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
 
             foreach (var (name, summary, value) in examples)
@@ -232,7 +234,7 @@ public static class EndpointExtensions
                 mediaType.Examples[name] = new OpenApiExample
                 {
                     Summary = summary,
-                    Value = JsonNode.Parse(JsonSerializer.Serialize(value))
+                    Value = ToOpenApiJsonNode(value)
                 };
             }
 
@@ -266,6 +268,9 @@ public static class EndpointExtensions
             Status = status,
             TraceId = string.IsNullOrWhiteSpace(traceId) ? error.TraceId : traceId
         };
+
+    private static JsonNode? ToOpenApiJsonNode(object? value)
+        => JsonSerializer.SerializeToNode(value, OpenApiExampleSerializerOptions);
 
     public static string NormalizeValidationErrorCode(string fluentValidationCode)
         => fluentValidationCode switch
