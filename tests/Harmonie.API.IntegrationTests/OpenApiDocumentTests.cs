@@ -41,8 +41,14 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         validationExample.Should().NotBeNull();
         validationExample!["code"]?.GetValue<string>().Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
         validationExample["detail"]?.GetValue<string>().Should().Be("Validation failed");
+        validationExample["errors"]?["field"]?[0]?["code"]?.GetValue<string>().Should().Be(ApplicationErrorCodes.Validation.Required);
         validationExample["status"]?.GetValue<int>().Should().Be(400);
         validationExample["traceId"]?.GetValue<string>().Should().Be("trace-id");
+        validationExample["Code"].Should().BeNull();
+        validationExample["Detail"].Should().BeNull();
+        validationExample["Errors"].Should().BeNull();
+        validationExample["Status"].Should().BeNull();
+        validationExample["TraceId"].Should().BeNull();
 
         var unauthorizedDescription = getGuildChannels["401"]?["description"]?.GetValue<string>();
         unauthorizedDescription.Should().NotBeNull();
@@ -52,6 +58,10 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         unauthorizedExample.Should().NotBeNull();
         unauthorizedExample!["code"]?.GetValue<string>().Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
         unauthorizedExample["detail"]?.GetValue<string>().Should().Be("Invalid credentials");
+        unauthorizedExample["status"]?.GetValue<int>().Should().Be(401);
+        unauthorizedExample["traceId"]?.GetValue<string>().Should().Be("trace-id");
+        unauthorizedExample["Code"].Should().BeNull();
+        unauthorizedExample["TraceId"].Should().BeNull();
     }
 
     [Fact]
