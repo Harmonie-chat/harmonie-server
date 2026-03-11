@@ -19,7 +19,9 @@ public static class UploadFileEndpoint
             .DisableAntiforgery()
             .Accepts<UploadFileRequest>("multipart/form-data")
             .WithSummary("Upload a file")
-            .WithDescription("Uploads a file to object storage and returns its metadata and public URL.")
+            .WithDescription("Uploads a file to object storage and returns its metadata and public URL. " +
+                "Optional form field 'purpose' accepts: attachment (default), guildIcon. " +
+                "Avatar uploads must use the dedicated avatar endpoint.")
             .Produces<UploadFileResponse>(StatusCodes.Status201Created)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -59,6 +61,10 @@ public static class UploadFileEndpoint
                 .ToHttpResult();
         }
 
+        var purpose = UploadPurpose.Attachment;
+        if (!string.IsNullOrWhiteSpace(request.Purpose))
+            Enum.TryParse(request.Purpose, ignoreCase: true, out purpose);
+
         await using var stream = file.OpenReadStream();
         var response = await handler.HandleAsync(
             fileName,
@@ -66,7 +72,7 @@ public static class UploadFileEndpoint
             file.Length,
             stream,
             currentUserId,
-            UploadPurpose.Attachment,
+            purpose,
             cancellationToken);
 
         return response.ToCreatedHttpResult(data => $"/api/uploads/{data.FileId}");

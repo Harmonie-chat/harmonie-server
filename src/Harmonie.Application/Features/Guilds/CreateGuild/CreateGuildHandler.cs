@@ -69,8 +69,41 @@ public sealed class CreateGuildHandler
                 guildResult.Error ?? "Unable to create guild");
         }
 
+        var guild = guildResult.Value;
+
+        if (request.IconUrl is not null)
+        {
+            var iconUrlResult = guild.UpdateIconUrl(request.IconUrl);
+            if (iconUrlResult.IsFailure)
+                return BuildIconValidationFailure(nameof(request.IconUrl), iconUrlResult.Error);
+        }
+
+        if (request.Icon is not null)
+        {
+            if (request.Icon.Color is not null)
+            {
+                var result = guild.UpdateIconColor(request.Icon.Color);
+                if (result.IsFailure)
+                    return BuildIconValidationFailure("Icon.Color", result.Error);
+            }
+
+            if (request.Icon.Name is not null)
+            {
+                var result = guild.UpdateIconName(request.Icon.Name);
+                if (result.IsFailure)
+                    return BuildIconValidationFailure("Icon.Name", result.Error);
+            }
+
+            if (request.Icon.Bg is not null)
+            {
+                var result = guild.UpdateIconBg(request.Icon.Bg);
+                if (result.IsFailure)
+                    return BuildIconValidationFailure("Icon.Bg", result.Error);
+            }
+        }
+
         var ownerMembershipResult = GuildMember.Create(
-            guildResult.Value.Id,
+            guild.Id,
             currentUserId,
             GuildRole.Admin,
             invitedByUserId: null);
@@ -78,7 +111,7 @@ public sealed class CreateGuildHandler
         {
             _logger.LogWarning(
                 "CreateGuild owner membership creation failed for guild {GuildId}: {Error}",
-                guildResult.Value.Id,
+                guild.Id,
                 ownerMembershipResult.Error);
 
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -87,7 +120,7 @@ public sealed class CreateGuildHandler
         }
 
         var defaultTextChannelResult = GuildChannel.Create(
-            guildResult.Value.Id,
+            guild.Id,
             "general",
             GuildChannelType.Text,
             isDefault: true,
@@ -96,7 +129,7 @@ public sealed class CreateGuildHandler
         {
             _logger.LogWarning(
                 "CreateGuild default text channel creation failed for guild {GuildId}: {Error}",
-                guildResult.Value.Id,
+                guild.Id,
                 defaultTextChannelResult.Error);
 
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -105,7 +138,7 @@ public sealed class CreateGuildHandler
         }
 
         var defaultVoiceChannelResult = GuildChannel.Create(
-            guildResult.Value.Id,
+            guild.Id,
             "General Voice",
             GuildChannelType.Voice,
             isDefault: true,
@@ -114,7 +147,7 @@ public sealed class CreateGuildHandler
         {
             _logger.LogWarning(
                 "CreateGuild default voice channel creation failed for guild {GuildId}: {Error}",
-                guildResult.Value.Id,
+                guild.Id,
                 defaultVoiceChannelResult.Error);
 
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -123,7 +156,7 @@ public sealed class CreateGuildHandler
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _guildRepository.AddAsync(guildResult.Value, cancellationToken);
+        await _guildRepository.AddAsync(guild, cancellationToken);
         var ownerMembershipAdded = await _guildMemberRepository.TryAddAsync(
             ownerMembershipResult.Value,
             cancellationToken);
@@ -131,7 +164,7 @@ public sealed class CreateGuildHandler
         {
             _logger.LogWarning(
                 "CreateGuild owner membership insert failed for guild {GuildId}",
-                guildResult.Value.Id);
+                guild.Id);
 
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
@@ -144,21 +177,41 @@ public sealed class CreateGuildHandler
 
         _logger.LogInformation(
             "CreateGuild succeeded. GuildId={GuildId}, OwnerUserId={OwnerUserId}, DefaultTextChannelId={DefaultTextChannelId}, DefaultVoiceChannelId={DefaultVoiceChannelId}",
-            guildResult.Value.Id,
-            guildResult.Value.OwnerUserId,
+            guild.Id,
+            guild.OwnerUserId,
             defaultTextChannelResult.Value.Id,
             defaultVoiceChannelResult.Value.Id);
 
         var payload = new CreateGuildResponse(
-            GuildId: guildResult.Value.Id.ToString(),
-            Name: guildResult.Value.Name.Value,
-            OwnerUserId: guildResult.Value.OwnerUserId.ToString(),
-            IconUrl: guildResult.Value.IconUrl,
-            Icon: null,
+            GuildId: guild.Id.ToString(),
+            Name: guild.Name.Value,
+            OwnerUserId: guild.OwnerUserId.ToString(),
+            IconUrl: guild.IconUrl,
+            Icon: BuildIcon(guild),
             DefaultTextChannelId: defaultTextChannelResult.Value.Id.ToString(),
             DefaultVoiceChannelId: defaultVoiceChannelResult.Value.Id.ToString(),
-            CreatedAtUtc: guildResult.Value.CreatedAtUtc);
+            CreatedAtUtc: guild.CreatedAtUtc);
 
         return ApplicationResponse<CreateGuildResponse>.Ok(payload);
+    }
+
+    private static GuildIconDto? BuildIcon(Guild guild)
+    {
+        return guild.IconColor is not null || guild.IconName is not null || guild.IconBg is not null
+            ? new GuildIconDto(guild.IconColor, guild.IconName, guild.IconBg)
+            : null;
+    }
+
+    private static ApplicationResponse<CreateGuildResponse> BuildIconValidationFailure(
+        string propertyName,
+        string? detail)
+    {
+        return ApplicationResponse<CreateGuildResponse>.Fail(
+            ApplicationErrorCodes.Common.ValidationFailed,
+            "Request validation failed",
+            EndpointExtensions.SingleValidationError(
+                propertyName,
+                ApplicationErrorCodes.Validation.Invalid,
+                detail ?? "Guild field is invalid"));
     }
 }
