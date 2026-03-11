@@ -10,7 +10,7 @@ public sealed class ConversationMessageSearchRow
 
     public string? AuthorDisplayName { get; init; }
 
-    public string? AuthorAvatarUrl { get; init; }
+    public Guid? AuthorAvatarFileId { get; init; }
 
     public string Content { get; init; } = string.Empty;
 

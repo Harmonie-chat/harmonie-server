@@ -36,7 +36,7 @@ public sealed class ListUserGuildsHandler
                     GuildId: membership.Guild.Id.ToString(),
                     Name: membership.Guild.Name.Value,
                     OwnerUserId: membership.Guild.OwnerUserId.ToString(),
-                    IconUrl: membership.Guild.IconUrl,
+                    IconFileId: membership.Guild.IconFileId?.ToString(),
                     Icon: membership.Guild.IconColor is not null
                         || membership.Guild.IconName is not null
                         || membership.Guild.IconBg is not null

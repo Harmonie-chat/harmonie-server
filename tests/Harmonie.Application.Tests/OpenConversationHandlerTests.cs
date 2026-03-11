@@ -139,7 +139,7 @@ public sealed class OpenConversationHandlerTests
             emailResult.Value,
             usernameResult.Value,
             "hashed-password",
-            avatarUrl: null,
+            avatarFileId: null,
             isEmailVerified: true,
             isActive: true,
             lastLoginAtUtc: null,

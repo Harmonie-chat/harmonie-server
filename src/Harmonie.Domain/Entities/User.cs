@@ -24,10 +24,7 @@ public sealed class User : Entity<UserId>
     /// </summary>
     public string PasswordHash { get; private set; } = null!;
 
-    /// <summary>
-    /// URL to user's avatar image
-    /// </summary>
-    public string? AvatarUrl { get; private set; }
+    public UploadedFileId? AvatarFileId { get; private set; }
 
     /// <summary>
     /// Whether the user's email has been verified
@@ -113,7 +110,7 @@ public sealed class User : Entity<UserId>
         Email email,
         Username username,
         string passwordHash,
-        string? avatarUrl,
+        UploadedFileId? avatarFileId,
         bool isEmailVerified,
         bool isActive,
         DateTime? lastLoginAtUtc,
@@ -134,7 +131,7 @@ public sealed class User : Entity<UserId>
             Email = email,
             Username = username,
             PasswordHash = passwordHash,
-            AvatarUrl = avatarUrl,
+            AvatarFileId = avatarFileId,
             IsEmailVerified = isEmailVerified,
             IsActive = isActive,
             LastLoginAtUtc = lastLoginAtUtc,
@@ -196,14 +193,11 @@ public sealed class User : Entity<UserId>
     }
 
     /// <summary>
-    /// Update the user's avatar
+    /// Update the user's avatar file
     /// </summary>
-    public Result UpdateAvatar(string? avatarUrl)
+    public Result UpdateAvatarFile(UploadedFileId? avatarFileId)
     {
-        if (avatarUrl?.Length > 2048)
-            return Result.Failure("Avatar URL is too long");
-
-        AvatarUrl = avatarUrl;
+        AvatarFileId = avatarFileId;
         MarkAsUpdated();
 
         return Result.Success();

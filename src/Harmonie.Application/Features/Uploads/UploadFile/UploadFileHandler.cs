@@ -116,7 +116,6 @@ public sealed class UploadFileHandler
 
         var payload = new UploadFileResponse(
             FileId: uploadFileResult.Value.Id.ToString(),
-            Url: $"/api/files/{uploadFileResult.Value.Id}",
             Filename: uploadFileResult.Value.FileName,
             ContentType: uploadFileResult.Value.ContentType,
             SizeBytes: uploadFileResult.Value.SizeBytes);

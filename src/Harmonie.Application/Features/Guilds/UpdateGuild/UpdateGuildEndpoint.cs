@@ -29,19 +29,19 @@ public static class UpdateGuildEndpoint
                         icon = new { color = "#7C3AED", name = "sword", bg = "#1F2937" }
                     }),
                 (
-                    "updateNameAndIconUrl",
-                    "Update name and icon URL",
+                    "updateNameAndIconFile",
+                    "Update name and icon file",
                     new
                     {
                         name = "My Guild",
-                        iconUrl = "https://cdn.harmonie.chat/guild-icon.png"
+                        iconFileId = "8d7205f2-2d62-49a5-8873-b1d331ed7e8c"
                     }),
                 (
                     "clearIcon",
-                    "Clear icon URL and generated icon",
+                    "Clear icon file and generated icon",
                     new
                     {
-                        iconUrl = (string?)null,
+                        iconFileId = (string?)null,
                         icon = (object?)null
                     }))
             .Produces<UpdateGuildResponse>(StatusCodes.Status200OK)
@@ -86,7 +86,7 @@ public static class UpdateGuildEndpoint
 
     internal sealed record UpdateGuildOpenApiRequest(
         string? Name,
-        string? IconUrl,
+        string? IconFileId,
         UpdateGuildOpenApiIconRequest? Icon);
 
     internal sealed record UpdateGuildOpenApiIconRequest(

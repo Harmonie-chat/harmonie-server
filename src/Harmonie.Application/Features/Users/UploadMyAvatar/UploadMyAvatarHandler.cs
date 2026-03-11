@@ -16,6 +16,7 @@ public sealed class UploadMyAvatarHandler
     private readonly IUserRepository _userRepository;
     private readonly IUploadedFileRepository _uploadedFileRepository;
     private readonly IObjectStorageService _objectStorageService;
+    private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UploadMyAvatarHandler> _logger;
 
@@ -23,12 +24,14 @@ public sealed class UploadMyAvatarHandler
         IUserRepository userRepository,
         IUploadedFileRepository uploadedFileRepository,
         IObjectStorageService objectStorageService,
+        UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         ILogger<UploadMyAvatarHandler> logger)
     {
         _userRepository = userRepository;
         _uploadedFileRepository = uploadedFileRepository;
         _objectStorageService = objectStorageService;
+        _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -60,6 +63,7 @@ public sealed class UploadMyAvatarHandler
 
         using var resizedStream = await ResizeImageAsync(content, contentType, cancellationToken);
         var storageKey = BuildStorageKey(currentUserId, fileName);
+        var previousAvatarFileId = user.AvatarFileId;
 
         var uploadedFileResult = UploadedFile.Create(
             currentUserId,
@@ -103,15 +107,13 @@ public sealed class UploadMyAvatarHandler
                 uploadResult.FailureReason ?? "Object storage upload failed");
         }
 
-        var avatarUrl = $"/api/files/{uploadedFileResult.Value.Id}";
-
-        var avatarUpdateResult = user.UpdateAvatar(avatarUrl);
+        var avatarUpdateResult = user.UpdateAvatarFile(uploadedFileResult.Value.Id);
         if (avatarUpdateResult.IsFailure)
         {
             await DeleteStoredObjectSafelyAsync(storageKey, cancellationToken);
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
-                avatarUpdateResult.Error ?? "Avatar URL is invalid");
+                avatarUpdateResult.Error ?? "Avatar file is invalid");
         }
 
         try
@@ -123,7 +125,7 @@ public sealed class UploadMyAvatarHandler
                     UserId: user.Id,
                     DisplayNameIsSet: false, DisplayName: null,
                     BioIsSet: false, Bio: null,
-                    AvatarUrlIsSet: true, AvatarUrl: avatarUrl,
+                    AvatarFileIdIsSet: true, AvatarFileId: uploadedFileResult.Value.Id,
                     AvatarColorIsSet: false, AvatarColor: null,
                     AvatarIconIsSet: false, AvatarIcon: null,
                     AvatarBgIsSet: false, AvatarBg: null,
@@ -144,8 +146,11 @@ public sealed class UploadMyAvatarHandler
             currentUserId,
             storageKey);
 
+        if (previousAvatarFileId is not null && previousAvatarFileId != uploadedFileResult.Value.Id)
+            await _uploadedFileCleanupService.DeleteIfExistsAsync(previousAvatarFileId, cancellationToken);
+
         return ApplicationResponse<UploadMyAvatarResponse>.Ok(
-            new UploadMyAvatarResponse(avatarUrl));
+            new UploadMyAvatarResponse(uploadedFileResult.Value.Id.ToString()));
     }
 
     private static async Task<MemoryStream> ResizeImageAsync(

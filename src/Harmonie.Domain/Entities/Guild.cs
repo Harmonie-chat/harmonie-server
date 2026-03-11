@@ -9,7 +9,7 @@ public sealed class Guild : Entity<GuildId>
 
     public UserId OwnerUserId { get; private set; }
 
-    public string? IconUrl { get; private set; }
+    public UploadedFileId? IconFileId { get; private set; }
 
     public string? IconColor { get; private set; }
 
@@ -21,7 +21,7 @@ public sealed class Guild : Entity<GuildId>
         GuildId id,
         GuildName name,
         UserId ownerUserId,
-        string? iconUrl,
+        UploadedFileId? iconFileId,
         string? iconColor,
         string? iconName,
         string? iconBg,
@@ -31,7 +31,7 @@ public sealed class Guild : Entity<GuildId>
         Id = id;
         Name = name;
         OwnerUserId = ownerUserId;
-        IconUrl = iconUrl;
+        IconFileId = iconFileId;
         IconColor = iconColor;
         IconName = iconName;
         IconBg = iconBg;
@@ -54,7 +54,7 @@ public sealed class Guild : Entity<GuildId>
             GuildId.New(),
             name,
             ownerUserId,
-            iconUrl: null,
+            iconFileId: null,
             iconColor: null,
             iconName: null,
             iconBg: null,
@@ -70,7 +70,7 @@ public sealed class Guild : Entity<GuildId>
         UserId ownerUserId,
         DateTime createdAtUtc,
         DateTime updatedAtUtc,
-        string? iconUrl = null,
+        UploadedFileId? iconFileId = null,
         string? iconColor = null,
         string? iconName = null,
         string? iconBg = null)
@@ -83,7 +83,7 @@ public sealed class Guild : Entity<GuildId>
             id,
             name,
             ownerUserId,
-            iconUrl,
+            iconFileId,
             iconColor,
             iconName,
             iconBg,
@@ -102,12 +102,9 @@ public sealed class Guild : Entity<GuildId>
         return Result.Success();
     }
 
-    public Result UpdateIconUrl(string? iconUrl)
+    public Result UpdateIconFile(UploadedFileId? iconFileId)
     {
-        if (iconUrl?.Length > 2048)
-            return Result.Failure("Guild icon URL is too long");
-
-        IconUrl = iconUrl;
+        IconFileId = iconFileId;
         MarkAsUpdated();
 
         return Result.Success();

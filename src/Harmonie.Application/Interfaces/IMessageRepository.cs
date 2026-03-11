@@ -88,7 +88,7 @@ public sealed record SearchConversationMessagesItem(
     UserId AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
-    string? AuthorAvatarUrl,
+    UploadedFileId? AuthorAvatarFileId,
     MessageContent Content,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

@@ -6,7 +6,7 @@ public sealed record CreateGuildResponse(
     string GuildId,
     string Name,
     string OwnerUserId,
-    string? IconUrl,
+    string? IconFileId,
     GuildIconDto? Icon,
     string DefaultTextChannelId,
     string DefaultVoiceChannelId,

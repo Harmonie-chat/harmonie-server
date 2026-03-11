@@ -22,7 +22,7 @@ public sealed class GuildRepository : IGuildRepository
                            SELECT id AS "Id",
                                   name AS "Name",
                                   owner_user_id AS "OwnerUserId",
-                                  icon_url AS "IconUrl",
+                                  icon_file_id AS "IconFileId",
                                   icon_color AS "IconColor",
                                   icon_name AS "IconName",
                                   icon_bg AS "IconBg",
@@ -52,7 +52,7 @@ public sealed class GuildRepository : IGuildRepository
                            SELECT g.id             AS "Id",
                                   g.name           AS "Name",
                                   g.owner_user_id  AS "OwnerUserId",
-                                  g.icon_url       AS "IconUrl",
+                                  g.icon_file_id   AS "IconFileId",
                                   g.icon_color     AS "IconColor",
                                   g.icon_name      AS "IconName",
                                   g.icon_bg        AS "IconBg",
@@ -94,6 +94,7 @@ public sealed class GuildRepository : IGuildRepository
                                name,
                                owner_user_id,
                                icon_url,
+                               icon_file_id,
                                icon_color,
                                icon_name,
                                icon_bg,
@@ -103,7 +104,8 @@ public sealed class GuildRepository : IGuildRepository
                                @Id,
                                @Name,
                                @OwnerUserId,
-                               @IconUrl,
+                               NULL,
+                               @IconFileId,
                                @IconColor,
                                @IconName,
                                @IconBg,
@@ -119,7 +121,7 @@ public sealed class GuildRepository : IGuildRepository
                 Id = guild.Id.Value,
                 Name = guild.Name.Value,
                 OwnerUserId = guild.OwnerUserId.Value,
-                guild.IconUrl,
+                IconFileId = guild.IconFileId?.Value,
                 guild.IconColor,
                 guild.IconName,
                 guild.IconBg,
@@ -137,7 +139,8 @@ public sealed class GuildRepository : IGuildRepository
         const string sql = """
                            UPDATE guilds
                            SET name = @Name,
-                               icon_url = @IconUrl,
+                               icon_url = NULL,
+                               icon_file_id = @IconFileId,
                                icon_color = @IconColor,
                                icon_name = @IconName,
                                icon_bg = @IconBg,
@@ -152,7 +155,7 @@ public sealed class GuildRepository : IGuildRepository
             {
                 Id = guild.Id.Value,
                 Name = guild.Name.Value,
-                guild.IconUrl,
+                IconFileId = guild.IconFileId?.Value,
                 guild.IconColor,
                 guild.IconName,
                 guild.IconBg,
@@ -172,33 +175,6 @@ public sealed class GuildRepository : IGuildRepository
         var command = new CommandDefinition(
             sql,
             new { GuildId = guildId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken);
-
-        return await connection.ExecuteScalarAsync<bool>(command);
-    }
-
-    public async Task<bool> IsIconUrlReferencedByAnotherGuildAsync(
-        string iconUrl,
-        GuildId excludedGuildId,
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-                           SELECT EXISTS(
-                               SELECT 1
-                               FROM guilds
-                               WHERE icon_url = @IconUrl
-                                 AND id <> @ExcludedGuildId)
-                           """;
-
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(
-            sql,
-            new
-            {
-                IconUrl = iconUrl,
-                ExcludedGuildId = excludedGuildId.Value
-            },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
@@ -240,7 +216,7 @@ public sealed class GuildRepository : IGuildRepository
             UserId.From(row.OwnerUserId),
             row.CreatedAtUtc,
             row.UpdatedAtUtc,
-            row.IconUrl,
+            row.IconFileId.HasValue ? UploadedFileId.From(row.IconFileId.Value) : null,
             row.IconColor,
             row.IconName,
             row.IconBg);
@@ -258,7 +234,7 @@ public sealed class GuildRepository : IGuildRepository
             UserId.From(row.OwnerUserId),
             row.CreatedAtUtc,
             row.UpdatedAtUtc,
-            row.IconUrl,
+            row.IconFileId.HasValue ? UploadedFileId.From(row.IconFileId.Value) : null,
             row.IconColor,
             row.IconName,
             row.IconBg);
@@ -269,7 +245,7 @@ public sealed class GuildRepository : IGuildRepository
         public Guid Id { get; init; }
         public string Name { get; init; } = string.Empty;
         public Guid OwnerUserId { get; init; }
-        public string? IconUrl { get; init; }
+        public Guid? IconFileId { get; init; }
         public string? IconColor { get; init; }
         public string? IconName { get; init; }
         public string? IconBg { get; init; }

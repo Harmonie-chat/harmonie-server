@@ -7,5 +7,5 @@ public sealed record SearchUsersItemResponse(
     string UserId,
     string Username,
     string? DisplayName,
-    string? AvatarUrl,
+    string? AvatarFileId,
     string Status);

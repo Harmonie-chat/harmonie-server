@@ -14,14 +14,14 @@ public sealed record SearchUserResult(
     UserId UserId,
     Username Username,
     string? DisplayName,
-    string? AvatarUrl,
+    UploadedFileId? AvatarFileId,
     bool IsActive);
 
 public sealed record ProfileUpdateParameters(
     UserId UserId,
     bool DisplayNameIsSet, string? DisplayName,
     bool BioIsSet, string? Bio,
-    bool AvatarUrlIsSet, string? AvatarUrl,
+    bool AvatarFileIdIsSet, UploadedFileId? AvatarFileId,
     bool AvatarColorIsSet, string? AvatarColor,
     bool AvatarIconIsSet, string? AvatarIcon,
     bool AvatarBgIsSet, string? AvatarBg,
@@ -59,11 +59,6 @@ public interface IUserRepository
     /// Check if a username already exists
     /// </summary>
     Task<bool> ExistsByUsernameAsync(Username username, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Check if an active user references the provided avatar URL.
-    /// </summary>
-    Task<bool> ExistsByAvatarUrlAsync(string avatarUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Check email and username uniqueness in a single query

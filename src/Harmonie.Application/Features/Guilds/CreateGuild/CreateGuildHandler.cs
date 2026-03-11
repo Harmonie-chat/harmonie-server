@@ -153,7 +153,7 @@ public sealed class CreateGuildHandler
             GuildId: guildResult.Value.Id.ToString(),
             Name: guildResult.Value.Name.Value,
             OwnerUserId: guildResult.Value.OwnerUserId.ToString(),
-            IconUrl: guildResult.Value.IconUrl,
+            IconFileId: guildResult.Value.IconFileId?.ToString(),
             Icon: null,
             DefaultTextChannelId: defaultTextChannelResult.Value.Id.ToString(),
             DefaultVoiceChannelId: defaultVoiceChannelResult.Value.Id.ToString(),

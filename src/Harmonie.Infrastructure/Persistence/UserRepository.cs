@@ -14,7 +14,7 @@ public sealed class UserRepository : IUserRepository
                                                 email as "Email",
                                                 username as "Username",
                                                 password_hash as "PasswordHash",
-                                                avatar_url as "AvatarUrl",
+                                                avatar_file_id as "AvatarFileId",
                                                 is_email_verified as "IsEmailVerified",
                                                 is_active as "IsActive",
                                                 display_name as "DisplayName",
@@ -104,26 +104,6 @@ public sealed class UserRepository : IUserRepository
         return await conn.ExecuteScalarAsync<bool>(cmd);
     }
 
-    public async Task<bool> ExistsByAvatarUrlAsync(string avatarUrl, CancellationToken ct = default)
-    {
-        const string sql = """
-                           SELECT EXISTS(
-                               SELECT 1
-                               FROM users
-                               WHERE avatar_url = @AvatarUrl
-                                 AND deleted_at IS NULL)
-                           """;
-
-        var conn = await _dbSession.GetOpenConnectionAsync(ct);
-        var cmd = new CommandDefinition(
-            sql,
-            new { AvatarUrl = avatarUrl },
-            transaction: _dbSession.Transaction,
-            cancellationToken: ct);
-
-        return await conn.ExecuteScalarAsync<bool>(cmd);
-    }
-
     public async Task<UserDuplicateCheck> CheckDuplicatesAsync(Email email, Username username, CancellationToken ct = default)
     {
         const string sql = """
@@ -159,7 +139,7 @@ public sealed class UserRepository : IUserRepository
             SELECT u.id AS "UserId",
                    u.username AS "Username",
                    u.display_name AS "DisplayName",
-                   u.avatar_url AS "AvatarUrl",
+                   u.avatar_file_id AS "AvatarFileId",
                    u.is_active AS "IsActive"
             FROM users u
             """);
@@ -207,10 +187,10 @@ public sealed class UserRepository : IUserRepository
     public async Task AddAsync(User user, CancellationToken ct = default)
     {
         const string sql = @"
-            INSERT INTO users (id, email, username, password_hash, avatar_url, is_email_verified,
+            INSERT INTO users (id, email, username, password_hash, avatar_url, avatar_file_id, is_email_verified,
                 is_active, display_name, bio, avatar_color, avatar_icon, avatar_bg, theme, language,
                 created_at_utc, updated_at_utc, last_login_at_utc)
-            VALUES (@Id, @Email, @Username, @PasswordHash, @AvatarUrl, @IsEmailVerified,
+            VALUES (@Id, @Email, @Username, @PasswordHash, NULL, @AvatarFileId, @IsEmailVerified,
                 @IsActive, @DisplayName, @Bio, @AvatarColor, @AvatarIcon, @AvatarBg, @Theme, @Language,
                 @CreatedAtUtc, @UpdatedAtUtc, @LastLoginAtUtc)";
 
@@ -223,7 +203,7 @@ public sealed class UserRepository : IUserRepository
                 Email = user.Email.Value,
                 Username = user.Username.Value,
                 user.PasswordHash,
-                user.AvatarUrl,
+                AvatarFileId = user.AvatarFileId?.Value,
                 user.IsEmailVerified,
                 user.IsActive,
                 user.DisplayName,
@@ -247,7 +227,7 @@ public sealed class UserRepository : IUserRepository
     {
         const string sql = @"
             UPDATE users SET email = @Email, username = @Username, password_hash = @PasswordHash,
-                avatar_url = @AvatarUrl, is_email_verified = @IsEmailVerified, is_active = @IsActive,
+                avatar_url = NULL, avatar_file_id = @AvatarFileId, is_email_verified = @IsEmailVerified, is_active = @IsActive,
                 display_name = @DisplayName, bio = @Bio,
                 avatar_color = @AvatarColor, avatar_icon = @AvatarIcon, avatar_bg = @AvatarBg,
                 theme = @Theme, language = @Language,
@@ -263,7 +243,7 @@ public sealed class UserRepository : IUserRepository
                 Email = user.Email.Value,
                 Username = user.Username.Value,
                 user.PasswordHash,
-                user.AvatarUrl,
+                AvatarFileId = user.AvatarFileId?.Value,
                 user.IsEmailVerified,
                 user.IsActive,
                 user.DisplayName,
@@ -290,7 +270,8 @@ public sealed class UserRepository : IUserRepository
             UPDATE users
             SET display_name = CASE WHEN @DisplayNameIsSet THEN @DisplayName ELSE display_name END,
                 bio = CASE WHEN @BioIsSet THEN @Bio ELSE bio END,
-                avatar_url = CASE WHEN @AvatarUrlIsSet THEN @AvatarUrl ELSE avatar_url END,
+                avatar_url = CASE WHEN @AvatarFileIdIsSet THEN NULL ELSE avatar_url END,
+                avatar_file_id = CASE WHEN @AvatarFileIdIsSet THEN @AvatarFileId ELSE avatar_file_id END,
                 avatar_color = CASE WHEN @AvatarColorIsSet THEN @AvatarColor ELSE avatar_color END,
                 avatar_icon = CASE WHEN @AvatarIconIsSet THEN @AvatarIcon ELSE avatar_icon END,
                 avatar_bg = CASE WHEN @AvatarBgIsSet THEN @AvatarBg ELSE avatar_bg END,
@@ -310,8 +291,8 @@ public sealed class UserRepository : IUserRepository
                 parameters.DisplayName,
                 parameters.BioIsSet,
                 parameters.Bio,
-                parameters.AvatarUrlIsSet,
-                parameters.AvatarUrl,
+                parameters.AvatarFileIdIsSet,
+                AvatarFileId = parameters.AvatarFileId?.Value,
                 parameters.AvatarColorIsSet,
                 parameters.AvatarColor,
                 parameters.AvatarIconIsSet,
@@ -357,7 +338,7 @@ public sealed class UserRepository : IUserRepository
             emailResult.Value,
             usernameResult.Value,
             userRow.PasswordHash,
-            userRow.AvatarUrl,
+            userRow.AvatarFileId.HasValue ? UploadedFileId.From(userRow.AvatarFileId.Value) : null,
             userRow.IsEmailVerified,
             userRow.IsActive,
             userRow.LastLoginAtUtc,
@@ -382,7 +363,7 @@ public sealed class UserRepository : IUserRepository
             UserId: UserId.From(row.UserId),
             Username: usernameResult.Value,
             DisplayName: row.DisplayName,
-            AvatarUrl: row.AvatarUrl,
+            AvatarFileId: row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
             IsActive: row.IsActive);
     }
 }

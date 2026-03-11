@@ -10,7 +10,7 @@ public sealed record SearchConversationMessagesItemResponse(
     string AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
-    string? AuthorAvatarUrl,
+    string? AuthorAvatarFileId,
     string Content,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

@@ -36,10 +36,6 @@ public sealed class UploadFileHandlerTests
             .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(_transactionMock.Object);
 
-        _objectStorageServiceMock
-            .Setup(x => x.BuildPublicUrl(It.IsAny<string>()))
-            .Returns<string>(storageKey => $"https://files.test/{storageKey}");
-
         _handler = new UploadFileHandler(
             _userRepositoryMock.Object,
             _uploadedFileRepositoryMock.Object,
@@ -135,10 +131,10 @@ public sealed class UploadFileHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
+        Guid.TryParse(response.Data!.FileId, out _).Should().BeTrue();
         response.Data!.Filename.Should().Be("hello.txt");
         response.Data.ContentType.Should().Be("text/plain");
         response.Data.SizeBytes.Should().Be(stream.Length);
-        response.Data.Url.Should().StartWith("/api/files/");
         persistedFile.Should().NotBeNull();
         persistedFile!.UploaderUserId.Should().Be(user.Id);
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

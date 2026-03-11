@@ -85,21 +85,18 @@ public sealed class UserTests
     }
 
     [Fact]
-    public void UpdateAvatar_WithTooLongValue_ShouldFail()
+    public void UpdateAvatarFile_WithValue_ShouldSucceed()
     {
-        // Arrange
         var user = User.Create(
             Email.Create("user-avatar@harmonie.chat").Value!,
             Username.Create("avataruser").Value!,
             "hash").Value!;
-        var tooLongAvatarUrl = $"https://cdn.harmonie.chat/{new string('a', 2100)}";
+        var avatarFileId = UploadedFileId.New();
 
-        // Act
-        var result = user.UpdateAvatar(tooLongAvatarUrl);
+        var result = user.UpdateAvatarFile(avatarFileId);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Avatar URL is too long");
+        result.IsSuccess.Should().BeTrue();
+        user.AvatarFileId.Should().Be(avatarFileId);
     }
 
     [Fact]

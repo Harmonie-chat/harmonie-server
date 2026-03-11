@@ -159,7 +159,7 @@ public sealed class SearchConversationMessagesHandler
                     AuthorUserId: item.AuthorUserId.ToString(),
                     AuthorUsername: item.AuthorUsername,
                     AuthorDisplayName: item.AuthorDisplayName,
-                    AuthorAvatarUrl: item.AuthorAvatarUrl,
+                    AuthorAvatarFileId: item.AuthorAvatarFileId?.ToString(),
                     Content: item.Content.Value,
                     CreatedAtUtc: item.CreatedAtUtc,
                     UpdatedAtUtc: item.UpdatedAtUtc))

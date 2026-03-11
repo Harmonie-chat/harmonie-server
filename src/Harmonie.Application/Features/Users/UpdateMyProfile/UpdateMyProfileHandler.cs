@@ -10,13 +10,16 @@ namespace Harmonie.Application.Features.Users.UpdateMyProfile;
 public sealed class UpdateMyProfileHandler
 {
     private readonly IUserRepository _userRepository;
+    private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly ILogger<UpdateMyProfileHandler> _logger;
 
     public UpdateMyProfileHandler(
         IUserRepository userRepository,
+        UploadedFileCleanupService uploadedFileCleanupService,
         ILogger<UpdateMyProfileHandler> logger)
     {
         _userRepository = userRepository;
+        _uploadedFileCleanupService = uploadedFileCleanupService;
         _logger = logger;
     }
 
@@ -41,6 +44,8 @@ public sealed class UpdateMyProfileHandler
                 "User profile was not found");
         }
 
+        var previousAvatarFileId = user.AvatarFileId;
+
         if (request.DisplayNameIsSet)
         {
             var result = user.UpdateDisplayName(request.DisplayName);
@@ -55,11 +60,18 @@ public sealed class UpdateMyProfileHandler
                 return BuildValidationFailure(nameof(request.Bio), result);
         }
 
-        if (request.AvatarUrlIsSet)
+        if (request.AvatarFileIdIsSet)
         {
-            var result = user.UpdateAvatar(request.AvatarUrl);
+            if (!TryParseUploadedFileId(request.AvatarFileId, out var avatarFileId))
+            {
+                return BuildValidationFailure(
+                    nameof(request.AvatarFileId),
+                    "Avatar file ID is invalid");
+            }
+
+            var result = user.UpdateAvatarFile(avatarFileId);
             if (result.IsFailure)
-                return BuildValidationFailure(nameof(request.AvatarUrl), result);
+                return BuildValidationFailure(nameof(request.AvatarFileId), result);
         }
 
         if (request.AvatarColorIsSet)
@@ -85,7 +97,14 @@ public sealed class UpdateMyProfileHandler
 
         if (request.ThemeIsSet)
         {
-            var result = user.UpdateTheme(request.Theme!);
+            if (request.Theme is null)
+            {
+                return BuildValidationFailure(
+                    nameof(request.Theme),
+                    "Theme cannot be null");
+            }
+
+            var result = user.UpdateTheme(request.Theme);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.Theme), result);
         }
@@ -97,9 +116,12 @@ public sealed class UpdateMyProfileHandler
                 return BuildValidationFailure(nameof(request.Language), result);
         }
 
-        var anyFieldSet = request.DisplayNameIsSet || request.BioIsSet || request.AvatarUrlIsSet
+        var anyFieldSet = request.DisplayNameIsSet || request.BioIsSet || request.AvatarFileIdIsSet
             || request.AvatarColorIsSet || request.AvatarIconIsSet || request.AvatarBgIsSet
             || request.ThemeIsSet || request.LanguageIsSet;
+        var shouldDeletePreviousAvatar = request.AvatarFileIdIsSet
+            && previousAvatarFileId is not null
+            && previousAvatarFileId != user.AvatarFileId;
 
         if (anyFieldSet)
         {
@@ -109,8 +131,8 @@ public sealed class UpdateMyProfileHandler
                 DisplayName: request.DisplayName,
                 BioIsSet: request.BioIsSet,
                 Bio: request.Bio,
-                AvatarUrlIsSet: request.AvatarUrlIsSet,
-                AvatarUrl: request.AvatarUrl,
+                AvatarFileIdIsSet: request.AvatarFileIdIsSet,
+                AvatarFileId: user.AvatarFileId,
                 AvatarColorIsSet: request.AvatarColorIsSet,
                 AvatarColor: request.AvatarColor,
                 AvatarIconIsSet: request.AvatarIconIsSet,
@@ -126,6 +148,9 @@ public sealed class UpdateMyProfileHandler
             await _userRepository.UpdateProfileAsync(parameters, cancellationToken);
         }
 
+        if (shouldDeletePreviousAvatar)
+            await _uploadedFileCleanupService.DeleteIfExistsAsync(previousAvatarFileId, cancellationToken);
+
         var avatar = user.AvatarColor is not null || user.AvatarIcon is not null || user.AvatarBg is not null
             ? new AvatarAppearanceDto(user.AvatarColor, user.AvatarIcon, user.AvatarBg)
             : null;
@@ -135,7 +160,7 @@ public sealed class UpdateMyProfileHandler
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarUrl: user.AvatarUrl,
+            AvatarFileId: user.AvatarFileId?.ToString(),
             Avatar: avatar,
             Theme: user.Theme,
             Language: user.Language);
@@ -149,6 +174,19 @@ public sealed class UpdateMyProfileHandler
 
     private static ApplicationResponse<UpdateMyProfileResponse> BuildValidationFailure(
         string propertyName,
+        string detail)
+    {
+        return ApplicationResponse<UpdateMyProfileResponse>.Fail(
+            ApplicationErrorCodes.Common.ValidationFailed,
+            "Request validation failed",
+            EndpointExtensions.SingleValidationError(
+                propertyName,
+                ApplicationErrorCodes.Validation.Invalid,
+                detail));
+    }
+
+    private static ApplicationResponse<UpdateMyProfileResponse> BuildValidationFailure(
+        string propertyName,
         Result result)
     {
         return ApplicationResponse<UpdateMyProfileResponse>.Fail(
@@ -158,5 +196,16 @@ public sealed class UpdateMyProfileHandler
                 propertyName,
                 ApplicationErrorCodes.Validation.Invalid,
                 result.Error ?? "Profile field is invalid"));
+    }
+
+    private static bool TryParseUploadedFileId(string? fileId, out UploadedFileId? uploadedFileId)
+    {
+        if (fileId is null)
+        {
+            uploadedFileId = null;
+            return true;
+        }
+
+        return UploadedFileId.TryParse(fileId, out uploadedFileId);
     }
 }

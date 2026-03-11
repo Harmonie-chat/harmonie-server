@@ -17,6 +17,7 @@ using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Features.Guilds.UpdateGuild;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
+using Harmonie.Application.Features.Uploads.UploadFile;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -49,7 +50,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
-        createGuildPayload!.IconUrl.Should().BeNull();
+        createGuildPayload!.IconFileId.Should().BeNull();
         createGuildPayload.Icon.Should().BeNull();
 
         var inviteResponse = await SendAuthorizedPostAsync(
@@ -150,7 +151,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         listPayload.Guilds.Should().Contain(guild => guild.GuildId == ownerGuildOne!.GuildId && guild.Role == "Admin");
         listPayload.Guilds.Should().Contain(guild => guild.GuildId == ownerGuildTwo!.GuildId && guild.Role == "Admin");
         listPayload.Guilds.Should().Contain(guild => guild.GuildId == inviterGuild.GuildId && guild.Role == "Member");
-        listPayload.Guilds.Should().OnlyContain(guild => guild.IconUrl == null && guild.Icon == null);
+        listPayload.Guilds.Should().OnlyContain(guild => guild.IconFileId == null && guild.Icon == null);
     }
 
     [Fact]
@@ -166,13 +167,14 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
+        var iconFileId = await UploadFileAsync(owner.AccessToken, "guild-icon.png", "image/png", "guild icon");
 
         var seedResponse = await SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}",
             new
             {
                 icon = new { color = "#7C3AED", name = "sword", bg = "#1F2937" },
-                iconUrl = "https://cdn.harmonie.chat/guild-icon.png"
+                iconFileId
             },
             owner.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -192,7 +194,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.Should().NotBeNull();
         payload!.GuildId.Should().Be(createGuildPayload.GuildId);
         payload.Name.Should().Be("Renamed Guild");
-        payload.IconUrl.Should().Be("https://cdn.harmonie.chat/guild-icon.png");
+        payload.IconFileId.Should().Be(iconFileId);
         payload.Icon.Should().NotBeNull();
         payload.Icon!.Color.Should().Be("#F59E0B");
         payload.Icon.Name.Should().Be("sword");
@@ -206,7 +208,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         listPayload!.Guilds.Should().Contain(guild =>
             guild.GuildId == createGuildPayload.GuildId
             && guild.Name == "Renamed Guild"
-            && guild.IconUrl == "https://cdn.harmonie.chat/guild-icon.png"
+            && guild.IconFileId == iconFileId
             && guild.Icon != null
             && guild.Icon.Color == "#F59E0B"
             && guild.Icon.Name == "sword"
@@ -227,6 +229,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
+        var iconFileId = await UploadFileAsync(owner.AccessToken, "admin-guild.png", "image/png", "admin guild icon");
 
         var inviteResponse = await SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
@@ -244,7 +247,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             $"/api/guilds/{createGuildPayload.GuildId}",
             new
             {
-                iconUrl = "https://cdn.harmonie.chat/admin-guild.png",
+                iconFileId,
                 icon = new { color = "#7C3AED", name = "sword", bg = "#1F2937" }
             },
             owner.AccessToken);
@@ -254,7 +257,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             $"/api/guilds/{createGuildPayload.GuildId}",
             new
             {
-                iconUrl = (string?)null,
+                iconFileId = (string?)null,
                 icon = (object?)null
             },
             admin.AccessToken);
@@ -263,7 +266,7 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
 
         var payload = await response.Content.ReadFromJsonAsync<UpdateGuildResponse>();
         payload.Should().NotBeNull();
-        payload!.IconUrl.Should().BeNull();
+        payload!.IconFileId.Should().BeNull();
         payload.Icon.Should().BeNull();
     }
 
@@ -729,6 +732,32 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
+    }
+
+    private async Task<string> UploadFileAsync(
+        string accessToken,
+        string fileName,
+        string contentType,
+        string content)
+    {
+        using var multipart = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(content));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        multipart.Add(fileContent, "file", fileName);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/files/uploads")
+        {
+            Content = multipart
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await _client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
+        payload.Should().NotBeNull();
+        payload!.FileId.Should().NotBeNullOrWhiteSpace();
+        return payload.FileId;
     }
 
     [Fact]

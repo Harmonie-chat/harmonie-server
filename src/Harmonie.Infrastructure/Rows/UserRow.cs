@@ -5,7 +5,7 @@ public sealed record UserRow(
     string Email,
     string Username,
     string PasswordHash,
-    string? AvatarUrl,
+    Guid? AvatarFileId,
     bool IsEmailVerified,
     bool IsActive,
     string? DisplayName,

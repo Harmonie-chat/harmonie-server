@@ -117,7 +117,7 @@ public sealed class GetGuildMembersHandlerTests
             UserId.New(),
             usernameResult.Value,
             displayName,
-            AvatarUrl: null,
+            AvatarFileId: null,
             IsActive: true,
             Role: role,
             DateTime.UtcNow.AddDays(-1));

@@ -5,7 +5,7 @@ public sealed record GetMyProfileResponse(
     string Username,
     string? DisplayName,
     string? Bio,
-    string? AvatarUrl,
+    string? AvatarFileId,
     AvatarAppearanceDto? Avatar,
     string Theme,
     string? Language);

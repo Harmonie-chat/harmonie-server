@@ -1,6 +1,4 @@
 using FluentValidation;
-using Harmonie.Application.Common;
-
 namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 
 public sealed class UpdateGuildValidator : AbstractValidator<UpdateGuildRequest>
@@ -16,15 +14,10 @@ public sealed class UpdateGuildValidator : AbstractValidator<UpdateGuildRequest>
             .WithMessage("Guild name cannot exceed 100 characters")
             .When(x => x.NameIsSet);
 
-        RuleFor(x => x.IconUrl)
-            .MaximumLength(2048)
-            .WithMessage("Guild icon URL cannot exceed 2048 characters")
-            .When(x => x.IconUrlIsSet && x.IconUrl is not null);
-
-        RuleFor(x => x.IconUrl)
-            .Must(UploadedFileUrl.IsValid)
-            .WithMessage("Guild icon URL must be a valid absolute HTTP or HTTPS URL or a local file URL")
-            .When(x => x.IconUrlIsSet && x.IconUrl is not null);
+        RuleFor(x => x.IconFileId)
+            .Must(id => Guid.TryParse(id, out var parsed) && parsed != Guid.Empty)
+            .WithMessage("Guild icon file ID must be a valid non-empty GUID")
+            .When(x => x.IconFileIdIsSet && x.IconFileId is not null);
 
         RuleFor(x => x.IconColor)
             .MaximumLength(50)

@@ -37,14 +37,14 @@ public sealed class UploadMyAvatarHandlerTests
             .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(_transactionMock.Object);
 
-        _objectStorageServiceMock
-            .Setup(x => x.BuildPublicUrl(It.IsAny<string>()))
-            .Returns<string>(storageKey => $"https://files.test/{storageKey}");
-
         _handler = new UploadMyAvatarHandler(
             _userRepositoryMock.Object,
             _uploadedFileRepositoryMock.Object,
             _objectStorageServiceMock.Object,
+            new UploadedFileCleanupService(
+                _uploadedFileRepositoryMock.Object,
+                _objectStorageServiceMock.Object,
+                NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             NullLogger<UploadMyAvatarHandler>.Instance);
     }
@@ -101,7 +101,7 @@ public sealed class UploadMyAvatarHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithValidRequest_ShouldUploadResizeAndUpdateAvatarUrl()
+    public async Task HandleAsync_WithValidRequest_ShouldUploadResizeAndUpdateAvatarFile()
     {
         var user = CreateUser();
         ObjectStorageUploadRequest? capturedUploadRequest = null;
@@ -125,7 +125,7 @@ public sealed class UploadMyAvatarHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.AvatarUrl.Should().StartWith("/api/files/");
+        Guid.TryParse(response.Data!.AvatarFileId, out _).Should().BeTrue();
 
         capturedUploadRequest.Should().NotBeNull();
         capturedUploadRequest!.StorageKey.Should().StartWith($"avatars/{user.Id}/");
@@ -134,8 +134,8 @@ public sealed class UploadMyAvatarHandlerTests
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
                 It.Is<ProfileUpdateParameters>(p =>
-                    p.AvatarUrlIsSet == true &&
-                    p.AvatarUrl != null && p.AvatarUrl.StartsWith("/api/files/") &&
+                    p.AvatarFileIdIsSet == true &&
+                    p.AvatarFileId != null &&
                     p.DisplayNameIsSet == false &&
                     p.BioIsSet == false),
                 It.IsAny<CancellationToken>()),

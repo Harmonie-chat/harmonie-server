@@ -12,24 +12,18 @@ namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 public sealed class UpdateGuildHandler
 {
     private readonly IGuildRepository _guildRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly IUploadedFileRepository _uploadedFileRepository;
-    private readonly IObjectStorageService _objectStorageService;
+    private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateGuildHandler> _logger;
 
     public UpdateGuildHandler(
         IGuildRepository guildRepository,
-        IUserRepository userRepository,
-        IUploadedFileRepository uploadedFileRepository,
-        IObjectStorageService objectStorageService,
+        UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         ILogger<UpdateGuildHandler> logger)
     {
         _guildRepository = guildRepository;
-        _userRepository = userRepository;
-        _uploadedFileRepository = uploadedFileRepository;
-        _objectStorageService = objectStorageService;
+        _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -74,7 +68,7 @@ public sealed class UpdateGuildHandler
         }
 
         var guild = ctx.Guild;
-        var previousIconUrl = guild.IconUrl;
+        var previousIconFileId = guild.IconFileId;
 
         if (request.NameIsSet)
         {
@@ -91,11 +85,18 @@ public sealed class UpdateGuildHandler
                 return BuildValidationFailure(nameof(request.Name), updateResult);
         }
 
-        if (request.IconUrlIsSet)
+        if (request.IconFileIdIsSet)
         {
-            var iconUrlResult = guild.UpdateIconUrl(request.IconUrl);
-            if (iconUrlResult.IsFailure)
-                return BuildValidationFailure(nameof(request.IconUrl), iconUrlResult);
+            if (!TryParseUploadedFileId(request.IconFileId, out var iconFileId))
+            {
+                return BuildValidationFailure(
+                    nameof(request.IconFileId),
+                    "Guild icon file ID is invalid");
+            }
+
+            var iconFileResult = guild.UpdateIconFile(iconFileId);
+            if (iconFileResult.IsFailure)
+                return BuildValidationFailure(nameof(request.IconFileId), iconFileResult);
         }
 
         if (request.IconColorIsSet)
@@ -120,13 +121,13 @@ public sealed class UpdateGuildHandler
         }
 
         var anyFieldSet = request.NameIsSet
-            || request.IconUrlIsSet
+            || request.IconFileIdIsSet
             || request.IconColorIsSet
             || request.IconNameIsSet
             || request.IconBgIsSet;
-        var shouldDeletePreviousIconFile = request.IconUrlIsSet
-            && !string.IsNullOrWhiteSpace(previousIconUrl)
-            && !string.Equals(previousIconUrl, guild.IconUrl, StringComparison.Ordinal);
+        var shouldDeletePreviousIconFile = request.IconFileIdIsSet
+            && previousIconFileId is not null
+            && previousIconFileId != guild.IconFileId;
 
         if (anyFieldSet)
         {
@@ -135,8 +136,8 @@ public sealed class UpdateGuildHandler
             await transaction.CommitAsync(cancellationToken);
         }
 
-        if (shouldDeletePreviousIconFile && previousIconUrl is not null)
-            await DeleteObsoleteIconFileIfUnreferencedAsync(previousIconUrl, guildId, cancellationToken);
+        if (shouldDeletePreviousIconFile)
+            await _uploadedFileCleanupService.DeleteIfExistsAsync(previousIconFileId, cancellationToken);
 
         _logger.LogInformation(
             "UpdateGuild succeeded. GuildId={GuildId}, CallerId={CallerId}",
@@ -148,7 +149,7 @@ public sealed class UpdateGuildHandler
                 GuildId: guild.Id.ToString(),
                 Name: guild.Name.Value,
                 OwnerUserId: guild.OwnerUserId.ToString(),
-                IconUrl: guild.IconUrl,
+                IconFileId: guild.IconFileId?.ToString(),
                 Icon: BuildIcon(guild)));
     }
 
@@ -159,45 +160,15 @@ public sealed class UpdateGuildHandler
             : null;
     }
 
-    private async Task DeleteObsoleteIconFileIfUnreferencedAsync(
-        string previousIconUrl,
-        GuildId guildId,
-        CancellationToken cancellationToken)
+    private static bool TryParseUploadedFileId(string? fileId, out UploadedFileId? uploadedFileId)
     {
-        if (!UploadedFileUrl.TryParseFileId(previousIconUrl, out var uploadedFileId)
-            || uploadedFileId is null)
+        if (fileId is null)
         {
-            return;
+            uploadedFileId = null;
+            return true;
         }
 
-        var referencedByAnotherGuild = await _guildRepository.IsIconUrlReferencedByAnotherGuildAsync(
-            previousIconUrl,
-            guildId,
-            cancellationToken);
-        if (referencedByAnotherGuild)
-            return;
-
-        var referencedByUserAvatar = await _userRepository.ExistsByAvatarUrlAsync(previousIconUrl, cancellationToken);
-        if (referencedByUserAvatar)
-            return;
-
-        var uploadedFile = await _uploadedFileRepository.GetByIdAsync(uploadedFileId, cancellationToken);
-        if (uploadedFile is null)
-            return;
-
-        try
-        {
-            await _objectStorageService.DeleteIfExistsAsync(uploadedFile.StorageKey, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "UpdateGuild icon cleanup failed. GuildId={GuildId}, UploadedFileId={UploadedFileId}, StorageKey={StorageKey}",
-                guildId,
-                uploadedFileId,
-                uploadedFile.StorageKey);
-        }
+        return UploadedFileId.TryParse(fileId, out uploadedFileId);
     }
 
     private static ApplicationResponse<UpdateGuildResponse> BuildValidationFailure(
