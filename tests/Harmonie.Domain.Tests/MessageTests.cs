@@ -85,4 +85,71 @@ public sealed class MessageTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void UpdateContent_WithValidContent_ShouldUpdateContentAndTimestamp()
+    {
+        var contentResult = MessageContent.Create("original");
+        contentResult.IsSuccess.Should().BeTrue();
+
+        var createResult = Message.CreateForChannel(
+            GuildChannelId.New(),
+            UserId.New(),
+            contentResult.Value!);
+        createResult.IsSuccess.Should().BeTrue();
+
+        var message = createResult.Value!;
+        message.UpdatedAtUtc.Should().BeNull();
+
+        var newContentResult = MessageContent.Create("updated");
+        newContentResult.IsSuccess.Should().BeTrue();
+
+        var updateResult = message.UpdateContent(newContentResult.Value!);
+
+        updateResult.IsSuccess.Should().BeTrue();
+        message.Content.Should().Be(newContentResult.Value);
+        message.UpdatedAtUtc.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Rehydrate_WhenBothParentsPresent_ShouldThrow()
+    {
+        var contentResult = MessageContent.Create("hello");
+        contentResult.IsSuccess.Should().BeTrue();
+
+        var act = () => Message.Rehydrate(
+            MessageId.New(),
+            channelId: GuildChannelId.New(),
+            conversationId: ConversationId.New(),
+            authorUserId: UserId.New(),
+            content: contentResult.Value!,
+            createdAtUtc: DateTime.UtcNow,
+            updatedAtUtc: null,
+            deletedAtUtc: null);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Delete_WhenNotDeleted_ShouldSetDeletedAtAndUpdatedAt()
+    {
+        var contentResult = MessageContent.Create("hello");
+        contentResult.IsSuccess.Should().BeTrue();
+
+        var createResult = Message.CreateForChannel(
+            GuildChannelId.New(),
+            UserId.New(),
+            contentResult.Value!);
+        createResult.IsSuccess.Should().BeTrue();
+
+        var message = createResult.Value!;
+        message.DeletedAtUtc.Should().BeNull();
+        message.UpdatedAtUtc.Should().BeNull();
+
+        var deleteResult = message.Delete();
+
+        deleteResult.IsSuccess.Should().BeTrue();
+        message.DeletedAtUtc.Should().NotBeNull();
+        message.UpdatedAtUtc.Should().NotBeNull();
+    }
 }
