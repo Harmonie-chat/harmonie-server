@@ -59,6 +59,10 @@ public static class UploadFileEndpoint
                 .ToHttpResult();
         }
 
+        var purpose = UploadPurpose.Attachment;
+        if (!string.IsNullOrWhiteSpace(request.Purpose))
+            Enum.TryParse(request.Purpose, ignoreCase: true, out purpose);
+
         await using var stream = file.OpenReadStream();
         var response = await handler.HandleAsync(
             fileName,
@@ -66,7 +70,7 @@ public static class UploadFileEndpoint
             file.Length,
             stream,
             currentUserId,
-            UploadPurpose.Attachment,
+            purpose,
             cancellationToken);
 
         return response.ToCreatedHttpResult(data => $"/api/files/{data.FileId}");

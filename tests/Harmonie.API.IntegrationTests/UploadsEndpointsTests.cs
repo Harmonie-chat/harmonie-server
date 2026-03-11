@@ -85,6 +85,93 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task UploadFile_WithGuildIconPurpose_ShouldReturnCreated()
+    {
+        var user = await RegisterAsync();
+        var fakeStorage = new FakeObjectStorageService();
+
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IObjectStorageService>();
+                services.AddSingleton<IObjectStorageService>(fakeStorage);
+            });
+        });
+
+        using var client = factory.CreateClient();
+        using var content = CreateMultipartContent("icon.png", "image/png", [1, 2, 3, 4]);
+        content.Add(new StringContent("guildIcon"), "purpose");
+
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
+        payload.Should().NotBeNull();
+        payload!.Filename.Should().Be("icon.png");
+        fakeStorage.UploadedObjects.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task UploadFile_WithInvalidPurpose_ShouldReturnBadRequest()
+    {
+        var user = await RegisterAsync();
+        var fakeStorage = new FakeObjectStorageService();
+
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IObjectStorageService>();
+                services.AddSingleton<IObjectStorageService>(fakeStorage);
+            });
+        });
+
+        using var client = factory.CreateClient();
+        using var content = CreateMultipartContent("file.png", "image/png", [1, 2, 3, 4]);
+        content.Add(new StringContent("invalid_purpose"), "purpose");
+
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        fakeStorage.UploadedObjects.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UploadFile_WithAvatarPurpose_ShouldReturnBadRequest()
+    {
+        var user = await RegisterAsync();
+        var fakeStorage = new FakeObjectStorageService();
+
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IObjectStorageService>();
+                services.AddSingleton<IObjectStorageService>(fakeStorage);
+            });
+        });
+
+        using var client = factory.CreateClient();
+        using var content = CreateMultipartContent("avatar.png", "image/png", [1, 2, 3, 4]);
+        content.Add(new StringContent("avatar"), "purpose");
+
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        fakeStorage.UploadedObjects.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task UploadFile_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         using var content = CreateMultipartContent("avatar.png", "image/png", [1, 2, 3, 4]);

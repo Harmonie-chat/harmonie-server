@@ -1,4 +1,5 @@
 using FluentValidation;
+using Harmonie.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
@@ -35,6 +36,13 @@ public sealed class UploadFileValidator : AbstractValidator<UploadFileRequest>
             .WithMessage("File name is required.")
             .Must(file => file is not null && HasAllowedContentType(file))
             .WithMessage("File content type is not supported.");
+
+        RuleFor(x => x.Purpose)
+            .Cascade(CascadeMode.Stop)
+            .Must(p => p is null || Enum.TryParse<UploadPurpose>(p, ignoreCase: true, out _))
+            .WithMessage("Invalid upload purpose.")
+            .Must(p => p is null || !Enum.TryParse<UploadPurpose>(p, ignoreCase: true, out var parsed) || parsed != UploadPurpose.Avatar)
+            .WithMessage("Avatar uploads must use the dedicated avatar endpoint.");
     }
 
     private static bool HasFileName(IFormFile file)

@@ -271,6 +271,69 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task CreateGuild_WithIconFields_ShouldPersistIconData()
+    {
+        var owner = await RegisterAsync();
+        var iconFileId = await UploadFileAsync(owner.AccessToken, "guild-icon-create.png", "image/png", "guild create icon");
+
+        var createResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new
+            {
+                name = "Guild With Icon",
+                iconFileId,
+                icon = new { color = "#7C3AED", name = "sword", bg = "#1F2937" }
+            },
+            owner.AccessToken);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createPayload = await createResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createPayload.Should().NotBeNull();
+        createPayload!.IconFileId.Should().Be(iconFileId);
+        createPayload.Icon.Should().NotBeNull();
+        createPayload.Icon!.Color.Should().Be("#7C3AED");
+        createPayload.Icon.Name.Should().Be("sword");
+        createPayload.Icon.Bg.Should().Be("#1F2937");
+
+        var listResponse = await SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<ListUserGuildsResponse>();
+        listPayload.Should().NotBeNull();
+        listPayload!.Guilds.Should().Contain(guild =>
+            guild.GuildId == createPayload.GuildId
+            && guild.IconFileId == iconFileId
+            && guild.Icon != null
+            && guild.Icon.Color == "#7C3AED"
+            && guild.Icon.Name == "sword"
+            && guild.Icon.Bg == "#1F2937");
+    }
+
+    [Fact]
+    public async Task CreateGuild_WithPartialIconFields_ShouldPersistProvidedFields()
+    {
+        var owner = await RegisterAsync();
+
+        var createResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new
+            {
+                name = "Partial Icon Guild",
+                icon = new { color = "#F59E0B" }
+            },
+            owner.AccessToken);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createPayload = await createResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createPayload.Should().NotBeNull();
+        createPayload!.IconFileId.Should().BeNull();
+        createPayload.Icon.Should().NotBeNull();
+        createPayload.Icon!.Color.Should().Be("#F59E0B");
+        createPayload.Icon.Name.Should().BeNull();
+        createPayload.Icon.Bg.Should().BeNull();
+    }
+
+    [Fact]
     public async Task UpdateGuild_WhenCallerIsRegularMember_ShouldReturnForbidden()
     {
         var owner = await RegisterAsync();
