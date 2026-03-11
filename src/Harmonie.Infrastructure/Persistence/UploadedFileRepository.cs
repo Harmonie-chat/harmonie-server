@@ -21,14 +21,14 @@ public sealed class UploadedFileRepository : IUploadedFileRepository
     {
         const string sql = """
                            SELECT
-                               id,
-                               uploader_id,
-                               filename,
-                               content_type,
-                               size_bytes,
-                               storage_key,
-                               purpose,
-                               created_at_utc
+                               id AS "Id",
+                               uploader_id AS "UploaderId",
+                               filename AS "Filename",
+                               content_type AS "ContentType",
+                               size_bytes AS "SizeBytes",
+                               storage_key AS "StorageKey",
+                               purpose AS "Purpose",
+                               created_at_utc AS "CreatedAtUtc"
                            FROM uploaded_files
                            WHERE id = @Id
                            """;
