@@ -51,7 +51,7 @@ public static class DeleteMessageEndpoint
         }
 
         if (routeRequest.MessageId is not string messageIdStr
-            || !ChannelMessageId.TryParse(messageIdStr, out var parsedMessageId)
+            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
             || parsedMessageId is null)
         {
             return ApplicationResponse<bool>.Fail(

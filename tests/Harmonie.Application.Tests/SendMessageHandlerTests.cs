@@ -14,7 +14,7 @@ namespace Harmonie.Application.Tests;
 public sealed class SendMessageHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
@@ -23,7 +23,7 @@ public sealed class SendMessageHandlerTests
     public SendMessageHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
@@ -132,10 +132,10 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        ChannelMessage? persistedMessage = null;
+        Message? persistedMessage = null;
         _channelMessageRepositoryMock
-            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
-            .Callback<ChannelMessage, CancellationToken>((message, _) => persistedMessage = message)
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Callback<Message, CancellationToken>((message, _) => persistedMessage = message)
             .Returns(Task.CompletedTask);
 
         var response = await _handler.HandleAsync(channel.Id, request, userId);
@@ -171,7 +171,7 @@ public sealed class SendMessageHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         _channelMessageRepositoryMock
-            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _textChannelNotifierMock
@@ -202,7 +202,7 @@ public sealed class SendMessageHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         _channelMessageRepositoryMock
-            .Setup(x => x.AddAsync(It.IsAny<ChannelMessage>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _transactionMock

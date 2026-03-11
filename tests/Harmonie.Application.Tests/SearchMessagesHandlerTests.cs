@@ -15,14 +15,14 @@ public sealed class SearchMessagesHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly SearchMessagesHandler _handler;
 
     public SearchMessagesHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
 
         _handler = new SearchMessagesHandler(
             _guildRepositoryMock.Object,
@@ -140,7 +140,7 @@ public sealed class SearchMessagesHandlerTests
             channel.Name,
             "deploy finished",
             createdAtUtc: after.AddMinutes(30));
-        var nextCursor = new ChannelMessageCursor(item.CreatedAtUtc, item.MessageId);
+        var nextCursor = new MessageCursor(item.CreatedAtUtc, item.MessageId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -225,7 +225,7 @@ public sealed class SearchMessagesHandlerTests
             throw new InvalidOperationException("Failed to create test message content.");
 
         return new SearchGuildMessagesItem(
-            MessageId: ChannelMessageId.New(),
+            MessageId: MessageId.New(),
             ChannelId: channelId,
             ChannelName: channelName,
             AuthorUserId: authorUserId,

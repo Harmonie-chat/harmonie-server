@@ -13,13 +13,13 @@ namespace Harmonie.Application.Tests;
 public sealed class GetDirectMessagesHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
-    private readonly Mock<IDirectMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
     private readonly GetDirectMessagesHandler _handler;
 
     public GetDirectMessagesHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
-        _directMessageRepositoryMock = new Mock<IDirectMessageRepository>();
+        _directMessageRepositoryMock = new Mock<IMessageRepository>();
 
         _handler = new GetDirectMessagesHandler(
             _conversationRepositoryMock.Object,
@@ -90,19 +90,19 @@ public sealed class GetDirectMessagesHandlerTests
         var conversation = CreateConversation(participantOne, participantTwo);
         var first = CreateDirectMessage(conversation.Id, participantOne, "First", DateTime.UtcNow.AddMinutes(-2));
         var second = CreateDirectMessage(conversation.Id, participantTwo, "Second", DateTime.UtcNow.AddMinutes(-1));
-        var nextCursor = new DirectMessageCursor(first.CreatedAtUtc, first.Id);
+        var nextCursor = new MessageCursor(first.CreatedAtUtc, first.Id);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
         _directMessageRepositoryMock
-            .Setup(x => x.GetMessagesAsync(
+            .Setup(x => x.GetConversationPageAsync(
                 conversation.Id,
-                It.IsAny<DirectMessageCursor?>(),
+                It.IsAny<MessageCursor?>(),
                 50,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DirectMessagePage([second, first], nextCursor));
+            .ReturnsAsync(new MessagePage([second, first], nextCursor));
 
         var response = await _handler.HandleAsync(
             conversation.Id,
@@ -127,7 +127,7 @@ public sealed class GetDirectMessagesHandlerTests
         return result.Value;
     }
 
-    private static DirectMessage CreateDirectMessage(
+    private static Message CreateDirectMessage(
         ConversationId conversationId,
         UserId authorUserId,
         string content,
@@ -137,12 +137,13 @@ public sealed class GetDirectMessagesHandlerTests
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Failed to create test direct message content.");
 
-        return DirectMessage.Rehydrate(
-            DirectMessageId.New(),
-            conversationId,
-            authorUserId,
-            contentResult.Value,
-            createdAtUtc,
+        return Message.Rehydrate(
+            id: MessageId.New(),
+            channelId: null,
+            conversationId: conversationId,
+            authorUserId: authorUserId,
+            content: contentResult.Value,
+            createdAtUtc: createdAtUtc,
             updatedAtUtc: null,
             deletedAtUtc: null);
     }

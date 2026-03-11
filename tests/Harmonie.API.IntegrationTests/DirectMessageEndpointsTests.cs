@@ -553,7 +553,7 @@ public sealed class DirectMessageEndpointsTests : IClassFixture<WebApplicationFa
         var connection = await dbSession.GetOpenConnectionAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = """
-                              UPDATE direct_messages
+                              UPDATE messages
                               SET deleted_at_utc = @DeletedAtUtc
                               WHERE id = @MessageId
                               """;

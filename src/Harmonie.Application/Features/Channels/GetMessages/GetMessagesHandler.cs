@@ -11,12 +11,12 @@ public sealed class GetMessagesHandler
     private const int DefaultLimit = 50;
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IMessageRepository _channelMessageRepository;
     private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
-        IChannelMessageRepository channelMessageRepository,
+        IMessageRepository channelMessageRepository,
         ILogger<GetMessagesHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -37,10 +37,10 @@ public sealed class GetMessagesHandler
             request.Limit ?? DefaultLimit,
             request.Before is not null);
 
-        ChannelMessageCursor? beforeCursor = null;
+        MessageCursor? beforeCursor = null;
         if (request.Before is not null)
         {
-            if (!ChannelMessageCursorCodec.TryParse(request.Before, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Before, out var parsedCursor) || parsedCursor is null)
             {
                 _logger.LogWarning(
                     "GetMessages invalid cursor. ChannelId={ChannelId}, UserId={UserId}",
@@ -100,7 +100,7 @@ public sealed class GetMessagesHandler
                 "You do not have access to this channel");
         }
 
-        var page = await _channelMessageRepository.GetPageAsync(
+        var page = await _channelMessageRepository.GetChannelPageAsync(
             channelId,
             beforeCursor,
             limit,
@@ -129,7 +129,7 @@ public sealed class GetMessagesHandler
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null
-                : ChannelMessageCursorCodec.Encode(page.NextCursor));
+                : MessageCursorCodec.Encode(page.NextCursor));
 
         return ApplicationResponse<GetMessagesResponse>.Ok(payload);
     }

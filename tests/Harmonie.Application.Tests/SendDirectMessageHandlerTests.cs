@@ -13,7 +13,7 @@ namespace Harmonie.Application.Tests;
 public sealed class SendDirectMessageHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
-    private readonly Mock<IDirectMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IDirectMessageNotifier> _directMessageNotifierMock;
@@ -22,7 +22,7 @@ public sealed class SendDirectMessageHandlerTests
     public SendDirectMessageHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
-        _directMessageRepositoryMock = new Mock<IDirectMessageRepository>();
+        _directMessageRepositoryMock = new Mock<IMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _directMessageNotifierMock = new Mock<IDirectMessageNotifier>();
@@ -117,15 +117,15 @@ public sealed class SendDirectMessageHandlerTests
     public async Task HandleAsync_WithValidRequest_ShouldPersistCommitAndNotify()
     {
         var conversation = CreateConversation(UserId.New(), UserId.New());
-        DirectMessage? persistedMessage = null;
+        Message? persistedMessage = null;
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
         _directMessageRepositoryMock
-            .Setup(x => x.AddAsync(It.IsAny<DirectMessage>(), It.IsAny<CancellationToken>()))
-            .Callback<DirectMessage, CancellationToken>((message, _) => persistedMessage = message)
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Callback<Message, CancellationToken>((message, _) => persistedMessage = message)
             .Returns(Task.CompletedTask);
 
         var response = await _handler.HandleAsync(
@@ -160,7 +160,7 @@ public sealed class SendDirectMessageHandlerTests
             .ReturnsAsync(conversation);
 
         _directMessageRepositoryMock
-            .Setup(x => x.AddAsync(It.IsAny<DirectMessage>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _directMessageNotifierMock

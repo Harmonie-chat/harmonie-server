@@ -10,14 +10,14 @@ public sealed class DeleteDirectMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IDirectMessageRepository _directMessageRepository;
+    private readonly IMessageRepository _directMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDirectMessageNotifier _directMessageNotifier;
     private readonly ILogger<DeleteDirectMessageHandler> _logger;
 
     public DeleteDirectMessageHandler(
         IConversationRepository conversationRepository,
-        IDirectMessageRepository directMessageRepository,
+        IMessageRepository directMessageRepository,
         IUnitOfWork unitOfWork,
         IDirectMessageNotifier directMessageNotifier,
         ILogger<DeleteDirectMessageHandler> logger)
@@ -31,7 +31,7 @@ public sealed class DeleteDirectMessageHandler
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
         ConversationId conversationId,
-        DirectMessageId messageId,
+        MessageId messageId,
         UserId callerId,
         CancellationToken cancellationToken = default)
     {
@@ -66,7 +66,8 @@ public sealed class DeleteDirectMessageHandler
         }
 
         var message = await _directMessageRepository.GetByIdAsync(messageId, cancellationToken);
-        if (message is null || message.ConversationId != conversationId)
+        var messageConversationId = message?.ConversationId;
+        if (message is null || messageConversationId is null || messageConversationId != conversationId)
         {
             _logger.LogWarning(
                 "DeleteDirectMessage failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",

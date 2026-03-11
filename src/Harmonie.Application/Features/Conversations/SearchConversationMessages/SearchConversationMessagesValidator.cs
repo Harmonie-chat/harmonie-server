@@ -1,6 +1,6 @@
 using System.Globalization;
 using FluentValidation;
-using Harmonie.Application.Features.Conversations.GetDirectMessages;
+using Harmonie.Application.Common;
 
 namespace Harmonie.Application.Features.Conversations.SearchConversationMessages;
 
@@ -25,7 +25,7 @@ public sealed class SearchConversationMessagesValidator : AbstractValidator<Sear
             .WithMessage("After must be earlier than or equal to before when both are provided");
 
         RuleFor(x => x.Cursor)
-            .Must(cursor => cursor is null || DirectMessageCursorCodec.TryParse(cursor, out _))
+            .Must(cursor => cursor is null || MessageCursorCodec.TryParse(cursor, out _))
             .WithMessage("Cursor is invalid");
 
         RuleFor(x => x.Limit)

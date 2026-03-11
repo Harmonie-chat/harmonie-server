@@ -1,10 +1,12 @@
 namespace Harmonie.Infrastructure.Rows;
 
-public sealed class DirectMessageRow
+public sealed class MessageRow
 {
     public Guid Id { get; init; }
 
-    public Guid ConversationId { get; init; }
+    public Guid? ChannelId { get; init; }
+
+    public Guid? ConversationId { get; init; }
 
     public Guid AuthorUserId { get; init; }
 

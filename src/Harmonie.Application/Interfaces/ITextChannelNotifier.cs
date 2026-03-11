@@ -18,18 +18,18 @@ public interface ITextChannelNotifier
 }
 
 public sealed record TextChannelMessageCreatedNotification(
-    ChannelMessageId MessageId,
+    MessageId MessageId,
     GuildChannelId ChannelId,
     UserId AuthorUserId,
     string Content,
     DateTime CreatedAtUtc);
 
 public sealed record TextChannelMessageUpdatedNotification(
-    ChannelMessageId MessageId,
+    MessageId MessageId,
     GuildChannelId ChannelId,
     string Content,
     DateTime UpdatedAtUtc);
 
 public sealed record TextChannelMessageDeletedNotification(
-    ChannelMessageId MessageId,
+    MessageId MessageId,
     GuildChannelId ChannelId);

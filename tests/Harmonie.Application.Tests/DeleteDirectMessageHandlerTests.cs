@@ -13,7 +13,7 @@ namespace Harmonie.Application.Tests;
 public sealed class DeleteDirectMessageHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
-    private readonly Mock<IDirectMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IDirectMessageNotifier> _directMessageNotifierMock;
@@ -22,7 +22,7 @@ public sealed class DeleteDirectMessageHandlerTests
     public DeleteDirectMessageHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
-        _directMessageRepositoryMock = new Mock<IDirectMessageRepository>();
+        _directMessageRepositoryMock = new Mock<IMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _directMessageNotifierMock = new Mock<IDirectMessageNotifier>();
@@ -61,7 +61,7 @@ public sealed class DeleteDirectMessageHandlerTests
             .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conversation?)null);
 
-        var response = await _handler.HandleAsync(conversationId, DirectMessageId.New(), callerId);
+        var response = await _handler.HandleAsync(conversationId, MessageId.New(), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -81,7 +81,7 @@ public sealed class DeleteDirectMessageHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
-        var response = await _handler.HandleAsync(conversation.Id, DirectMessageId.New(), outsider);
+        var response = await _handler.HandleAsync(conversation.Id, MessageId.New(), outsider);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -95,7 +95,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -103,7 +103,7 @@ public sealed class DeleteDirectMessageHandlerTests
 
         _directMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((DirectMessage?)null);
+            .ReturnsAsync((Message?)null);
 
         var response = await _handler.HandleAsync(conversation.Id, messageId, participantOne);
 
@@ -119,7 +119,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateDirectMessage(ConversationId.New(), participantOne);
 
         _conversationRepositoryMock
@@ -144,7 +144,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateDirectMessage(conversation.Id, participantTwo);
 
         _conversationRepositoryMock
@@ -169,7 +169,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateDirectMessage(conversation.Id, participantOne);
 
         _conversationRepositoryMock
@@ -192,7 +192,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateDirectMessage(conversation.Id, participantOne);
 
         _conversationRepositoryMock
@@ -207,7 +207,7 @@ public sealed class DeleteDirectMessageHandlerTests
 
         _directMessageRepositoryMock.Verify(
             x => x.SoftDeleteAsync(
-                It.Is<DirectMessage>(m =>
+                It.Is<Message>(m =>
                     m.Id == message.Id
                     && m.DeletedAtUtc != null
                     && m.UpdatedAtUtc != null),
@@ -233,7 +233,7 @@ public sealed class DeleteDirectMessageHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = CreateConversation(participantOne, participantTwo);
-        var messageId = DirectMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateDirectMessage(conversation.Id, participantOne);
 
         _conversationRepositoryMock
@@ -266,18 +266,19 @@ public sealed class DeleteDirectMessageHandlerTests
         return result.Value;
     }
 
-    private static DirectMessage CreateDirectMessage(ConversationId conversationId, UserId authorUserId)
+    private static Message CreateDirectMessage(ConversationId conversationId, UserId authorUserId)
     {
         var contentResult = MessageContent.Create("original content");
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Failed to create test direct message.");
 
-        return DirectMessage.Rehydrate(
-            DirectMessageId.New(),
-            conversationId,
-            authorUserId,
-            contentResult.Value,
-            DateTime.UtcNow.AddMinutes(-1),
+        return Message.Rehydrate(
+            id: MessageId.New(),
+            channelId: null,
+            conversationId: conversationId,
+            authorUserId: authorUserId,
+            content: contentResult.Value,
+            createdAtUtc: DateTime.UtcNow.AddMinutes(-1),
             updatedAtUtc: null,
             deletedAtUtc: null);
     }

@@ -18,18 +18,18 @@ public interface IDirectMessageNotifier
 }
 
 public sealed record DirectMessageCreatedNotification(
-    DirectMessageId MessageId,
+    MessageId MessageId,
     ConversationId ConversationId,
     UserId AuthorUserId,
     string Content,
     DateTime CreatedAtUtc);
 
 public sealed record DirectMessageUpdatedNotification(
-    DirectMessageId MessageId,
+    MessageId MessageId,
     ConversationId ConversationId,
     string Content,
     DateTime UpdatedAtUtc);
 
 public sealed record DirectMessageDeletedNotification(
-    DirectMessageId MessageId,
+    MessageId MessageId,
     ConversationId ConversationId);

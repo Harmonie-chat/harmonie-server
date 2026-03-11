@@ -14,13 +14,13 @@ namespace Harmonie.Application.Tests;
 public sealed class GetMessagesHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetMessagesHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
 
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,
@@ -93,15 +93,15 @@ public sealed class GetMessagesHandlerTests
 
         var first = CreateMessage(channel.Id, userId, "First", DateTime.UtcNow.AddMinutes(-2));
         var second = CreateMessage(channel.Id, userId, "Second", DateTime.UtcNow.AddMinutes(-1));
-        var nextCursor = new ChannelMessageCursor(first.CreatedAtUtc, first.Id);
+        var nextCursor = new MessageCursor(first.CreatedAtUtc, first.Id);
 
         _channelMessageRepositoryMock
-            .Setup(x => x.GetPageAsync(
+            .Setup(x => x.GetChannelPageAsync(
                 channel.Id,
-                It.IsAny<ChannelMessageCursor?>(),
+                It.IsAny<MessageCursor?>(),
                 50,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelMessagePage([second, first], nextCursor));
+            .ReturnsAsync(new MessagePage([second, first], nextCursor));
 
         var response = await _handler.HandleAsync(
             channel.Id,
@@ -131,7 +131,7 @@ public sealed class GetMessagesHandlerTests
         return channelResult.Value!;
     }
 
-    private static ChannelMessage CreateMessage(
+    private static Message CreateMessage(
         GuildChannelId channelId,
         UserId authorUserId,
         string content,
@@ -141,12 +141,13 @@ public sealed class GetMessagesHandlerTests
         if (contentResult.IsFailure)
             throw new InvalidOperationException("Failed to create message content for tests.");
 
-        return ChannelMessage.Rehydrate(
-            ChannelMessageId.New(),
-            channelId,
-            authorUserId,
-            contentResult.Value!,
-            createdAtUtc,
+        return Message.Rehydrate(
+            id: MessageId.New(),
+            channelId: channelId,
+            conversationId: null,
+            authorUserId: authorUserId,
+            content: contentResult.Value!,
+            createdAtUtc: createdAtUtc,
             updatedAtUtc: null,
             deletedAtUtc: null);
     }

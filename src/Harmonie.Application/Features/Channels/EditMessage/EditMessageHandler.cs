@@ -11,14 +11,14 @@ public sealed class EditMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<EditMessageHandler> _logger;
 
     public EditMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IChannelMessageRepository channelMessageRepository,
+        IMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         ILogger<EditMessageHandler> logger)
@@ -32,7 +32,7 @@ public sealed class EditMessageHandler
 
     public async Task<ApplicationResponse<EditMessageResponse>> HandleAsync(
         GuildChannelId channelId,
-        ChannelMessageId messageId,
+        MessageId messageId,
         EditMessageRequest request,
         UserId callerId,
         CancellationToken cancellationToken = default)
@@ -97,7 +97,8 @@ public sealed class EditMessageHandler
         }
 
         var message = await _channelMessageRepository.GetByIdAsync(messageId, cancellationToken);
-        if (message is null || message.ChannelId != channelId)
+        var messageChannelId = message?.ChannelId;
+        if (message is null || messageChannelId is null || messageChannelId != channelId)
         {
             _logger.LogWarning(
                 "EditMessage failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",
@@ -151,13 +152,13 @@ public sealed class EditMessageHandler
         await NotifyMessageUpdatedSafelyAsync(
             new TextChannelMessageUpdatedNotification(
                 message.Id,
-                message.ChannelId,
+                messageChannelId,
                 message.Content.Value,
                 updatedAtUtc.Value));
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
             MessageId: message.Id.ToString(),
-            ChannelId: message.ChannelId.ToString(),
+            ChannelId: messageChannelId.ToString(),
             AuthorUserId: message.AuthorUserId.ToString(),
             Content: message.Content.Value,
             CreatedAtUtc: message.CreatedAtUtc,

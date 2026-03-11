@@ -3,9 +3,9 @@ using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Application.Common;
 
-public static class ChannelMessageCursorCodec
+public static class MessageCursorCodec
 {
-    public static string Encode(ChannelMessageCursor cursor)
+    public static string Encode(MessageCursor cursor)
     {
         var utcCreatedAt = cursor.CreatedAtUtc.Kind == DateTimeKind.Utc
             ? cursor.CreatedAtUtc
@@ -14,7 +14,7 @@ public static class ChannelMessageCursorCodec
         return $"{utcCreatedAt.Ticks}_{cursor.MessageId}";
     }
 
-    public static bool TryParse(string? encodedCursor, out ChannelMessageCursor? cursor)
+    public static bool TryParse(string? encodedCursor, out MessageCursor? cursor)
     {
         cursor = null;
 
@@ -31,13 +31,13 @@ public static class ChannelMessageCursorCodec
         if (!long.TryParse(ticksPart, out var ticks))
             return false;
 
-        if (!ChannelMessageId.TryParse(messageIdPart, out var messageId) || messageId is null)
+        if (!MessageId.TryParse(messageIdPart, out var messageId) || messageId is null)
             return false;
 
         try
         {
             var createdAtUtc = new DateTime(ticks, DateTimeKind.Utc);
-            cursor = new ChannelMessageCursor(createdAtUtc, messageId);
+            cursor = new MessageCursor(createdAtUtc, messageId);
             return true;
         }
         catch (ArgumentOutOfRangeException)

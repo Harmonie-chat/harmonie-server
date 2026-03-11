@@ -12,14 +12,14 @@ public sealed class SendMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IChannelMessageRepository channelMessageRepository,
+        IMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         ILogger<SendMessageHandler> logger)
@@ -96,7 +96,7 @@ public sealed class SendMessageHandler
                 "You do not have access to this channel");
         }
 
-        var messageResult = ChannelMessage.Create(
+        var messageResult = Message.CreateForChannel(
             channelId,
             currentUserId,
             contentResult.Value);
@@ -117,10 +117,18 @@ public sealed class SendMessageHandler
         await _channelMessageRepository.AddAsync(messageResult.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
+        var messageChannelId = messageResult.Value.ChannelId;
+        if (messageChannelId is null)
+        {
+            return ApplicationResponse<SendMessageResponse>.Fail(
+                ApplicationErrorCodes.Common.InvalidState,
+                "Channel message creation succeeded but channel ID is missing");
+        }
+
         await NotifyMessageCreatedSafelyAsync(
             new TextChannelMessageCreatedNotification(
                 messageResult.Value.Id,
-                messageResult.Value.ChannelId,
+                messageChannelId,
                 messageResult.Value.AuthorUserId,
                 messageResult.Value.Content.Value,
                 messageResult.Value.CreatedAtUtc));
@@ -128,12 +136,12 @@ public sealed class SendMessageHandler
         _logger.LogInformation(
             "SendMessage succeeded. MessageId={MessageId}, ChannelId={ChannelId}, UserId={UserId}",
             messageResult.Value.Id,
-            messageResult.Value.ChannelId,
+            messageChannelId,
             messageResult.Value.AuthorUserId);
 
         var payload = new SendMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),
-            ChannelId: messageResult.Value.ChannelId.ToString(),
+            ChannelId: messageChannelId.ToString(),
             AuthorUserId: messageResult.Value.AuthorUserId.ToString(),
             Content: messageResult.Value.Content.Value,
             CreatedAtUtc: messageResult.Value.CreatedAtUtc);

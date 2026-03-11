@@ -14,7 +14,7 @@ namespace Harmonie.Application.Tests;
 public sealed class DeleteMessageHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IChannelMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
@@ -23,7 +23,7 @@ public sealed class DeleteMessageHandlerTests
     public DeleteMessageHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IChannelMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
@@ -61,7 +61,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channelId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChannelAccessContext?)null);
 
-        var response = await _handler.HandleAsync(channelId, ChannelMessageId.New(), callerId);
+        var response = await _handler.HandleAsync(channelId, MessageId.New(), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -79,7 +79,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(channel.Id, ChannelMessageId.New(), callerId);
+        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -97,7 +97,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
-        var response = await _handler.HandleAsync(channel.Id, ChannelMessageId.New(), callerId);
+        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -110,7 +110,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
@@ -118,7 +118,7 @@ public sealed class DeleteMessageHandlerTests
 
         _channelMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ChannelMessage?)null);
+            .ReturnsAsync((Message?)null);
 
         var response = await _handler.HandleAsync(channel.Id, messageId, callerId);
 
@@ -133,7 +133,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var messageFromOtherChannel = CreateMessage(GuildChannelId.New(), callerId);
 
         _guildChannelRepositoryMock
@@ -158,7 +158,7 @@ public sealed class DeleteMessageHandlerTests
         var channel = CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -182,7 +182,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -204,7 +204,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -219,7 +219,7 @@ public sealed class DeleteMessageHandlerTests
 
         _channelMessageRepositoryMock.Verify(
             x => x.SoftDeleteAsync(
-                It.Is<ChannelMessage>(m =>
+                It.Is<Message>(m =>
                     m.Id == message.Id
                     && m.DeletedAtUtc != null
                     && m.UpdatedAtUtc != null),
@@ -237,7 +237,7 @@ public sealed class DeleteMessageHandlerTests
         var channel = CreateChannel(GuildChannelType.Text);
         var adminId = UserId.New();
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -260,7 +260,7 @@ public sealed class DeleteMessageHandlerTests
         var channel = CreateChannel(GuildChannelType.Text);
         var adminId = UserId.New();
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -275,7 +275,7 @@ public sealed class DeleteMessageHandlerTests
 
         _channelMessageRepositoryMock.Verify(
             x => x.SoftDeleteAsync(
-                It.Is<ChannelMessage>(m =>
+                It.Is<Message>(m =>
                     m.Id == message.Id
                     && m.DeletedAtUtc != null
                     && m.UpdatedAtUtc != null),
@@ -292,7 +292,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -320,7 +320,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var channel = CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
-        var messageId = ChannelMessageId.New();
+        var messageId = MessageId.New();
         var message = CreateMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
@@ -354,18 +354,19 @@ public sealed class DeleteMessageHandlerTests
         return result.Value!;
     }
 
-    private static ChannelMessage CreateMessage(GuildChannelId channelId, UserId authorId)
+    private static Message CreateMessage(GuildChannelId channelId, UserId authorId)
     {
         var contentResult = MessageContent.Create("test content");
         if (contentResult.IsFailure || contentResult.Value is null)
             throw new InvalidOperationException("Failed to create message content for tests.");
 
-        return ChannelMessage.Rehydrate(
-            ChannelMessageId.New(),
-            channelId,
-            authorId,
-            contentResult.Value,
-            DateTime.UtcNow,
+        return Message.Rehydrate(
+            id: MessageId.New(),
+            channelId: channelId,
+            conversationId: null,
+            authorUserId: authorId,
+            content: contentResult.Value,
+            createdAtUtc: DateTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null);
     }

@@ -13,13 +13,13 @@ namespace Harmonie.Application.Tests;
 public sealed class SearchConversationMessagesHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
-    private readonly Mock<IDirectMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
     private readonly SearchConversationMessagesHandler _handler;
 
     public SearchConversationMessagesHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
-        _directMessageRepositoryMock = new Mock<IDirectMessageRepository>();
+        _directMessageRepositoryMock = new Mock<IMessageRepository>();
 
         _handler = new SearchConversationMessagesHandler(
             _conversationRepositoryMock.Object,
@@ -81,7 +81,7 @@ public sealed class SearchConversationMessagesHandlerTests
             authorUserId: user2,
             content: "deploy succeeded",
             createdAtUtc: after.AddMinutes(30));
-        var nextCursor = new DirectMessageCursor(item.CreatedAtUtc, item.MessageId);
+        var nextCursor = new MessageCursor(item.CreatedAtUtc, item.MessageId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -138,7 +138,7 @@ public sealed class SearchConversationMessagesHandlerTests
             throw new InvalidOperationException("Failed to create test direct message content.");
 
         return new SearchConversationMessagesItem(
-            MessageId: DirectMessageId.New(),
+            MessageId: MessageId.New(),
             AuthorUserId: authorUserId,
             AuthorUsername: "participant-two",
             AuthorDisplayName: "Participant Two",

@@ -1,3 +1,4 @@
+using Harmonie.Application.Common;
 using FluentValidation;
 
 namespace Harmonie.Application.Features.Channels.GetMessages;
@@ -11,7 +12,7 @@ public sealed class GetMessagesValidator : AbstractValidator<GetMessagesRequest>
             .WithMessage("Limit must be between 1 and 100");
 
         RuleFor(x => x.Before)
-            .Must(before => before is null || ChannelMessageCursorCodec.TryParse(before, out _))
+            .Must(before => before is null || MessageCursorCodec.TryParse(before, out _))
             .WithMessage("Before cursor is invalid");
     }
 }

@@ -60,7 +60,7 @@ public static class EditMessageEndpoint
         }
 
         if (routeRequest.MessageId is not string messageIdStr
-            || !ChannelMessageId.TryParse(messageIdStr, out var parsedMessageId)
+            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
             || parsedMessageId is null)
         {
             return ApplicationResponse<EditMessageResponse>.Fail(

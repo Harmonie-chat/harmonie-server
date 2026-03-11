@@ -13,13 +13,13 @@ public sealed class SearchMessagesHandler
 
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IMessageRepository _channelMessageRepository;
     private readonly ILogger<SearchMessagesHandler> _logger;
 
     public SearchMessagesHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IChannelMessageRepository channelMessageRepository,
+        IMessageRepository channelMessageRepository,
         ILogger<SearchMessagesHandler> logger)
     {
         _guildRepository = guildRepository;
@@ -50,10 +50,10 @@ public sealed class SearchMessagesHandler
                 "Request validation succeeded but search query was missing.");
         }
 
-        ChannelMessageCursor? cursor = null;
+        MessageCursor? cursor = null;
         if (request.Cursor is not null)
         {
-            if (!ChannelMessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
@@ -251,7 +251,7 @@ public sealed class SearchMessagesHandler
                     CreatedAtUtc: item.CreatedAtUtc,
                     UpdatedAtUtc: item.UpdatedAtUtc))
                 .ToArray(),
-            NextCursor: page.NextCursor is null ? null : ChannelMessageCursorCodec.Encode(page.NextCursor));
+            NextCursor: page.NextCursor is null ? null : MessageCursorCodec.Encode(page.NextCursor));
 
         return ApplicationResponse<SearchMessagesResponse>.Ok(payload);
     }

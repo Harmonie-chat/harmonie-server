@@ -10,12 +10,12 @@ public sealed class GetDirectMessagesHandler
     private const int DefaultLimit = 50;
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IDirectMessageRepository _directMessageRepository;
+    private readonly IMessageRepository _directMessageRepository;
     private readonly ILogger<GetDirectMessagesHandler> _logger;
 
     public GetDirectMessagesHandler(
         IConversationRepository conversationRepository,
-        IDirectMessageRepository directMessageRepository,
+        IMessageRepository directMessageRepository,
         ILogger<GetDirectMessagesHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -36,10 +36,10 @@ public sealed class GetDirectMessagesHandler
             request.Limit ?? DefaultLimit,
             request.Cursor is not null);
 
-        DirectMessageCursor? cursor = null;
+        MessageCursor? cursor = null;
         if (request.Cursor is not null)
         {
-            if (!DirectMessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
             {
                 _logger.LogWarning(
                     "GetDirectMessages invalid cursor. ConversationId={ConversationId}, UserId={UserId}",
@@ -85,7 +85,7 @@ public sealed class GetDirectMessagesHandler
                 "You do not have access to this conversation");
         }
 
-        var page = await _directMessageRepository.GetMessagesAsync(
+        var page = await _directMessageRepository.GetConversationPageAsync(
             conversationId,
             cursor,
             limit,
@@ -114,7 +114,7 @@ public sealed class GetDirectMessagesHandler
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null
-                : DirectMessageCursorCodec.Encode(page.NextCursor));
+                : MessageCursorCodec.Encode(page.NextCursor));
 
         return ApplicationResponse<GetDirectMessagesResponse>.Ok(payload);
     }

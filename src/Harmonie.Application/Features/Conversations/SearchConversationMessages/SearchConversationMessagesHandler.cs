@@ -1,6 +1,5 @@
 using System.Globalization;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Conversations.GetDirectMessages;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -12,12 +11,12 @@ public sealed class SearchConversationMessagesHandler
     private const int DefaultLimit = 25;
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IDirectMessageRepository _directMessageRepository;
+    private readonly IMessageRepository _directMessageRepository;
     private readonly ILogger<SearchConversationMessagesHandler> _logger;
 
     public SearchConversationMessagesHandler(
         IConversationRepository conversationRepository,
-        IDirectMessageRepository directMessageRepository,
+        IMessageRepository directMessageRepository,
         ILogger<SearchConversationMessagesHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -45,10 +44,10 @@ public sealed class SearchConversationMessagesHandler
                 "Request validation succeeded but search query was missing.");
         }
 
-        DirectMessageCursor? cursor = null;
+        MessageCursor? cursor = null;
         if (request.Cursor is not null)
         {
-            if (!DirectMessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
             {
                 return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
@@ -165,7 +164,7 @@ public sealed class SearchConversationMessagesHandler
                     CreatedAtUtc: item.CreatedAtUtc,
                     UpdatedAtUtc: item.UpdatedAtUtc))
                 .ToArray(),
-            NextCursor: page.NextCursor is null ? null : DirectMessageCursorCodec.Encode(page.NextCursor));
+            NextCursor: page.NextCursor is null ? null : MessageCursorCodec.Encode(page.NextCursor));
 
         return ApplicationResponse<SearchConversationMessagesResponse>.Ok(payload);
     }

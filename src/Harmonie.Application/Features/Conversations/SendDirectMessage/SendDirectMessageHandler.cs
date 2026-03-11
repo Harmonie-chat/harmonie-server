@@ -11,14 +11,14 @@ public sealed class SendDirectMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IDirectMessageRepository _directMessageRepository;
+    private readonly IMessageRepository _directMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDirectMessageNotifier _directMessageNotifier;
     private readonly ILogger<SendDirectMessageHandler> _logger;
 
     public SendDirectMessageHandler(
         IConversationRepository conversationRepository,
-        IDirectMessageRepository directMessageRepository,
+        IMessageRepository directMessageRepository,
         IUnitOfWork unitOfWork,
         IDirectMessageNotifier directMessageNotifier,
         ILogger<SendDirectMessageHandler> logger)
@@ -81,7 +81,7 @@ public sealed class SendDirectMessageHandler
                 "You do not have access to this conversation");
         }
 
-        var messageResult = DirectMessage.Create(
+        var messageResult = Message.CreateForConversation(
             conversationId,
             currentUserId,
             contentResult.Value);
@@ -102,10 +102,18 @@ public sealed class SendDirectMessageHandler
         await _directMessageRepository.AddAsync(messageResult.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
+        var messageConversationId = messageResult.Value.ConversationId;
+        if (messageConversationId is null)
+        {
+            return ApplicationResponse<SendDirectMessageResponse>.Fail(
+                ApplicationErrorCodes.Common.InvalidState,
+                "Direct message creation succeeded but conversation ID is missing");
+        }
+
         await NotifyMessageCreatedSafelyAsync(
             new DirectMessageCreatedNotification(
                 messageResult.Value.Id,
-                messageResult.Value.ConversationId,
+                messageConversationId,
                 messageResult.Value.AuthorUserId,
                 messageResult.Value.Content.Value,
                 messageResult.Value.CreatedAtUtc));
@@ -113,12 +121,12 @@ public sealed class SendDirectMessageHandler
         _logger.LogInformation(
             "SendDirectMessage succeeded. MessageId={MessageId}, ConversationId={ConversationId}, UserId={UserId}",
             messageResult.Value.Id,
-            messageResult.Value.ConversationId,
+            messageConversationId,
             messageResult.Value.AuthorUserId);
 
         return ApplicationResponse<SendDirectMessageResponse>.Ok(new SendDirectMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),
-            ConversationId: messageResult.Value.ConversationId.ToString(),
+            ConversationId: messageConversationId.ToString(),
             AuthorUserId: messageResult.Value.AuthorUserId.ToString(),
             Content: messageResult.Value.Content.Value,
             CreatedAtUtc: messageResult.Value.CreatedAtUtc));

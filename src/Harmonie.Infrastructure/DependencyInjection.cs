@@ -56,9 +56,8 @@ public static class DependencyInjection
         services.AddScoped<IGuildRepository, GuildRepository>();
         services.AddScoped<IGuildMemberRepository, GuildMemberRepository>();
         services.AddScoped<IGuildChannelRepository, GuildChannelRepository>();
-        services.AddScoped<IChannelMessageRepository, ChannelMessageRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
-        services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         return services;
     }

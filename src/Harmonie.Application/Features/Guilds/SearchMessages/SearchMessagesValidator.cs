@@ -33,7 +33,7 @@ public sealed class SearchMessagesValidator : AbstractValidator<SearchMessagesRe
             .WithMessage("After must be earlier than or equal to before when both are provided");
 
         RuleFor(x => x.Cursor)
-            .Must(cursor => cursor is null || ChannelMessageCursorCodec.TryParse(cursor, out _))
+            .Must(cursor => cursor is null || MessageCursorCodec.TryParse(cursor, out _))
             .WithMessage("Cursor is invalid");
 
         RuleFor(x => x.Limit)

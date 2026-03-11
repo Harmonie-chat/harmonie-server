@@ -3,9 +3,11 @@ using Harmonie.Domain.ValueObjects;
 
 namespace Harmonie.Domain.Entities;
 
-public sealed class ChannelMessage : Entity<ChannelMessageId>
+public sealed class Message : Entity<MessageId>
 {
-    public GuildChannelId ChannelId { get; private set; }
+    public GuildChannelId? ChannelId { get; private set; }
+
+    public ConversationId? ConversationId { get; private set; }
 
     public UserId AuthorUserId { get; private set; }
 
@@ -13,9 +15,10 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
 
     public DateTime? DeletedAtUtc { get; private set; }
 
-    private ChannelMessage(
-        ChannelMessageId id,
-        GuildChannelId channelId,
+    private Message(
+        MessageId id,
+        GuildChannelId? channelId,
+        ConversationId? conversationId,
         UserId authorUserId,
         MessageContent content,
         DateTime createdAtUtc,
@@ -24,6 +27,7 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
     {
         Id = id;
         ChannelId = channelId;
+        ConversationId = conversationId;
         AuthorUserId = authorUserId;
         Content = content;
         CreatedAtUtc = createdAtUtc;
@@ -31,21 +35,45 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         DeletedAtUtc = deletedAtUtc;
     }
 
-    public static Result<ChannelMessage> Create(
+    public static Result<Message> CreateForChannel(
         GuildChannelId channelId,
         UserId authorUserId,
         MessageContent content)
     {
         if (channelId is null)
-            return Result.Failure<ChannelMessage>("Channel ID is required");
+            return Result.Failure<Message>("Channel ID is required");
         if (authorUserId is null)
-            return Result.Failure<ChannelMessage>("Author user ID is required");
+            return Result.Failure<Message>("Author user ID is required");
         if (content is null)
-            return Result.Failure<ChannelMessage>("Message content is required");
+            return Result.Failure<Message>("Message content is required");
 
-        return Result.Success(new ChannelMessage(
-            ChannelMessageId.New(),
+        return Result.Success(new Message(
+            MessageId.New(),
             channelId,
+            conversationId: null,
+            authorUserId,
+            content,
+            DateTime.UtcNow,
+            updatedAtUtc: null,
+            deletedAtUtc: null));
+    }
+
+    public static Result<Message> CreateForConversation(
+        ConversationId conversationId,
+        UserId authorUserId,
+        MessageContent content)
+    {
+        if (conversationId is null)
+            return Result.Failure<Message>("Conversation ID is required");
+        if (authorUserId is null)
+            return Result.Failure<Message>("Author user ID is required");
+        if (content is null)
+            return Result.Failure<Message>("Message content is required");
+
+        return Result.Success(new Message(
+            MessageId.New(),
+            channelId: null,
+            conversationId,
             authorUserId,
             content,
             DateTime.UtcNow,
@@ -73,9 +101,10 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         return Result.Success();
     }
 
-    public static ChannelMessage Rehydrate(
-        ChannelMessageId id,
-        GuildChannelId channelId,
+    public static Message Rehydrate(
+        MessageId id,
+        GuildChannelId? channelId,
+        ConversationId? conversationId,
         UserId authorUserId,
         MessageContent content,
         DateTime createdAtUtc,
@@ -83,13 +112,16 @@ public sealed class ChannelMessage : Entity<ChannelMessageId>
         DateTime? deletedAtUtc)
     {
         ArgumentNullException.ThrowIfNull(id);
-        ArgumentNullException.ThrowIfNull(channelId);
         ArgumentNullException.ThrowIfNull(authorUserId);
         ArgumentNullException.ThrowIfNull(content);
 
-        return new ChannelMessage(
+        if ((channelId is null) == (conversationId is null))
+            throw new ArgumentException("Exactly one parent reference is required.", nameof(channelId));
+
+        return new Message(
             id,
             channelId,
+            conversationId,
             authorUserId,
             content,
             createdAtUtc,

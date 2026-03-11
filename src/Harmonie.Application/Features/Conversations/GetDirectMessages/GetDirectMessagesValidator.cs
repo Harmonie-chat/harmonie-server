@@ -1,3 +1,4 @@
+using Harmonie.Application.Common;
 using FluentValidation;
 
 namespace Harmonie.Application.Features.Conversations.GetDirectMessages;
@@ -11,7 +12,7 @@ public sealed class GetDirectMessagesValidator : AbstractValidator<GetDirectMess
             .WithMessage("Limit must be between 1 and 100");
 
         RuleFor(x => x.Cursor)
-            .Must(cursor => cursor is null || DirectMessageCursorCodec.TryParse(cursor, out _))
+            .Must(cursor => cursor is null || MessageCursorCodec.TryParse(cursor, out _))
             .WithMessage("Cursor is invalid");
     }
 }

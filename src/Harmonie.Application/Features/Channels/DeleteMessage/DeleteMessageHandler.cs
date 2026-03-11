@@ -10,14 +10,14 @@ public sealed class DeleteMessageHandler
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IChannelMessageRepository _channelMessageRepository;
+    private readonly IMessageRepository _channelMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<DeleteMessageHandler> _logger;
 
     public DeleteMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IChannelMessageRepository channelMessageRepository,
+        IMessageRepository channelMessageRepository,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         ILogger<DeleteMessageHandler> logger)
@@ -31,7 +31,7 @@ public sealed class DeleteMessageHandler
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
         GuildChannelId channelId,
-        ChannelMessageId messageId,
+        MessageId messageId,
         UserId callerId,
         CancellationToken cancellationToken = default)
     {
@@ -79,7 +79,8 @@ public sealed class DeleteMessageHandler
         }
 
         var message = await _channelMessageRepository.GetByIdAsync(messageId, cancellationToken);
-        if (message is null || message.ChannelId != channelId)
+        var messageChannelId = message?.ChannelId;
+        if (message is null || messageChannelId is null || messageChannelId != channelId)
         {
             _logger.LogWarning(
                 "DeleteMessage failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",

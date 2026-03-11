@@ -10,14 +10,14 @@ public sealed class EditDirectMessageHandler
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IDirectMessageRepository _directMessageRepository;
+    private readonly IMessageRepository _directMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDirectMessageNotifier _directMessageNotifier;
     private readonly ILogger<EditDirectMessageHandler> _logger;
 
     public EditDirectMessageHandler(
         IConversationRepository conversationRepository,
-        IDirectMessageRepository directMessageRepository,
+        IMessageRepository directMessageRepository,
         IUnitOfWork unitOfWork,
         IDirectMessageNotifier directMessageNotifier,
         ILogger<EditDirectMessageHandler> logger)
@@ -31,7 +31,7 @@ public sealed class EditDirectMessageHandler
 
     public async Task<ApplicationResponse<EditDirectMessageResponse>> HandleAsync(
         ConversationId conversationId,
-        DirectMessageId messageId,
+        MessageId messageId,
         EditDirectMessageRequest request,
         UserId callerId,
         CancellationToken cancellationToken = default)
@@ -83,7 +83,8 @@ public sealed class EditDirectMessageHandler
         }
 
         var message = await _directMessageRepository.GetByIdAsync(messageId, cancellationToken);
-        if (message is null || message.ConversationId != conversationId)
+        var messageConversationId = message?.ConversationId;
+        if (message is null || messageConversationId is null || messageConversationId != conversationId)
         {
             _logger.LogWarning(
                 "EditDirectMessage failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",
@@ -117,7 +118,7 @@ public sealed class EditDirectMessageHandler
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _directMessageRepository.UpdateContentAsync(message, cancellationToken);
+        await _directMessageRepository.UpdateAsync(message, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         var updatedAtUtc = message.UpdatedAtUtc;
@@ -137,13 +138,13 @@ public sealed class EditDirectMessageHandler
         await NotifyMessageUpdatedSafelyAsync(
             new DirectMessageUpdatedNotification(
                 message.Id,
-                message.ConversationId,
+                messageConversationId,
                 message.Content.Value,
                 updatedAtUtc.Value));
 
         return ApplicationResponse<EditDirectMessageResponse>.Ok(new EditDirectMessageResponse(
             MessageId: message.Id.ToString(),
-            ConversationId: message.ConversationId.ToString(),
+            ConversationId: messageConversationId.ToString(),
             AuthorUserId: message.AuthorUserId.ToString(),
             Content: message.Content.Value,
             CreatedAtUtc: message.CreatedAtUtc,
