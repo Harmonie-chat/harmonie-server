@@ -65,14 +65,13 @@ public sealed class DeleteGuildHandler
 
         var guildIconFileId = ctx.Guild.IconFileId;
 
-        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(guildId));
-
         await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
         {
             await _guildRepository.DeleteAsync(guildId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
 
+        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(guildId));
         await _uploadedFileCleanupService.DeleteIfExistsAsync(guildIconFileId, cancellationToken);
 
         _logger.LogInformation(

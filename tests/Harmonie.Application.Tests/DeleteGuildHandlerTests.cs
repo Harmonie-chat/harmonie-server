@@ -120,6 +120,39 @@ public sealed class DeleteGuildHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenOwnerDeletesGuild_ShouldNotifyAfterCommit()
+    {
+        var guild = CreateGuild();
+        var ownerId = guild.OwnerUserId;
+        var sequence = new MockSequence();
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildRepositoryMock
+            .InSequence(sequence)
+            .Setup(x => x.DeleteAsync(guild.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _transactionMock
+            .InSequence(sequence)
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _guildNotifierMock
+            .InSequence(sequence)
+            .Setup(x => x.NotifyGuildDeletedAsync(
+                It.Is<GuildDeletedNotification>(notification => notification.GuildId == guild.Id),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId);
+
+        response.Success.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenGuildHasIconFile_ShouldDeleteStoredObjectAfterCommit()
     {
         var iconFileId = UploadedFileId.From(Guid.Parse("b0c7172f-7770-4c05-af10-2ac1a3381995"));
