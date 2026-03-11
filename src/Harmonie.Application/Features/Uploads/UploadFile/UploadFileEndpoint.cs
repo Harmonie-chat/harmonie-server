@@ -14,7 +14,7 @@ public static class UploadFileEndpoint
     {
         app.MapPost("/api/files/uploads", HandleAsync)
             .WithName("UploadFile")
-            .WithTags("Uploads")
+            .WithTags("Files")
             .RequireAuthorization()
             .DisableAntiforgery()
             .Accepts<UploadFileRequest>("multipart/form-data")
