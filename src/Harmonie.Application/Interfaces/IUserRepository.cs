@@ -61,6 +61,11 @@ public interface IUserRepository
     Task<bool> ExistsByUsernameAsync(Username username, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Check if an active user references the provided avatar URL.
+    /// </summary>
+    Task<bool> ExistsByAvatarUrlAsync(string avatarUrl, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Check email and username uniqueness in a single query
     /// </summary>
     Task<UserDuplicateCheck> CheckDuplicatesAsync(Email email, Username username, CancellationToken cancellationToken = default);

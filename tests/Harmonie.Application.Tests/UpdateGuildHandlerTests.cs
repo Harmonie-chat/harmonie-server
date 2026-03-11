@@ -14,6 +14,9 @@ namespace Harmonie.Application.Tests;
 public sealed class UpdateGuildHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
+    private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly UpdateGuildHandler _handler;
@@ -21,6 +24,9 @@ public sealed class UpdateGuildHandlerTests
     public UpdateGuildHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
+        _objectStorageServiceMock = new Mock<IObjectStorageService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
@@ -38,6 +44,9 @@ public sealed class UpdateGuildHandlerTests
 
         _handler = new UpdateGuildHandler(
             _guildRepositoryMock.Object,
+            _userRepositoryMock.Object,
+            _uploadedFileRepositoryMock.Object,
+            _objectStorageServiceMock.Object,
             _unitOfWorkMock.Object,
             NullLogger<UpdateGuildHandler>.Instance);
     }
@@ -177,7 +186,77 @@ public sealed class UpdateGuildHandlerTests
             Times.Never);
     }
 
-    private static Guild CreateGuild()
+    [Fact]
+    public async Task HandleAsync_WhenReplacingLocalIconUrlWithoutOtherReferences_ShouldDeleteOldStoredObject()
+    {
+        var guild = CreateGuild(iconUrl: "/api/files/08f8d69f-5b34-4037-8fb0-ccf6d98af75d");
+        var ownerId = guild.OwnerUserId;
+        var oldUploadedFile = CreateUploadedFile(
+            "guild-icon-old.png",
+            "guild-icons/old-file.png");
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+
+        _guildRepositoryMock
+            .Setup(x => x.IsIconUrlReferencedByAnotherGuildAsync(guild.IconUrl!, guild.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _userRepositoryMock
+            .Setup(x => x.ExistsByAvatarUrlAsync(guild.IconUrl!, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _uploadedFileRepositoryMock
+            .Setup(x => x.GetByIdAsync(It.IsAny<UploadedFileId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldUploadedFile);
+
+        var request = new UpdateGuildRequest
+        {
+            IconUrl = "/api/files/5d2bd47d-c897-4eca-8aec-e5e68217e1d9",
+            IconUrlIsSet = true
+        };
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+
+        response.Success.Should().BeTrue();
+        _objectStorageServiceMock.Verify(
+            x => x.DeleteIfExistsAsync(oldUploadedFile.StorageKey, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenPreviousLocalIconUrlIsStillReferenced_ShouldNotDeleteStoredObject()
+    {
+        var guild = CreateGuild(iconUrl: "/api/files/08f8d69f-5b34-4037-8fb0-ccf6d98af75d");
+        var ownerId = guild.OwnerUserId;
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+
+        _guildRepositoryMock
+            .Setup(x => x.IsIconUrlReferencedByAnotherGuildAsync(guild.IconUrl!, guild.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var request = new UpdateGuildRequest
+        {
+            IconUrl = null,
+            IconUrlIsSet = true
+        };
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+
+        response.Success.Should().BeTrue();
+        _uploadedFileRepositoryMock.Verify(
+            x => x.GetByIdAsync(It.IsAny<UploadedFileId>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _objectStorageServiceMock.Verify(
+            x => x.DeleteIfExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private static Guild CreateGuild(string? iconUrl = null)
     {
         var guildNameResult = GuildName.Create("Guild Alpha");
         if (guildNameResult.IsFailure || guildNameResult.Value is null)
@@ -188,6 +267,25 @@ public sealed class UpdateGuildHandlerTests
             guildNameResult.Value,
             UserId.New(),
             DateTime.UtcNow.AddDays(-2),
-            DateTime.UtcNow.AddDays(-1));
+            DateTime.UtcNow.AddDays(-1),
+            iconUrl: iconUrl);
+    }
+
+    private static UploadedFile CreateUploadedFile(
+        string fileName,
+        string storageKey)
+    {
+        var uploadedFileResult = UploadedFile.Create(
+            UserId.New(),
+            fileName,
+            "image/png",
+            123,
+            storageKey,
+            UploadPurpose.GuildIcon);
+
+        if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
+            throw new InvalidOperationException("Failed to create uploaded file for tests.");
+
+        return uploadedFileResult.Value;
     }
 }

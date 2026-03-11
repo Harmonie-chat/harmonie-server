@@ -24,4 +24,9 @@ public interface IGuildRepository
     Task UpdateOwnerAsync(GuildId guildId, UserId newOwnerId, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsAsync(GuildId guildId, CancellationToken cancellationToken = default);
+
+    Task<bool> IsIconUrlReferencedByAnotherGuildAsync(
+        string iconUrl,
+        GuildId excludedGuildId,
+        CancellationToken cancellationToken = default);
 }

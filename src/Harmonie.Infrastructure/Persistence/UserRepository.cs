@@ -104,6 +104,26 @@ public sealed class UserRepository : IUserRepository
         return await conn.ExecuteScalarAsync<bool>(cmd);
     }
 
+    public async Task<bool> ExistsByAvatarUrlAsync(string avatarUrl, CancellationToken ct = default)
+    {
+        const string sql = """
+                           SELECT EXISTS(
+                               SELECT 1
+                               FROM users
+                               WHERE avatar_url = @AvatarUrl
+                                 AND deleted_at IS NULL)
+                           """;
+
+        var conn = await _dbSession.GetOpenConnectionAsync(ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new { AvatarUrl = avatarUrl },
+            transaction: _dbSession.Transaction,
+            cancellationToken: ct);
+
+        return await conn.ExecuteScalarAsync<bool>(cmd);
+    }
+
     public async Task<UserDuplicateCheck> CheckDuplicatesAsync(Email email, Username username, CancellationToken ct = default)
     {
         const string sql = """

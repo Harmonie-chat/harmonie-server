@@ -1,4 +1,5 @@
 using FluentValidation;
+using Harmonie.Application.Common;
 
 namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 
@@ -21,8 +22,8 @@ public sealed class UpdateGuildValidator : AbstractValidator<UpdateGuildRequest>
             .When(x => x.IconUrlIsSet && x.IconUrl is not null);
 
         RuleFor(x => x.IconUrl)
-            .Must(BeValidAbsoluteIconUrl)
-            .WithMessage("Guild icon URL must be a valid absolute HTTP or HTTPS URL")
+            .Must(UploadedFileUrl.IsValid)
+            .WithMessage("Guild icon URL must be a valid absolute HTTP or HTTPS URL or a local file URL")
             .When(x => x.IconUrlIsSet && x.IconUrl is not null);
 
         RuleFor(x => x.IconColor)
@@ -41,14 +42,4 @@ public sealed class UpdateGuildValidator : AbstractValidator<UpdateGuildRequest>
             .When(x => x.IconBgIsSet && x.IconBg is not null);
     }
 
-    private static bool BeValidAbsoluteIconUrl(string? iconUrl)
-    {
-        if (iconUrl is null)
-            return true;
-
-        if (!Uri.TryCreate(iconUrl, UriKind.Absolute, out var uri))
-            return false;
-
-        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
-    }
 }

@@ -178,6 +178,33 @@ public sealed class GuildRepository : IGuildRepository
         return await connection.ExecuteScalarAsync<bool>(command);
     }
 
+    public async Task<bool> IsIconUrlReferencedByAnotherGuildAsync(
+        string iconUrl,
+        GuildId excludedGuildId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT EXISTS(
+                               SELECT 1
+                               FROM guilds
+                               WHERE icon_url = @IconUrl
+                                 AND id <> @ExcludedGuildId)
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                IconUrl = iconUrl,
+                ExcludedGuildId = excludedGuildId.Value
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        return await connection.ExecuteScalarAsync<bool>(command);
+    }
+
     public async Task UpdateOwnerAsync(GuildId guildId, UserId newOwnerId, CancellationToken cancellationToken = default)
     {
         const string sql = """
