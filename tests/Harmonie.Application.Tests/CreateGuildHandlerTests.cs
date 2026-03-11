@@ -60,7 +60,7 @@ public sealed class CreateGuildHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.Name.Should().Be("Harmonie Team");
         response.Data.OwnerUserId.Should().Be(userId.ToString());
-        response.Data.IconUrl.Should().BeNull();
+        response.Data.IconFileId.Should().BeNull();
         response.Data.Icon.Should().BeNull();
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -95,9 +95,10 @@ public sealed class CreateGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WithIconFields_ShouldReturnIconInResponse()
     {
+        var iconFileId = UploadedFileId.New();
         var request = new CreateGuildRequest(
             "Icon Guild",
-            IconUrl: "https://cdn.harmonie.chat/icon.png",
+            IconFileId: iconFileId.ToString(),
             Icon: new CreateGuildIconRequest(
                 Color: "#7C3AED",
                 Name: "sword",
@@ -108,7 +109,7 @@ public sealed class CreateGuildHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.IconUrl.Should().Be("https://cdn.harmonie.chat/icon.png");
+        response.Data!.IconFileId.Should().Be(iconFileId.ToString());
         response.Data.Icon.Should().NotBeNull();
         response.Data.Icon!.Color.Should().Be("#7C3AED");
         response.Data.Icon.Name.Should().Be("sword");
@@ -127,7 +128,7 @@ public sealed class CreateGuildHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.IconUrl.Should().BeNull();
+        response.Data!.IconFileId.Should().BeNull();
         response.Data.Icon.Should().NotBeNull();
         response.Data.Icon!.Color.Should().Be("#F59E0B");
         response.Data.Icon.Name.Should().BeNull();
@@ -135,18 +136,19 @@ public sealed class CreateGuildHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithOnlyIconUrl_ShouldReturnIconUrlWithoutIcon()
+    public async Task HandleAsync_WithOnlyIconFileId_ShouldReturnIconFileIdWithoutIcon()
     {
+        var iconFileId = UploadedFileId.New();
         var request = new CreateGuildRequest(
             "Url Only Guild",
-            IconUrl: "https://cdn.harmonie.chat/guild.png");
+            IconFileId: iconFileId.ToString());
         var userId = UserId.New();
 
         var response = await _handler.HandleAsync(request, userId);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.IconUrl.Should().Be("https://cdn.harmonie.chat/guild.png");
+        response.Data!.IconFileId.Should().Be(iconFileId.ToString());
         response.Data.Icon.Should().BeNull();
     }
 }

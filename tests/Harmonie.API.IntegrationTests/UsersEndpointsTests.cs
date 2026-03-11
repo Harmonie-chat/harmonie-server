@@ -7,6 +7,7 @@ using System.Text;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Features.Users;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
@@ -45,7 +46,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.Username.Should().Be(user.Username);
         payload.DisplayName.Should().BeNull();
         payload.Bio.Should().BeNull();
-        payload.AvatarUrl.Should().BeNull();
+        payload.AvatarFileId.Should().BeNull();
         payload.Theme.Should().Be("default");
         payload.Language.Should().BeNull();
         payload.Avatar.Should().BeNull();
@@ -84,6 +85,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     public async Task UpdateMyProfile_WithPartialUpdate_ShouldUpdateOnlyProvidedField()
     {
         var user = await RegisterAsync();
+        var avatarFileId = await UploadFileAsync(user.AccessToken, "avatar-initial.png", "image/png", "initial avatar");
 
         var seedResponse = await SendAuthorizedPatchAsync(
             "/api/users/me",
@@ -91,7 +93,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             {
                 displayName = "Initial Name",
                 bio = "Initial bio",
-                avatarUrl = "https://cdn.harmonie.chat/initial.png"
+                avatarFileId
             },
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -109,7 +111,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.Username.Should().Be(user.Username);
         payload.DisplayName.Should().Be("Updated Name");
         payload.Bio.Should().Be("Initial bio");
-        payload.AvatarUrl.Should().Be("https://cdn.harmonie.chat/initial.png");
+        payload.AvatarFileId.Should().Be(avatarFileId);
 
         var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -117,13 +119,14 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         profile.Should().NotBeNull();
         profile!.DisplayName.Should().Be("Updated Name");
         profile.Bio.Should().Be("Initial bio");
-        profile.AvatarUrl.Should().Be("https://cdn.harmonie.chat/initial.png");
+        profile.AvatarFileId.Should().Be(avatarFileId);
     }
 
     [Fact]
     public async Task UpdateMyProfile_WithExplicitNull_ShouldResetFieldToNull()
     {
         var user = await RegisterAsync();
+        var avatarFileId = await UploadFileAsync(user.AccessToken, "avatar-reset.png", "image/png", "reset avatar");
 
         var seedResponse = await SendAuthorizedPatchAsync(
             "/api/users/me",
@@ -131,7 +134,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             {
                 displayName = "Alice",
                 bio = "Bio to reset",
-                avatarUrl = "https://cdn.harmonie.chat/reset-me.png"
+                avatarFileId
             },
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -141,7 +144,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
             new
             {
                 bio = (string?)null,
-                avatarUrl = (string?)null
+                avatarFileId = (string?)null
             },
             user.AccessToken);
 
@@ -151,7 +154,7 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.Should().NotBeNull();
         payload!.DisplayName.Should().Be("Alice");
         payload.Bio.Should().BeNull();
-        payload.AvatarUrl.Should().BeNull();
+        payload.AvatarFileId.Should().BeNull();
     }
 
     [Fact]
@@ -340,6 +343,32 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
+    }
+
+    private async Task<string> UploadFileAsync(
+        string accessToken,
+        string fileName,
+        string contentType,
+        string content)
+    {
+        using var multipart = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(content));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        multipart.Add(fileContent, "file", fileName);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/files/uploads")
+        {
+            Content = multipart
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await _client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
+        payload.Should().NotBeNull();
+        payload!.FileId.Should().NotBeNullOrWhiteSpace();
+        return payload.FileId;
     }
 
     private string BuildAccessToken(string userId)

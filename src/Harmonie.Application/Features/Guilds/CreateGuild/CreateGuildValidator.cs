@@ -14,15 +14,10 @@ public sealed class CreateGuildValidator : AbstractValidator<CreateGuildRequest>
             .MaximumLength(100)
             .WithMessage("Guild name cannot exceed 100 characters");
 
-        RuleFor(x => x.IconUrl)
-            .MaximumLength(2048)
-            .WithMessage("Guild icon URL cannot exceed 2048 characters")
-            .When(x => x.IconUrl is not null);
-
-        RuleFor(x => x.IconUrl)
-            .Must(BeValidAbsoluteIconUrl)
-            .WithMessage("Guild icon URL must be a valid absolute HTTP or HTTPS URL")
-            .When(x => x.IconUrl is not null);
+        RuleFor(x => x.IconFileId)
+            .Must(fileId => fileId is null || Guid.TryParse(fileId, out _))
+            .WithMessage("Guild icon file ID must be a valid GUID")
+            .When(x => x.IconFileId is not null);
 
         RuleFor(x => x.Icon!.Color)
             .MaximumLength(50)
@@ -38,16 +33,5 @@ public sealed class CreateGuildValidator : AbstractValidator<CreateGuildRequest>
             .MaximumLength(50)
             .WithMessage("Guild icon background cannot exceed 50 characters")
             .When(x => x.Icon?.Bg is not null);
-    }
-
-    private static bool BeValidAbsoluteIconUrl(string? iconUrl)
-    {
-        if (iconUrl is null)
-            return true;
-
-        if (!Uri.TryCreate(iconUrl, UriKind.Absolute, out var uri))
-            return false;
-
-        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
     }
 }

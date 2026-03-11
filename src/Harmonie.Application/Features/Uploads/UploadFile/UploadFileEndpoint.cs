@@ -12,16 +12,14 @@ public static class UploadFileEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/uploads", HandleAsync)
+        app.MapPost("/api/files/uploads", HandleAsync)
             .WithName("UploadFile")
-            .WithTags("Uploads")
+            .WithTags("Files")
             .RequireAuthorization()
             .DisableAntiforgery()
             .Accepts<UploadFileRequest>("multipart/form-data")
             .WithSummary("Upload a file")
-            .WithDescription("Uploads a file to object storage and returns its metadata and public URL. " +
-                "Optional form field 'purpose' accepts: attachment (default), guildIcon. " +
-                "Avatar uploads must use the dedicated avatar endpoint.")
+            .WithDescription("Uploads a file to object storage and returns its metadata.")
             .Produces<UploadFileResponse>(StatusCodes.Status201Created)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -75,6 +73,6 @@ public static class UploadFileEndpoint
             purpose,
             cancellationToken);
 
-        return response.ToCreatedHttpResult(data => $"/api/uploads/{data.FileId}");
+        return response.ToCreatedHttpResult(data => $"/api/files/{data.FileId}");
     }
 }

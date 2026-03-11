@@ -29,7 +29,8 @@ public sealed class GetMyProfileHandlerTests
         var user = CreateUser();
         user.UpdateDisplayName("Alice");
         user.UpdateBio("Hello Harmonie");
-        user.UpdateAvatar("https://cdn.harmonie.chat/avatar.png");
+        var avatarFileId = UploadedFileId.New();
+        user.UpdateAvatarFile(avatarFileId);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -44,7 +45,7 @@ public sealed class GetMyProfileHandlerTests
         response.Data.Username.Should().Be(user.Username.Value);
         response.Data.DisplayName.Should().Be("Alice");
         response.Data.Bio.Should().Be("Hello Harmonie");
-        response.Data.AvatarUrl.Should().Be("https://cdn.harmonie.chat/avatar.png");
+        response.Data.AvatarFileId.Should().Be(avatarFileId.ToString());
         response.Data.Theme.Should().Be("default");
         response.Data.Language.Should().BeNull();
         response.Data.Avatar.Should().BeNull();

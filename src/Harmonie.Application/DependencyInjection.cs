@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentValidation;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.LogoutAll;
 using Harmonie.Application.Features.Auth.Logout;
@@ -54,6 +55,7 @@ public static class DependencyInjection
 
         // Register FluentValidation validators
         services.AddValidatorsFromAssembly(assembly);
+        services.AddScoped<UploadedFileCleanupService>();
 
         // Register feature handlers
         // Auth features

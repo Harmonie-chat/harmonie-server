@@ -13,7 +13,7 @@ public static class DownloadFileEndpoint
     {
         app.MapGet("/api/files/{fileId}", HandleAsync)
             .WithName("DownloadFile")
-            .WithTags("Uploads")
+            .WithTags("Files")
             .RequireAuthorization()
             .WithSummary("Download a file")
             .WithDescription("Downloads a file by its ID. Requires authentication.")

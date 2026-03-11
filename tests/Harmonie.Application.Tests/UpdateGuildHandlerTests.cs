@@ -14,6 +14,8 @@ namespace Harmonie.Application.Tests;
 public sealed class UpdateGuildHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
+    private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
+    private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly UpdateGuildHandler _handler;
@@ -21,6 +23,8 @@ public sealed class UpdateGuildHandlerTests
     public UpdateGuildHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
+        _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
+        _objectStorageServiceMock = new Mock<IObjectStorageService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
@@ -38,6 +42,10 @@ public sealed class UpdateGuildHandlerTests
 
         _handler = new UpdateGuildHandler(
             _guildRepositoryMock.Object,
+            new UploadedFileCleanupService(
+                _uploadedFileRepositoryMock.Object,
+                _objectStorageServiceMock.Object,
+                NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             NullLogger<UpdateGuildHandler>.Instance);
     }
@@ -90,8 +98,8 @@ public sealed class UpdateGuildHandlerTests
         {
             Name = "Updated Guild",
             NameIsSet = true,
-            IconUrl = "https://cdn.harmonie.chat/guild-updated.png",
-            IconUrlIsSet = true,
+            IconFileId = "1c73fa0b-0a39-4ea8-b43e-48c703bbf5fe",
+            IconFileIdIsSet = true,
             IconIsSet = true,
             IconColor = "#7C3AED",
             IconColorIsSet = true,
@@ -106,7 +114,7 @@ public sealed class UpdateGuildHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Data!.Name.Should().Be("Updated Guild");
-        response.Data.IconUrl.Should().Be("https://cdn.harmonie.chat/guild-updated.png");
+        response.Data.IconFileId.Should().Be("1c73fa0b-0a39-4ea8-b43e-48c703bbf5fe");
         response.Data.Icon.Should().NotBeNull();
         response.Data.Icon!.Name.Should().Be("sword");
 
@@ -114,7 +122,7 @@ public sealed class UpdateGuildHandlerTests
             x => x.UpdateAsync(
                 It.Is<Guild>(updatedGuild =>
                     updatedGuild.Name.Value == "Updated Guild"
-                    && updatedGuild.IconUrl == "https://cdn.harmonie.chat/guild-updated.png"
+                    && updatedGuild.IconFileId == UploadedFileId.From(Guid.Parse("1c73fa0b-0a39-4ea8-b43e-48c703bbf5fe"))
                     && updatedGuild.IconColor == "#7C3AED"
                     && updatedGuild.IconName == "sword"
                     && updatedGuild.IconBg == "#1F2937"),
@@ -177,7 +185,77 @@ public sealed class UpdateGuildHandlerTests
             Times.Never);
     }
 
-    private static Guild CreateGuild()
+    [Fact]
+    public async Task HandleAsync_WhenReplacingExistingIconFile_ShouldDeleteOldStoredObject()
+    {
+        var oldFileId = UploadedFileId.From(Guid.Parse("08f8d69f-5b34-4037-8fb0-ccf6d98af75d"));
+        var guild = CreateGuild(iconFileId: oldFileId);
+        var ownerId = guild.OwnerUserId;
+        var oldUploadedFile = CreateUploadedFile(
+            "guild-icon-old.png",
+            "guild-icons/old-file.png");
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+
+        _uploadedFileRepositoryMock
+            .Setup(x => x.GetByIdAsync(oldFileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldUploadedFile);
+
+        var request = new UpdateGuildRequest
+        {
+            IconFileId = "5d2bd47d-c897-4eca-8aec-e5e68217e1d9",
+            IconFileIdIsSet = true
+        };
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+
+        response.Success.Should().BeTrue();
+        _objectStorageServiceMock.Verify(
+            x => x.DeleteIfExistsAsync(oldUploadedFile.StorageKey, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _uploadedFileRepositoryMock.Verify(
+            x => x.DeleteAsync(oldFileId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenClearingExistingIconFile_ShouldDeleteOldStoredObject()
+    {
+        var oldFileId = UploadedFileId.From(Guid.Parse("08f8d69f-5b34-4037-8fb0-ccf6d98af75d"));
+        var guild = CreateGuild(iconFileId: oldFileId);
+        var ownerId = guild.OwnerUserId;
+        var oldUploadedFile = CreateUploadedFile(
+            "guild-icon-old.png",
+            "guild-icons/old-file.png");
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+
+        _uploadedFileRepositoryMock
+            .Setup(x => x.GetByIdAsync(oldFileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldUploadedFile);
+
+        var request = new UpdateGuildRequest
+        {
+            IconFileId = null,
+            IconFileIdIsSet = true
+        };
+
+        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+
+        response.Success.Should().BeTrue();
+        _uploadedFileRepositoryMock.Verify(
+            x => x.DeleteAsync(oldFileId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _objectStorageServiceMock.Verify(
+            x => x.DeleteIfExistsAsync(oldUploadedFile.StorageKey, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private static Guild CreateGuild(UploadedFileId? iconFileId = null)
     {
         var guildNameResult = GuildName.Create("Guild Alpha");
         if (guildNameResult.IsFailure || guildNameResult.Value is null)
@@ -188,6 +266,25 @@ public sealed class UpdateGuildHandlerTests
             guildNameResult.Value,
             UserId.New(),
             DateTime.UtcNow.AddDays(-2),
-            DateTime.UtcNow.AddDays(-1));
+            DateTime.UtcNow.AddDays(-1),
+            iconFileId: iconFileId);
+    }
+
+    private static UploadedFile CreateUploadedFile(
+        string fileName,
+        string storageKey)
+    {
+        var uploadedFileResult = UploadedFile.Create(
+            UserId.New(),
+            fileName,
+            "image/png",
+            123,
+            storageKey,
+            UploadPurpose.GuildIcon);
+
+        if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
+            throw new InvalidOperationException("Failed to create uploaded file for tests.");
+
+        return uploadedFileResult.Value;
     }
 }

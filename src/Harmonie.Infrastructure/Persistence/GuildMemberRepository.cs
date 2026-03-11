@@ -163,7 +163,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
                            SELECT g.id AS "GuildId",
                                   g.name AS "GuildName",
                                   g.owner_user_id AS "OwnerUserId",
-                                  g.icon_url AS "IconUrl",
+                                  g.icon_file_id AS "IconFileId",
                                   g.icon_color AS "IconColor",
                                   g.icon_name AS "IconName",
                                   g.icon_bg AS "IconBg",
@@ -196,7 +196,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
                            SELECT gm.user_id AS "UserId",
                                   u.username AS "Username",
                                   u.display_name AS "DisplayName",
-                                  u.avatar_url AS "AvatarUrl",
+                                  u.avatar_file_id AS "AvatarFileId",
                                   u.is_active AS "IsActive",
                                   gm.role AS "Role",
                                   gm.joined_at_utc AS "JoinedAtUtc"
@@ -286,7 +286,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             UserId.From(row.OwnerUserId),
             row.GuildCreatedAtUtc,
             row.GuildUpdatedAtUtc,
-            row.IconUrl,
+            iconFileId: row.IconFileId.HasValue ? UploadedFileId.From(row.IconFileId.Value) : null,
             row.IconColor,
             row.IconName,
             row.IconBg);
@@ -310,7 +310,7 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             UserId.From(row.UserId),
             usernameResult.Value,
             row.DisplayName,
-            row.AvatarUrl,
+            row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
             row.IsActive,
             (GuildRole)row.Role,
             row.JoinedAtUtc);

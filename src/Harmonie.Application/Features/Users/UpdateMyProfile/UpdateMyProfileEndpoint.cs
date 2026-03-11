@@ -44,11 +44,11 @@ public static class UpdateMyProfileEndpoint
                     }),
                 (
                     "clearProfileFields",
-                    "Clear bio, avatar URL, and avatar appearance",
+                    "Clear bio, avatar file, and avatar appearance",
                     new
                     {
                         bio = (string?)null,
-                        avatarUrl = (string?)null,
+                        avatarFileId = (string?)null,
                         avatar = (object?)null
                     }))
             .Produces<UpdateMyProfileResponse>(StatusCodes.Status200OK)
@@ -78,7 +78,7 @@ public static class UpdateMyProfileEndpoint
     internal sealed record UpdateMyProfileOpenApiRequest(
         string? DisplayName,
         string? Bio,
-        string? AvatarUrl,
+        string? AvatarFileId,
         UpdateMyProfileOpenApiAvatarRequest? Avatar,
         string? Theme,
         string? Language);

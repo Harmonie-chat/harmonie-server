@@ -112,13 +112,13 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         updateMyProfileSchema.Should().NotBeNull();
         updateMyProfileSchema!["properties"]?["displayName"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["bio"].Should().NotBeNull();
-        updateMyProfileSchema["properties"]?["avatarUrl"].Should().NotBeNull();
+        updateMyProfileSchema["properties"]?["avatarFileId"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["avatar"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["theme"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["language"].Should().NotBeNull();
         updateMyProfileSchema["properties"]?["displayNameIsSet"].Should().BeNull();
         updateMyProfileSchema["properties"]?["bioIsSet"].Should().BeNull();
-        updateMyProfileSchema["properties"]?["avatarUrlIsSet"].Should().BeNull();
+        updateMyProfileSchema["properties"]?["avatarFileIdIsSet"].Should().BeNull();
         updateMyProfileSchema["properties"]?["avatarIsSet"].Should().BeNull();
         updateMyProfileSchema["properties"]?["themeIsSet"].Should().BeNull();
 
@@ -148,10 +148,10 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         var updateGuildSchema = ResolveRequestBodySchema(document, "/api/guilds/{guildId}", "patch");
         updateGuildSchema.Should().NotBeNull();
         updateGuildSchema!["properties"]?["name"].Should().NotBeNull();
-        updateGuildSchema["properties"]?["iconUrl"].Should().NotBeNull();
+        updateGuildSchema["properties"]?["iconFileId"].Should().NotBeNull();
         updateGuildSchema["properties"]?["icon"].Should().NotBeNull();
         updateGuildSchema["properties"]?["nameIsSet"].Should().BeNull();
-        updateGuildSchema["properties"]?["iconUrlIsSet"].Should().BeNull();
+        updateGuildSchema["properties"]?["iconFileIdIsSet"].Should().BeNull();
         updateGuildSchema["properties"]?["iconColorIsSet"].Should().BeNull();
 
         var updateGuildRequestBody = document["paths"]?["/api/guilds/{guildId}"]?["patch"]?["requestBody"];
@@ -177,7 +177,7 @@ public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<P
         var document = JsonNode.Parse(await response.Content.ReadAsStringAsync());
         document.Should().NotBeNull();
 
-        var requestBody = document!["paths"]?["/api/uploads"]?["post"]?["requestBody"];
+        var requestBody = document!["paths"]?["/api/files/uploads"]?["post"]?["requestBody"];
         requestBody.Should().NotBeNull();
         requestBody!["content"]?["multipart/form-data"].Should().NotBeNull();
 

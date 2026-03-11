@@ -8,7 +8,7 @@ public sealed class GuildRow
 
     public Guid OwnerUserId { get; init; }
 
-    public string? IconUrl { get; init; }
+    public Guid? IconFileId { get; init; }
 
     public string? IconColor { get; init; }
 

@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds;
 using Harmonie.Application.Interfaces;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Entities;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
@@ -71,11 +72,18 @@ public sealed class CreateGuildHandler
 
         var guild = guildResult.Value;
 
-        if (request.IconUrl is not null)
+        if (request.IconFileId is not null)
         {
-            var iconUrlResult = guild.UpdateIconUrl(request.IconUrl);
-            if (iconUrlResult.IsFailure)
-                return BuildIconValidationFailure(nameof(request.IconUrl), iconUrlResult.Error);
+            if (!UploadedFileId.TryParse(request.IconFileId, out var iconFileId))
+            {
+                return BuildIconValidationFailure(
+                    nameof(request.IconFileId),
+                    "Guild icon file ID is invalid");
+            }
+
+            var iconFileResult = guild.UpdateIconFile(iconFileId);
+            if (iconFileResult.IsFailure)
+                return BuildIconValidationFailure(nameof(request.IconFileId), iconFileResult);
         }
 
         if (request.Icon is not null)
@@ -186,7 +194,7 @@ public sealed class CreateGuildHandler
             GuildId: guild.Id.ToString(),
             Name: guild.Name.Value,
             OwnerUserId: guild.OwnerUserId.ToString(),
-            IconUrl: guild.IconUrl,
+            IconFileId: guild.IconFileId?.ToString(),
             Icon: BuildIcon(guild),
             DefaultTextChannelId: defaultTextChannelResult.Value.Id.ToString(),
             DefaultVoiceChannelId: defaultVoiceChannelResult.Value.Id.ToString(),
@@ -214,4 +222,9 @@ public sealed class CreateGuildHandler
                 ApplicationErrorCodes.Validation.Invalid,
                 detail ?? "Guild field is invalid"));
     }
+
+    private static ApplicationResponse<CreateGuildResponse> BuildIconValidationFailure(
+        string propertyName,
+        Result result)
+        => BuildIconValidationFailure(propertyName, result.Error);
 }

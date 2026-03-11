@@ -13,13 +13,21 @@ namespace Harmonie.Application.Tests;
 public sealed class UpdateMyProfileHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
+    private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
     private readonly UpdateMyProfileHandler _handler;
 
     public UpdateMyProfileHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
+        _objectStorageServiceMock = new Mock<IObjectStorageService>();
         _handler = new UpdateMyProfileHandler(
             _userRepositoryMock.Object,
+            new UploadedFileCleanupService(
+                _uploadedFileRepositoryMock.Object,
+                _objectStorageServiceMock.Object,
+                NullLogger<UploadedFileCleanupService>.Instance),
             NullLogger<UpdateMyProfileHandler>.Instance);
     }
 
@@ -29,14 +37,15 @@ public sealed class UpdateMyProfileHandlerTests
         var user = CreateUser();
         user.UpdateDisplayName("Initial Name");
         user.UpdateBio("Initial bio");
-        user.UpdateAvatar("https://cdn.harmonie.chat/avatar-initial.png");
+        var avatarFileId = UploadedFileId.New();
+        user.UpdateAvatarFile(avatarFileId);
 
         var request = new UpdateMyProfileRequest
         {
             DisplayName = "Updated Name",
             DisplayNameIsSet = true,
             BioIsSet = false,
-            AvatarUrlIsSet = false
+            AvatarFileIdIsSet = false
         };
 
         _userRepositoryMock
@@ -50,7 +59,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.DisplayName.Should().Be("Updated Name");
         response.Data.Bio.Should().Be("Initial bio");
-        response.Data.AvatarUrl.Should().Be("https://cdn.harmonie.chat/avatar-initial.png");
+        response.Data.AvatarFileId.Should().Be(avatarFileId.ToString());
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
@@ -58,7 +67,7 @@ public sealed class UpdateMyProfileHandlerTests
                     p.DisplayNameIsSet == true &&
                     p.DisplayName == "Updated Name" &&
                     p.BioIsSet == false &&
-                    p.AvatarUrlIsSet == false),
+                    p.AvatarFileIdIsSet == false),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -69,15 +78,15 @@ public sealed class UpdateMyProfileHandlerTests
         var user = CreateUser();
         user.UpdateDisplayName("Alice");
         user.UpdateBio("Existing bio");
-        user.UpdateAvatar("https://cdn.harmonie.chat/avatar-existing.png");
+        user.UpdateAvatarFile(UploadedFileId.New());
 
         var request = new UpdateMyProfileRequest
         {
             Bio = null,
-            AvatarUrl = null,
+            AvatarFileId = null,
             DisplayNameIsSet = false,
             BioIsSet = true,
-            AvatarUrlIsSet = true
+            AvatarFileIdIsSet = true
         };
 
         _userRepositoryMock
@@ -91,7 +100,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.DisplayName.Should().Be("Alice");
         response.Data.Bio.Should().BeNull();
-        response.Data.AvatarUrl.Should().BeNull();
+        response.Data.AvatarFileId.Should().BeNull();
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(
@@ -99,8 +108,8 @@ public sealed class UpdateMyProfileHandlerTests
                     p.DisplayNameIsSet == false &&
                     p.BioIsSet == true &&
                     p.Bio == null &&
-                    p.AvatarUrlIsSet == true &&
-                    p.AvatarUrl == null),
+                    p.AvatarFileIdIsSet == true &&
+                    p.AvatarFileId == null),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

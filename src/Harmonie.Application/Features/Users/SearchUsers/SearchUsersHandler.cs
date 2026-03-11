@@ -105,7 +105,7 @@ public sealed class SearchUsersHandler
                 UserId: user.UserId.ToString(),
                 Username: user.Username.Value,
                 DisplayName: user.DisplayName,
-                AvatarUrl: user.AvatarUrl,
+                AvatarFileId: user.AvatarFileId?.ToString(),
                 Status: user.IsActive ? "Active" : "Blocked"))
             .ToArray());
 

@@ -58,7 +58,7 @@ public sealed record GuildMemberUser(
     UserId UserId,
     Username Username,
     string? DisplayName,
-    string? AvatarUrl,
+    UploadedFileId? AvatarFileId,
     bool IsActive,
     GuildRole Role,
     DateTime JoinedAtUtc);

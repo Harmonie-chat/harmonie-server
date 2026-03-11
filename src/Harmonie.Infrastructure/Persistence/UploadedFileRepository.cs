@@ -100,6 +100,25 @@ public sealed class UploadedFileRepository : IUploadedFileRepository
         await connection.ExecuteAsync(command);
     }
 
+    public async Task DeleteAsync(
+        UploadedFileId id,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           DELETE FROM uploaded_files
+                           WHERE id = @Id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { Id = id.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private sealed class UploadedFileRow
     {
         public Guid Id { get; init; }

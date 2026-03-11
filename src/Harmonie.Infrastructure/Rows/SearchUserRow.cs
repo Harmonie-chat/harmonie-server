@@ -8,7 +8,7 @@ public sealed class SearchUserRow
 
     public string? DisplayName { get; init; }
 
-    public string? AvatarUrl { get; init; }
+    public Guid? AvatarFileId { get; init; }
 
     public bool IsActive { get; init; }
 }

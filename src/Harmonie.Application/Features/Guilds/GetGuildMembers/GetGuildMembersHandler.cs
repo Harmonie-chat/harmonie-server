@@ -70,7 +70,7 @@ public sealed class GetGuildMembersHandler
                     UserId: member.UserId.ToString(),
                     Username: member.Username.Value,
                     DisplayName: member.DisplayName,
-                    AvatarUrl: member.AvatarUrl,
+                    AvatarFileId: member.AvatarFileId?.ToString(),
                     IsActive: member.IsActive,
                     Role: member.Role.ToString(),
                     JoinedAtUtc: member.JoinedAtUtc))

@@ -6,5 +6,5 @@ public sealed record UpdateGuildResponse(
     string GuildId,
     string Name,
     string OwnerUserId,
-    string? IconUrl,
+    string? IconFileId,
     GuildIconDto? Icon);

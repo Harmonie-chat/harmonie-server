@@ -9,7 +9,7 @@ public sealed record ListUserGuildsItemResponse(
     string GuildId,
     string Name,
     string OwnerUserId,
-    string? IconUrl,
+    string? IconFileId,
     GuildIconDto? Icon,
     string Role,
     DateTime JoinedAtUtc);

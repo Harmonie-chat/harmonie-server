@@ -43,7 +43,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         using var client = factory.CreateClient();
         using var content = CreateMultipartContent("avatar.png", "image/png", [1, 2, 3, 4]);
 
-        var response = await SendAuthorizedMultipartAsync(client, "/api/uploads", content, user.AccessToken);
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -52,7 +52,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         payload!.Filename.Should().Be("avatar.png");
         payload.ContentType.Should().Be("image/png");
         payload.SizeBytes.Should().Be(4);
-        payload.Url.Should().StartWith("/api/files/");
+        Guid.TryParse(payload.FileId, out _).Should().BeTrue();
         fakeStorage.UploadedObjects.Should().ContainSingle();
     }
 
@@ -74,7 +74,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         using var client = factory.CreateClient();
         using var content = CreateMultipartContent("malware.exe", "application/octet-stream", [1, 2, 3, 4]);
 
-        var response = await SendAuthorizedMultipartAsync(client, "/api/uploads", content, user.AccessToken);
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -103,7 +103,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         using var content = CreateMultipartContent("icon.png", "image/png", [1, 2, 3, 4]);
         content.Add(new StringContent("guildIcon"), "purpose");
 
-        var response = await SendAuthorizedMultipartAsync(client, "/api/uploads", content, user.AccessToken);
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -132,7 +132,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         using var content = CreateMultipartContent("file.png", "image/png", [1, 2, 3, 4]);
         content.Add(new StringContent("invalid_purpose"), "purpose");
 
-        var response = await SendAuthorizedMultipartAsync(client, "/api/uploads", content, user.AccessToken);
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -161,7 +161,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         using var content = CreateMultipartContent("avatar.png", "image/png", [1, 2, 3, 4]);
         content.Add(new StringContent("avatar"), "purpose");
 
-        var response = await SendAuthorizedMultipartAsync(client, "/api/uploads", content, user.AccessToken);
+        var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", content, user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -176,7 +176,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     {
         using var content = CreateMultipartContent("avatar.png", "image/png", [1, 2, 3, 4]);
 
-        var response = await _client.PostAsync("/api/uploads", content);
+        var response = await _client.PostAsync("/api/files/uploads", content);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

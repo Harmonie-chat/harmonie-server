@@ -8,7 +8,7 @@ public sealed class UpdateMyProfileRequest
 {
     public string? DisplayName { get; init; }
     public string? Bio { get; init; }
-    public string? AvatarUrl { get; init; }
+    public string? AvatarFileId { get; init; }
 
     public string? AvatarColor { get; init; }
     public string? AvatarIcon { get; init; }
@@ -19,7 +19,7 @@ public sealed class UpdateMyProfileRequest
 
     [JsonIgnore] public bool DisplayNameIsSet { get; init; }
     [JsonIgnore] public bool BioIsSet { get; init; }
-    [JsonIgnore] public bool AvatarUrlIsSet { get; init; }
+    [JsonIgnore] public bool AvatarFileIdIsSet { get; init; }
 
     [JsonIgnore] public bool AvatarIsSet { get; init; }
     [JsonIgnore] public bool AvatarColorIsSet { get; init; }
@@ -39,7 +39,7 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
 
         string? displayName = null;
         string? bio = null;
-        string? avatarUrl = null;
+        string? avatarFileId = null;
         string? avatarColor = null;
         string? avatarIcon = null;
         string? avatarBg = null;
@@ -48,7 +48,7 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
 
         var displayNameIsSet = false;
         var bioIsSet = false;
-        var avatarUrlIsSet = false;
+        var avatarFileIdIsSet = false;
         var avatarIsSet = false;
         var avatarColorIsSet = false;
         var avatarIconIsSet = false;
@@ -64,7 +64,7 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
                 {
                     DisplayName = displayName,
                     Bio = bio,
-                    AvatarUrl = avatarUrl,
+                    AvatarFileId = avatarFileId,
                     AvatarColor = avatarColor,
                     AvatarIcon = avatarIcon,
                     AvatarBg = avatarBg,
@@ -72,7 +72,7 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
                     Language = language,
                     DisplayNameIsSet = displayNameIsSet,
                     BioIsSet = bioIsSet,
-                    AvatarUrlIsSet = avatarUrlIsSet,
+                    AvatarFileIdIsSet = avatarFileIdIsSet,
                     AvatarIsSet = avatarIsSet,
                     AvatarColorIsSet = avatarColorIsSet,
                     AvatarIconIsSet = avatarIconIsSet,
@@ -105,10 +105,10 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
                 bioIsSet = true;
                 bio = ReadNullableString(ref reader, "bio");
             }
-            else if (propertyName.Equals("avatarUrl", StringComparison.OrdinalIgnoreCase))
+            else if (propertyName.Equals("avatarFileId", StringComparison.OrdinalIgnoreCase))
             {
-                avatarUrlIsSet = true;
-                avatarUrl = ReadNullableString(ref reader, "avatarUrl");
+                avatarFileIdIsSet = true;
+                avatarFileId = ReadNullableString(ref reader, "avatarFileId");
             }
             else if (propertyName.Equals("avatar", StringComparison.OrdinalIgnoreCase))
             {
@@ -163,8 +163,8 @@ internal sealed class UpdateMyProfileRequestJsonConverter : JsonConverter<Update
         if (value.BioIsSet)
             WriteNullableString(writer, "bio", value.Bio);
 
-        if (value.AvatarUrlIsSet)
-            WriteNullableString(writer, "avatarUrl", value.AvatarUrl);
+        if (value.AvatarFileIdIsSet)
+            WriteNullableString(writer, "avatarFileId", value.AvatarFileId);
 
         if (value.AvatarIsSet)
         {

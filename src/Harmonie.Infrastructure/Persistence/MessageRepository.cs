@@ -376,7 +376,7 @@ public sealed class MessageRepository : IMessageRepository
                    m.author_user_id AS "AuthorUserId",
                    u.username AS "AuthorUsername",
                    u.display_name AS "AuthorDisplayName",
-                   u.avatar_url AS "AuthorAvatarUrl",
+                   u.avatar_file_id AS "AuthorAvatarFileId",
                    m.content AS "Content",
                    m.created_at_utc AS "CreatedAtUtc",
                    m.updated_at_utc AS "UpdatedAtUtc"
@@ -572,7 +572,7 @@ public sealed class MessageRepository : IMessageRepository
             AuthorUserId: UserId.From(row.AuthorUserId),
             AuthorUsername: row.AuthorUsername,
             AuthorDisplayName: row.AuthorDisplayName,
-            AuthorAvatarUrl: row.AuthorAvatarUrl,
+            AuthorAvatarFileId: row.AuthorAvatarFileId.HasValue ? UploadedFileId.From(row.AuthorAvatarFileId.Value) : null,
             Content: contentResult.Value,
             CreatedAtUtc: row.CreatedAtUtc,
             UpdatedAtUtc: row.UpdatedAtUtc);

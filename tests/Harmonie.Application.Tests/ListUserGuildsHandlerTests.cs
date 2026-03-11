@@ -48,7 +48,7 @@ public sealed class ListUserGuildsHandlerTests
             "Guild Alpha",
             GuildRole.Admin,
             DateTime.UtcNow.AddDays(-2),
-            iconUrl: "https://cdn.harmonie.chat/guild-alpha.png",
+            iconFileId: UploadedFileId.From(Guid.Parse("0be76be9-ae27-4961-a4a5-835e1f77387b")),
             iconColor: "#7C3AED",
             iconName: "sword",
             iconBg: "#1F2937");
@@ -65,7 +65,7 @@ public sealed class ListUserGuildsHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.Guilds.Should().HaveCount(2);
         response.Data.Guilds[0].Name.Should().Be("Guild Alpha");
-        response.Data.Guilds[0].IconUrl.Should().Be("https://cdn.harmonie.chat/guild-alpha.png");
+        response.Data.Guilds[0].IconFileId.Should().Be("0be76be9-ae27-4961-a4a5-835e1f77387b");
         response.Data.Guilds[0].Icon.Should().NotBeNull();
         response.Data.Guilds[0].Icon!.Name.Should().Be("sword");
         response.Data.Guilds[0].Role.Should().Be("Admin");
@@ -78,7 +78,7 @@ public sealed class ListUserGuildsHandlerTests
         string guildName,
         GuildRole role,
         DateTime joinedAtUtc,
-        string? iconUrl = null,
+        UploadedFileId? iconFileId = null,
         string? iconColor = null,
         string? iconName = null,
         string? iconBg = null)
@@ -93,7 +93,7 @@ public sealed class ListUserGuildsHandlerTests
             UserId.New(),
             createdAtUtc: joinedAtUtc.AddHours(-1),
             updatedAtUtc: joinedAtUtc.AddHours(-1),
-            iconUrl: iconUrl,
+            iconFileId: iconFileId,
             iconColor: iconColor,
             iconName: iconName,
             iconBg: iconBg);

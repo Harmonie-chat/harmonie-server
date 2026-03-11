@@ -38,14 +38,15 @@ public sealed class GuildTests
     }
 
     [Fact]
-    public void UpdateIconUrl_WithValidValue_ShouldSucceed()
+    public void UpdateIconFile_WithValidValue_ShouldSucceed()
     {
         var guild = Guild.Create(GuildName.Create("Icon Guild").Value!, UserId.New()).Value!;
+        var iconFileId = UploadedFileId.New();
 
-        var result = guild.UpdateIconUrl("https://cdn.harmonie.chat/guild-icon.png");
+        var result = guild.UpdateIconFile(iconFileId);
 
         result.IsSuccess.Should().BeTrue();
-        guild.IconUrl.Should().Be("https://cdn.harmonie.chat/guild-icon.png");
+        guild.IconFileId.Should().Be(iconFileId);
     }
 
     [Fact]

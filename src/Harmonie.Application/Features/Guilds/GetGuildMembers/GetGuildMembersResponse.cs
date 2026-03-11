@@ -8,7 +8,7 @@ public sealed record GetGuildMembersItemResponse(
     string UserId,
     string Username,
     string? DisplayName,
-    string? AvatarUrl,
+    string? AvatarFileId,
     bool IsActive,
     string Role,
     DateTime JoinedAtUtc);

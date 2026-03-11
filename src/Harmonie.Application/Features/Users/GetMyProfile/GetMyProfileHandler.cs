@@ -48,7 +48,7 @@ public sealed class GetMyProfileHandler
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarUrl: user.AvatarUrl,
+            AvatarFileId: user.AvatarFileId?.ToString(),
             Avatar: avatar,
             Theme: user.Theme,
             Language: user.Language);

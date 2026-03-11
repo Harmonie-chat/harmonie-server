@@ -14,14 +14,14 @@ public sealed record SearchUserResult(
     UserId UserId,
     Username Username,
     string? DisplayName,
-    string? AvatarUrl,
+    UploadedFileId? AvatarFileId,
     bool IsActive);
 
 public sealed record ProfileUpdateParameters(
     UserId UserId,
     bool DisplayNameIsSet, string? DisplayName,
     bool BioIsSet, string? Bio,
-    bool AvatarUrlIsSet, string? AvatarUrl,
+    bool AvatarFileIdIsSet, UploadedFileId? AvatarFileId,
     bool AvatarColorIsSet, string? AvatarColor,
     bool AvatarIconIsSet, string? AvatarIcon,
     bool AvatarBgIsSet, string? AvatarBg,

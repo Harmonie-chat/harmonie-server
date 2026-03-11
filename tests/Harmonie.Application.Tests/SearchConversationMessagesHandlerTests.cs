@@ -142,7 +142,7 @@ public sealed class SearchConversationMessagesHandlerTests
             AuthorUserId: authorUserId,
             AuthorUsername: "participant-two",
             AuthorDisplayName: "Participant Two",
-            AuthorAvatarUrl: "https://cdn.harmonie.chat/avatar.png",
+            AuthorAvatarFileId: UploadedFileId.From(Guid.Parse("3d3eb034-f75d-4a59-9f59-2f84ebf6e58c")),
             Content: contentResult.Value,
             CreatedAtUtc: createdAtUtc,
             UpdatedAtUtc: null);

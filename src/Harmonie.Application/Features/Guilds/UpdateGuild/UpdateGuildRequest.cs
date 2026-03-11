@@ -7,14 +7,14 @@ namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 public sealed class UpdateGuildRequest
 {
     public string? Name { get; init; }
-    public string? IconUrl { get; init; }
+    public string? IconFileId { get; init; }
 
     public string? IconColor { get; init; }
     public string? IconName { get; init; }
     public string? IconBg { get; init; }
 
     [JsonIgnore] public bool NameIsSet { get; init; }
-    [JsonIgnore] public bool IconUrlIsSet { get; init; }
+    [JsonIgnore] public bool IconFileIdIsSet { get; init; }
 
     [JsonIgnore] public bool IconIsSet { get; init; }
     [JsonIgnore] public bool IconColorIsSet { get; init; }
@@ -30,13 +30,13 @@ internal sealed class UpdateGuildRequestJsonConverter : JsonConverter<UpdateGuil
             throw new JsonException("Request body must be a JSON object.");
 
         string? name = null;
-        string? iconUrl = null;
+        string? iconFileId = null;
         string? iconColor = null;
         string? iconName = null;
         string? iconBg = null;
 
         var nameIsSet = false;
-        var iconUrlIsSet = false;
+        var iconFileIdIsSet = false;
         var iconIsSet = false;
         var iconColorIsSet = false;
         var iconNameIsSet = false;
@@ -49,12 +49,12 @@ internal sealed class UpdateGuildRequestJsonConverter : JsonConverter<UpdateGuil
                 return new UpdateGuildRequest
                 {
                     Name = name,
-                    IconUrl = iconUrl,
+                    IconFileId = iconFileId,
                     IconColor = iconColor,
                     IconName = iconName,
                     IconBg = iconBg,
                     NameIsSet = nameIsSet,
-                    IconUrlIsSet = iconUrlIsSet,
+                    IconFileIdIsSet = iconFileIdIsSet,
                     IconIsSet = iconIsSet,
                     IconColorIsSet = iconColorIsSet,
                     IconNameIsSet = iconNameIsSet,
@@ -80,10 +80,10 @@ internal sealed class UpdateGuildRequestJsonConverter : JsonConverter<UpdateGuil
                 nameIsSet = true;
                 name = ReadRequiredString(ref reader, "name");
             }
-            else if (propertyName.Equals("iconUrl", StringComparison.OrdinalIgnoreCase))
+            else if (propertyName.Equals("iconFileId", StringComparison.OrdinalIgnoreCase))
             {
-                iconUrlIsSet = true;
-                iconUrl = ReadNullableString(ref reader, "iconUrl");
+                iconFileIdIsSet = true;
+                iconFileId = ReadNullableString(ref reader, "iconFileId");
             }
             else if (propertyName.Equals("icon", StringComparison.OrdinalIgnoreCase))
             {
@@ -129,8 +129,8 @@ internal sealed class UpdateGuildRequestJsonConverter : JsonConverter<UpdateGuil
             writer.WriteStringValue(value.Name);
         }
 
-        if (value.IconUrlIsSet)
-            WriteNullableString(writer, "iconUrl", value.IconUrl);
+        if (value.IconFileIdIsSet)
+            WriteNullableString(writer, "iconFileId", value.IconFileId);
 
         if (value.IconIsSet)
         {

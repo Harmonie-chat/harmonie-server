@@ -12,4 +12,8 @@ public interface IUploadedFileRepository
     Task AddAsync(
         UploadedFile uploadedFile,
         CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        UploadedFileId id,
+        CancellationToken cancellationToken = default);
 }

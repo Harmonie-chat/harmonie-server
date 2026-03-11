@@ -136,7 +136,7 @@ public sealed class SearchUsersHandlerTests
             UserId: UserId.New(),
             Username: usernameResult.Value,
             DisplayName: displayName,
-            AvatarUrl: "https://cdn.harmonie.chat/avatar.png",
+            AvatarFileId: UploadedFileId.From(Guid.Parse("9b46d971-3590-4f09-bce6-2a218fc8a8ec")),
             IsActive: isActive);
     }
 }
