@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IGuildRepository, GuildRepository>();
         services.AddScoped<IGuildMemberRepository, GuildMemberRepository>();
+        services.AddScoped<IGuildInviteRepository, GuildInviteRepository>();
         services.AddScoped<IGuildChannelRepository, GuildChannelRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
