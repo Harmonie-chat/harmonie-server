@@ -10,6 +10,8 @@ public interface IGuildInviteRepository
     Task<InviteAcceptDetails?> GetAcceptDetailsByCodeAsync(string code, CancellationToken cancellationToken = default);
     Task IncrementUsesCountAsync(string code, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GuildInviteSummary>> GetByGuildIdAsync(GuildId guildId, CancellationToken cancellationToken = default);
+    Task<InviteRevokeDetails?> GetRevokeDetailsByCodeAsync(GuildId guildId, string code, CancellationToken cancellationToken = default);
+    Task RevokeAsync(string code, DateTime revokedAtUtc, CancellationToken cancellationToken = default);
 }
 
 public sealed record InvitePreview(
@@ -37,4 +39,8 @@ public sealed record GuildInviteSummary(
     int UsesCount,
     int? MaxUses,
     DateTime? ExpiresAtUtc,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    DateTime? RevokedAtUtc);
+
+public sealed record InviteRevokeDetails(
+    UserId CreatorId);

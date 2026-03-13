@@ -333,6 +333,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Invite.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Invite.Expired => HttpStatusCode.Gone,
             ApplicationErrorCodes.Invite.Exhausted => HttpStatusCode.Gone,
+            ApplicationErrorCodes.Invite.RevokeForbidden => HttpStatusCode.Forbidden,
             _ => HttpStatusCode.InternalServerError
         };
 }

@@ -73,6 +73,7 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
                            FROM guild_invites gi
                            JOIN guilds g ON g.id = gi.guild_id
                            WHERE gi.code = @Code
+                             AND gi.revoked_at_utc IS NULL
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -109,6 +110,7 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
                                   gi.expires_at_utc  AS "ExpiresAtUtc"
                            FROM guild_invites gi
                            WHERE gi.code = @Code
+                             AND gi.revoked_at_utc IS NULL
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -151,12 +153,13 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
     public async Task<IReadOnlyList<GuildInviteSummary>> GetByGuildIdAsync(GuildId guildId, CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT gi.code           AS "Code",
-                                  gi.creator_id     AS "CreatorId",
-                                  gi.uses_count     AS "UsesCount",
-                                  gi.max_uses       AS "MaxUses",
-                                  gi.expires_at_utc AS "ExpiresAtUtc",
-                                  gi.created_at_utc AS "CreatedAtUtc"
+                           SELECT gi.code             AS "Code",
+                                  gi.creator_id       AS "CreatorId",
+                                  gi.uses_count       AS "UsesCount",
+                                  gi.max_uses         AS "MaxUses",
+                                  gi.expires_at_utc   AS "ExpiresAtUtc",
+                                  gi.created_at_utc   AS "CreatedAtUtc",
+                                  gi.revoked_at_utc   AS "RevokedAtUtc"
                            FROM guild_invites gi
                            WHERE gi.guild_id = @GuildId
                            ORDER BY gi.created_at_utc DESC
@@ -177,8 +180,51 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
                 r.UsesCount,
                 r.MaxUses,
                 r.ExpiresAtUtc,
-                r.CreatedAtUtc))
+                r.CreatedAtUtc,
+                r.RevokedAtUtc))
             .ToArray();
+    }
+
+    public async Task<InviteRevokeDetails?> GetRevokeDetailsByCodeAsync(GuildId guildId, string code, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT gi.creator_id AS "CreatorId"
+                           FROM guild_invites gi
+                           WHERE gi.code = @Code
+                             AND gi.guild_id = @GuildId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { Code = code, GuildId = guildId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QueryFirstOrDefaultAsync<InviteRevokeRow>(command);
+        if (row is null)
+            return null;
+
+        return new InviteRevokeDetails(UserId.From(row.CreatorId));
+    }
+
+    public async Task RevokeAsync(string code, DateTime revokedAtUtc, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE guild_invites
+                           SET revoked_at_utc = @RevokedAtUtc
+                           WHERE code = @Code
+                             AND revoked_at_utc IS NULL
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { Code = code, RevokedAtUtc = revokedAtUtc },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
     }
 
     private sealed class InviteAcceptRow
@@ -212,5 +258,11 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
         public int? MaxUses { get; init; }
         public DateTime? ExpiresAtUtc { get; init; }
         public DateTime CreatedAtUtc { get; init; }
+        public DateTime? RevokedAtUtc { get; init; }
+    }
+
+    private sealed class InviteRevokeRow
+    {
+        public Guid CreatorId { get; init; }
     }
 }

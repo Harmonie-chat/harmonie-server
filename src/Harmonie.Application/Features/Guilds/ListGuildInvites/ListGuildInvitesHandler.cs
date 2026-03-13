@@ -68,7 +68,9 @@ public sealed class ListGuildInvitesHandler
             MaxUses: i.MaxUses,
             ExpiresAtUtc: i.ExpiresAtUtc,
             CreatedAtUtc: i.CreatedAtUtc,
-            IsExpired: (i.ExpiresAtUtc.HasValue && i.ExpiresAtUtc.Value <= now)
+            RevokedAtUtc: i.RevokedAtUtc,
+            IsExpired: i.RevokedAtUtc.HasValue
+                    || (i.ExpiresAtUtc.HasValue && i.ExpiresAtUtc.Value <= now)
                     || (i.MaxUses.HasValue && i.UsesCount >= i.MaxUses.Value)))
             .ToArray();
 

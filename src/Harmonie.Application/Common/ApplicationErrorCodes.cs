@@ -85,6 +85,7 @@ public static class ApplicationErrorCodes
         public const string NotFound = "INVITE_NOT_FOUND";
         public const string Expired = "INVITE_EXPIRED";
         public const string Exhausted = "INVITE_EXHAUSTED";
+        public const string RevokeForbidden = "INVITE_REVOKE_FORBIDDEN";
     }
 
     public static class Conversation

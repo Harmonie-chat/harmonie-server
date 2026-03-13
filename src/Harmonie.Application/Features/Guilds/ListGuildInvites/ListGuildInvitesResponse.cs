@@ -11,4 +11,5 @@ public sealed record ListGuildInvitesItemResponse(
     int? MaxUses,
     DateTime? ExpiresAtUtc,
     DateTime CreatedAtUtc,
+    DateTime? RevokedAtUtc,
     bool IsExpired);
