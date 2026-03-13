@@ -99,6 +99,39 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
             row.ExpiresAtUtc);
     }
 
+    public async Task<IReadOnlyList<GuildInviteSummary>> GetByGuildIdAsync(GuildId guildId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT gi.code           AS "Code",
+                                  gi.creator_id     AS "CreatorId",
+                                  gi.uses_count     AS "UsesCount",
+                                  gi.max_uses       AS "MaxUses",
+                                  gi.expires_at_utc AS "ExpiresAtUtc",
+                                  gi.created_at_utc AS "CreatedAtUtc"
+                           FROM guild_invites gi
+                           WHERE gi.guild_id = @GuildId
+                           ORDER BY gi.created_at_utc DESC
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { GuildId = guildId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.QueryAsync<GuildInviteSummaryRow>(command);
+        return rows
+            .Select(r => new GuildInviteSummary(
+                r.Code,
+                UserId.From(r.CreatorId),
+                r.UsesCount,
+                r.MaxUses,
+                r.ExpiresAtUtc,
+                r.CreatedAtUtc))
+            .ToArray();
+    }
+
     private sealed class InvitePreviewRow
     {
         public string Code { get; init; } = string.Empty;
@@ -111,5 +144,15 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
         public int UsesCount { get; init; }
         public int? MaxUses { get; init; }
         public DateTime? ExpiresAtUtc { get; init; }
+    }
+
+    private sealed class GuildInviteSummaryRow
+    {
+        public string Code { get; init; } = string.Empty;
+        public Guid CreatorId { get; init; }
+        public int UsesCount { get; init; }
+        public int? MaxUses { get; init; }
+        public DateTime? ExpiresAtUtc { get; init; }
+        public DateTime CreatedAtUtc { get; init; }
     }
 }
