@@ -1,3 +1,5 @@
+using Harmonie.Application.Features.Users;
+
 namespace Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
 
 public sealed record GetGuildVoiceParticipantsResponse(
@@ -9,4 +11,7 @@ public sealed record GetGuildVoiceParticipantsChannelResponse(
 
 public sealed record GetGuildVoiceParticipantResponse(
     string UserId,
-    string Username);
+    string Username,
+    string? DisplayName,
+    string? AvatarFileId,
+    AvatarAppearanceDto? Avatar);

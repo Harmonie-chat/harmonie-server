@@ -8,4 +8,5 @@ public sealed record SearchUsersItemResponse(
     string Username,
     string? DisplayName,
     string? AvatarFileId,
+    string? Bio,
     string Status);

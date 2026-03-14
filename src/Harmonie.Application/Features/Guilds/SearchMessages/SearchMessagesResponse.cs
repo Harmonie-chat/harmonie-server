@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 
 namespace Harmonie.Application.Features.Guilds.SearchMessages;
 
@@ -14,6 +15,8 @@ public sealed record SearchMessagesItemResponse(
     string AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
+    string? AuthorAvatarFileId,
+    AvatarAppearanceDto? AuthorAvatar,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc,

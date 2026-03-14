@@ -10,6 +10,14 @@ public sealed class GuildMemberUserRow
 
     public Guid? AvatarFileId { get; init; }
 
+    public string? Bio { get; init; }
+
+    public string? AvatarColor { get; init; }
+
+    public string? AvatarIcon { get; init; }
+
+    public string? AvatarBg { get; init; }
+
     public bool IsActive { get; init; }
 
     public short Role { get; init; }

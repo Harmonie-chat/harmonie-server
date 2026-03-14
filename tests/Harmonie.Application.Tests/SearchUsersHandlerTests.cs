@@ -137,6 +137,7 @@ public sealed class SearchUsersHandlerTests
             Username: usernameResult.Value,
             DisplayName: displayName,
             AvatarFileId: UploadedFileId.From(Guid.Parse("9b46d971-3590-4f09-bce6-2a218fc8a8ec")),
+            Bio: null,
             IsActive: isActive);
     }
 }

@@ -197,6 +197,10 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
                                   u.username AS "Username",
                                   u.display_name AS "DisplayName",
                                   u.avatar_file_id AS "AvatarFileId",
+                                  u.bio AS "Bio",
+                                  u.avatar_color AS "AvatarColor",
+                                  u.avatar_icon AS "AvatarIcon",
+                                  u.avatar_bg AS "AvatarBg",
                                   u.is_active AS "IsActive",
                                   gm.role AS "Role",
                                   gm.joined_at_utc AS "JoinedAtUtc"
@@ -311,6 +315,10 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             usernameResult.Value,
             row.DisplayName,
             row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
+            row.Bio,
+            row.AvatarColor,
+            row.AvatarIcon,
+            row.AvatarBg,
             row.IsActive,
             (GuildRole)row.Role,
             row.JoinedAtUtc);

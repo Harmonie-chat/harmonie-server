@@ -106,6 +106,7 @@ public sealed class SearchUsersHandler
                 Username: user.Username.Value,
                 DisplayName: user.DisplayName,
                 AvatarFileId: user.AvatarFileId?.ToString(),
+                Bio: user.Bio,
                 Status: user.IsActive ? "Active" : "Blocked"))
             .ToArray());
 
