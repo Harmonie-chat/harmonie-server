@@ -148,7 +148,7 @@ public sealed class RealtimeHub : Hub
             Context.ConnectionAborted);
     }
 
-    public async Task StartTyping(Guid channelId)
+    public async Task StartTypingChannel(Guid channelId)
     {
         if (channelId == Guid.Empty)
             throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);

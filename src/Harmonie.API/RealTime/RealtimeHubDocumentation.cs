@@ -42,10 +42,10 @@ public class RealtimeHubDocumentation
         Summary = "Leave a direct conversation group.")]
     public void LeaveConversation() { }
 
-    [Channel("hubs/realtime/StartTyping")]
-    [PublishOperation(typeof(StartTypingMessage),
+    [Channel("hubs/realtime/StartTypingChannel")]
+    [PublishOperation(typeof(StartTypingChannelMessage),
         Summary = "Signal that the user is typing in a guild text channel. Throttled to 1 event per 5 seconds per user per channel.")]
-    public void StartTyping() { }
+    public void StartTypingChannel() { }
 
     [Channel("hubs/realtime/StartTypingConversation")]
     [PublishOperation(typeof(StartTypingConversationMessage),
@@ -118,5 +118,5 @@ public sealed record JoinGuildMessage(Guid GuildId);
 public sealed record LeaveGuildMessage(Guid GuildId);
 public sealed record JoinConversationMessage(Guid ConversationId);
 public sealed record LeaveConversationMessage(Guid ConversationId);
-public sealed record StartTypingMessage(Guid ChannelId);
+public sealed record StartTypingChannelMessage(Guid ChannelId);
 public sealed record StartTypingConversationMessage(Guid ConversationId);

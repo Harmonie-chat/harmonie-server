@@ -31,7 +31,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
     // ── Guild text channel typing ─────────────────────────────────
 
     [Fact]
-    public async Task StartTyping_WhenUserIsNotMember_ShouldReturnAccessDeniedHubException()
+    public async Task StartTypingChannel_WhenUserIsNotMember_ShouldReturnAccessDeniedHubException()
     {
         var owner = await RegisterAsync();
         var outsider = await RegisterAsync();
@@ -60,14 +60,14 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         await using var connection = CreateHubConnection(outsider.AccessToken);
         await connection.StartAsync();
 
-        var act = async () => await connection.InvokeAsync("StartTyping", textChannelId);
+        var act = async () => await connection.InvokeAsync("StartTypingChannel", textChannelId);
 
         var exception = await act.Should().ThrowAsync<HubException>();
         exception.Which.Message.Should().Contain(ApplicationErrorCodes.Channel.AccessDenied);
     }
 
     [Fact]
-    public async Task StartTyping_WhenMemberTypesInChannel_ShouldBroadcastToOtherMembers()
+    public async Task StartTypingChannel_WhenMemberTypesInChannel_ShouldBroadcastToOtherMembers()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -114,7 +114,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         await using var senderConnection = CreateHubConnection(owner.AccessToken);
         await senderConnection.StartAsync();
         await senderConnection.InvokeAsync("JoinChannel", textChannelId);
-        await senderConnection.InvokeAsync("StartTyping", textChannelId);
+        await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var completedTask = await Task.WhenAny(typingReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
@@ -127,7 +127,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
     }
 
     [Fact]
-    public async Task StartTyping_WhenCalledWithinThrottleWindow_ShouldNotBroadcastSecondEvent()
+    public async Task StartTypingChannel_WhenCalledWithinThrottleWindow_ShouldNotBroadcastSecondEvent()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -173,9 +173,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         await senderConnection.StartAsync();
         await senderConnection.InvokeAsync("JoinChannel", textChannelId);
 
-        await senderConnection.InvokeAsync("StartTyping", textChannelId);
-        await senderConnection.InvokeAsync("StartTyping", textChannelId);
-        await senderConnection.InvokeAsync("StartTyping", textChannelId);
+        await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
+        await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
+        await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
 
         await Task.Delay(TimeSpan.FromSeconds(1));
 
