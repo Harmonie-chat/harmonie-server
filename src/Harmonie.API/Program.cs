@@ -64,6 +64,8 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.OpenApi;
+using Saunter;
+using Saunter.AsyncApiSchema.v2;
 using Scalar.AspNetCore;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -90,6 +92,25 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.AddAsyncApiSchemaGeneration(options =>
+{
+    options.AssemblyMarkerTypes = new[] { typeof(Harmonie.API.RealTime.RealtimeHubDocumentation) };
+    options.Middleware.UiTitle = "Harmonie Realtime API";
+    options.AsyncApi = new AsyncApiDocument
+    {
+        Info = new Info("Harmonie Realtime API", "1.0.0")
+        {
+            Description = "Real-time events for the Harmonie communication platform, served over SignalR (WebSocket).",
+        },
+        Servers =
+        {
+            ["signalr"] = new Server("/hubs/realtime", "ws")
+            {
+                Description = "SignalR hub — requires Bearer JWT via the access_token query parameter.",
+            },
+        },
+    };
+});
 builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
 builder.Services.AddScoped<IGuildNotifier, SignalRGuildNotifier>();
 builder.Services.AddScoped<IVoicePresenceNotifier, SignalRVoicePresenceNotifier>();
@@ -223,6 +244,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.MapAsyncApiDocuments();
+    app.MapAsyncApiUi();
 }
 
 app.UseMiddleware<GlobalExceptionHandler>();
