@@ -86,40 +86,6 @@ No external object storage service is required right now. If upload volume or
 deployment topology eventually justifies it, the storage abstraction can later
 be backed by an S3-compatible service.
 
-4. Check endpoints:
-- `GET /health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `POST /api/auth/logout-all`
-- `POST /api/auth/refresh`
-- `POST /api/guilds`
-- `GET /api/guilds`
-- `PATCH /api/guilds/{guildId}`
-- `POST /api/guilds/{guildId}/members/invite`
-- `GET /api/guilds/{guildId}/members`
-- `GET /api/guilds/{guildId}/channels`
-- `GET /api/guilds/{guildId}/messages/search`
-- `GET /api/guilds/{guildId}/voice/participants`
-- `POST /api/channels/{channelId}/messages`
-- `GET /api/channels/{channelId}/messages`
-- `POST /api/conversations`
-- `GET /api/conversations`
-- `GET /api/conversations/{conversationId}/messages`
-- `GET /api/conversations/{conversationId}/messages/search`
-- `PATCH /api/conversations/{conversationId}/messages/{messageId}`
-- `DELETE /api/conversations/{conversationId}/messages/{messageId}`
-- `POST /api/conversations/{conversationId}/messages`
-- `POST /api/uploads`
-- `POST /api/channels/{channelId}/voice/join`
-- `POST /api/webhooks/livekit`
-- `GET /api/users/me`
-- `GET /api/users/search`
-- `PUT /api/users/me`
-- `GET /hubs/realtime` (SignalR negotiate/transport for text channels and voice presence)
-
-In Development, OpenAPI and Scalar are enabled.
-
 `dotnet test` includes a local-filesystem upload E2E test. No external object
 storage service is required for the current suite.
 
@@ -237,30 +203,13 @@ docs/
 - `docs/GETTING_STARTED.md`
 - `docs/ARCHITECTURE.md`
 - `docs/VERTICAL_SLICE_ARCHITECTURE.md`
-- `docs/MVP/README.md` (backlog-ready MVP tickets)
-- `docs/features/guilds/README.md` (implementation design package)
 - `AGENTS.md` (AI assistant context)
 - `CONTRIBUTING.md`
-
-## Scalability TODO
-
-Known limitations and improvements needed before horizontal scaling or high-load deployments.
 
 ### Critical (required for multi-instance)
 
 - **SignalR backplane**: real-time delivery only works on a single instance today. Add a Redis or Azure SignalR backplane so messages are broadcast across all instances.
-- **Distributed rate limiting**: the `message-post` rate limiter is in-memory per instance. Move to a Redis-based distributed limiter so limits are enforced across instances.
 
-### High impact (single instance, 500–1000 users)
-
-- **Database connection pool tuning**: Npgsql defaults to `MaxPoolSize=30`. Explicitly set `MaxPoolSize=100;MinPoolSize=10` in the connection string to avoid exhaustion under load.
-- **Cache layer**: no caching exists today. Guild channels, guild members, and user profiles are stable data queried on every request. Adding Redis cache with short TTLs (5–10 min) and mutation-triggered invalidation would significantly reduce DB load.
-
-### Security / hardening
-
-- **Rate limit auth endpoints**: `POST /api/auth/login`, `POST /api/auth/register`, and `POST /api/auth/refresh` are not rate-limited. Add per-IP limits to prevent brute-force and token-farming attacks.
-- **CORS policy**: `AllowAnyOrigin` is acceptable for development but must be restricted to known origins in production.
-- **SignalR JWT via query parameter**: the `?access_token=` transport is logged by proxies and visible in browser history. Prefer an httpOnly cookie for the SignalR connection once a client-side session model is in place.
 
 ### Observability
 
