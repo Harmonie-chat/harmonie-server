@@ -16,6 +16,7 @@ This repository currently provides:
 - Direct message full-text search in conversations with cursor pagination
 - Direct message editing in conversations
 - Direct message deletion in conversations
+- Direct message attachment deletion in conversations
 - Direct message sending in conversations
 - Voice channel join token issuance via LiveKit
 - Voice presence notifications via LiveKit webhooks and SignalR

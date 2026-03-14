@@ -31,6 +31,7 @@ Current mapped endpoints:
 - `GET /api/conversations/{conversationId}/messages`
 - `PATCH /api/conversations/{conversationId}/messages/{messageId}`
 - `DELETE /api/conversations/{conversationId}/messages/{messageId}`
+- `DELETE /api/conversations/{conversationId}/messages/{messageId}/attachments/{attachmentId}`
 - `GET /api/users/me`
 - `PUT /api/users/me`
 - `GET /hubs/realtime` (SignalR for text channels and voice presence)
