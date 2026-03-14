@@ -5,8 +5,6 @@ namespace Harmonie.Domain.Entities;
 
 public sealed class Message : Entity<MessageId>
 {
-    private readonly List<MessageAttachment> _attachments;
-
     public GuildChannelId? ChannelId { get; private set; }
 
     public ConversationId? ConversationId { get; private set; }
@@ -15,7 +13,7 @@ public sealed class Message : Entity<MessageId>
 
     public MessageContent Content { get; private set; }
 
-    public IReadOnlyList<MessageAttachment> Attachments => _attachments;
+    public IReadOnlyList<MessageAttachment> Attachments { get; private set; } = Array.Empty<MessageAttachment>();
 
     public DateTime? DeletedAtUtc { get; private set; }
 
@@ -35,7 +33,7 @@ public sealed class Message : Entity<MessageId>
         ConversationId = conversationId;
         AuthorUserId = authorUserId;
         Content = content;
-        _attachments = attachments.ToList();
+        Attachments = attachments.ToArray();
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
         DeletedAtUtc = deletedAtUtc;
