@@ -1,5 +1,6 @@
 using System.Globalization;
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects;
@@ -240,17 +241,26 @@ public sealed class SearchMessagesHandler
         var payload = new SearchMessagesResponse(
             GuildId: guildId.ToString(),
             Items: page.Items
-                .Select(item => new SearchMessagesItemResponse(
-                    MessageId: item.MessageId.ToString(),
-                    ChannelId: item.ChannelId.ToString(),
-                    ChannelName: item.ChannelName,
-                    AuthorUserId: item.AuthorUserId.ToString(),
-                    AuthorUsername: item.AuthorUsername,
-                    AuthorDisplayName: item.AuthorDisplayName,
-                    Content: item.Content.Value,
-                    Attachments: item.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
-                    CreatedAtUtc: item.CreatedAtUtc,
-                    UpdatedAtUtc: item.UpdatedAtUtc))
+                .Select(item =>
+                {
+                    var authorAvatar = item.AuthorAvatarColor is not null || item.AuthorAvatarIcon is not null || item.AuthorAvatarBg is not null
+                        ? new AvatarAppearanceDto(item.AuthorAvatarColor, item.AuthorAvatarIcon, item.AuthorAvatarBg)
+                        : null;
+
+                    return new SearchMessagesItemResponse(
+                        MessageId: item.MessageId.ToString(),
+                        ChannelId: item.ChannelId.ToString(),
+                        ChannelName: item.ChannelName,
+                        AuthorUserId: item.AuthorUserId.ToString(),
+                        AuthorUsername: item.AuthorUsername,
+                        AuthorDisplayName: item.AuthorDisplayName,
+                        AuthorAvatarFileId: item.AuthorAvatarFileId?.ToString(),
+                        AuthorAvatar: authorAvatar,
+                        Content: item.Content.Value,
+                        Attachments: item.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+                        CreatedAtUtc: item.CreatedAtUtc,
+                        UpdatedAtUtc: item.UpdatedAtUtc);
+                })
                 .ToArray(),
             NextCursor: page.NextCursor is null ? null : MessageCursorCodec.Encode(page.NextCursor));
 

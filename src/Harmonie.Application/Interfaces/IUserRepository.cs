@@ -15,6 +15,7 @@ public sealed record SearchUserResult(
     Username Username,
     string? DisplayName,
     UploadedFileId? AvatarFileId,
+    string? Bio,
     bool IsActive);
 
 public sealed record ProfileUpdateParameters(

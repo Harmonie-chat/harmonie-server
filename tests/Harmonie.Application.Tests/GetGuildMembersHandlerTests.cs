@@ -118,8 +118,12 @@ public sealed class GetGuildMembersHandlerTests
             usernameResult.Value,
             displayName,
             AvatarFileId: null,
+            Bio: null,
+            AvatarColor: null,
+            AvatarIcon: null,
+            AvatarBg: null,
             IsActive: true,
             Role: role,
-            DateTime.UtcNow.AddDays(-1));
+            JoinedAtUtc: DateTime.UtcNow.AddDays(-1));
     }
 }

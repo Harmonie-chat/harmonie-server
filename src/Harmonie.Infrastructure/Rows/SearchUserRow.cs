@@ -10,5 +10,7 @@ public sealed class SearchUserRow
 
     public Guid? AvatarFileId { get; init; }
 
+    public string? Bio { get; init; }
+
     public bool IsActive { get; init; }
 }

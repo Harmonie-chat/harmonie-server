@@ -12,6 +12,12 @@ public sealed class ConversationMessageSearchRow
 
     public Guid? AuthorAvatarFileId { get; init; }
 
+    public string? AuthorAvatarColor { get; init; }
+
+    public string? AuthorAvatarIcon { get; init; }
+
+    public string? AuthorAvatarBg { get; init; }
+
     public string Content { get; init; } = string.Empty;
 
     public DateTime CreatedAtUtc { get; init; }

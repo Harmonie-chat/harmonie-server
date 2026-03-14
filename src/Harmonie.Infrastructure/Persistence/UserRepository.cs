@@ -140,6 +140,7 @@ public sealed class UserRepository : IUserRepository
                    u.username AS "Username",
                    u.display_name AS "DisplayName",
                    u.avatar_file_id AS "AvatarFileId",
+                   u.bio AS "Bio",
                    u.is_active AS "IsActive"
             FROM users u
             """);
@@ -364,6 +365,7 @@ public sealed class UserRepository : IUserRepository
             Username: usernameResult.Value,
             DisplayName: row.DisplayName,
             AvatarFileId: row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
+            Bio: row.Bio,
             IsActive: row.IsActive);
     }
 }

@@ -1,3 +1,5 @@
+using Harmonie.Application.Features.Users;
+
 namespace Harmonie.Application.Features.Guilds.GetGuildMembers;
 
 public sealed record GetGuildMembersResponse(
@@ -9,6 +11,8 @@ public sealed record GetGuildMembersItemResponse(
     string Username,
     string? DisplayName,
     string? AvatarFileId,
+    AvatarAppearanceDto? Avatar,
+    string? Bio,
     bool IsActive,
     string Role,
     DateTime JoinedAtUtc);

@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -66,14 +67,23 @@ public sealed class GetGuildMembersHandler
 
         var payload = new GetGuildMembersResponse(
             GuildId: guildId.ToString(),
-            Members: members.Select(member => new GetGuildMembersItemResponse(
-                    UserId: member.UserId.ToString(),
-                    Username: member.Username.Value,
-                    DisplayName: member.DisplayName,
-                    AvatarFileId: member.AvatarFileId?.ToString(),
-                    IsActive: member.IsActive,
-                    Role: member.Role.ToString(),
-                    JoinedAtUtc: member.JoinedAtUtc))
+            Members: members.Select(member =>
+                {
+                    var avatar = member.AvatarColor is not null || member.AvatarIcon is not null || member.AvatarBg is not null
+                        ? new AvatarAppearanceDto(member.AvatarColor, member.AvatarIcon, member.AvatarBg)
+                        : null;
+
+                    return new GetGuildMembersItemResponse(
+                        UserId: member.UserId.ToString(),
+                        Username: member.Username.Value,
+                        DisplayName: member.DisplayName,
+                        AvatarFileId: member.AvatarFileId?.ToString(),
+                        Avatar: avatar,
+                        Bio: member.Bio,
+                        IsActive: member.IsActive,
+                        Role: member.Role.ToString(),
+                        JoinedAtUtc: member.JoinedAtUtc);
+                })
                 .ToArray());
 
         return ApplicationResponse<GetGuildMembersResponse>.Ok(payload);

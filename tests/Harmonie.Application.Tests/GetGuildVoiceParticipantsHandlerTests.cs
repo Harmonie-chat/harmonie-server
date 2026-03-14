@@ -14,16 +14,19 @@ namespace Harmonie.Application.Tests;
 public sealed class GetGuildVoiceParticipantsHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
+    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<ILiveKitRoomService> _liveKitRoomServiceMock;
     private readonly GetGuildVoiceParticipantsHandler _handler;
 
     public GetGuildVoiceParticipantsHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
+        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _liveKitRoomServiceMock = new Mock<ILiveKitRoomService>();
 
         _handler = new GetGuildVoiceParticipantsHandler(
             _guildRepositoryMock.Object,
+            _guildMemberRepositoryMock.Object,
             _liveKitRoomServiceMock.Object,
             NullLogger<GetGuildVoiceParticipantsHandler>.Instance);
     }
@@ -81,6 +84,10 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
                     channelId,
                     [new VoiceChannelParticipant(participantUserId, "alice")])
             ]);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetGuildMembersAsync(guild.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<GuildMemberUser>());
 
         var response = await _handler.HandleAsync(guild.Id, requesterUserId);
 
