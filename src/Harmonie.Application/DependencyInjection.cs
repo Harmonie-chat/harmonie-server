@@ -14,6 +14,7 @@ using ChannelGetMessagesHandler = Harmonie.Application.Features.Channels.GetMess
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using ChannelSendMessageHandler = Harmonie.Application.Features.Channels.SendMessage.SendMessageHandler;
 using Harmonie.Application.Features.Channels.UpdateChannel;
+using ConversationDeleteMessageAttachmentHandler = Harmonie.Application.Features.Conversations.DeleteMessageAttachment.DeleteMessageAttachmentHandler;
 using ConversationDeleteMessageHandler = Harmonie.Application.Features.Conversations.DeleteMessage.DeleteMessageHandler;
 using ConversationEditMessageHandler = Harmonie.Application.Features.Conversations.EditMessage.EditMessageHandler;
 using ConversationGetMessagesHandler = Harmonie.Application.Features.Conversations.GetMessages.GetMessagesHandler;
@@ -116,6 +117,7 @@ public static class DependencyInjection
         services.AddScoped<SearchConversationMessagesHandler>();
         services.AddScoped<ConversationEditMessageHandler>();
         services.AddScoped<ConversationDeleteMessageHandler>();
+        services.AddScoped<ConversationDeleteMessageAttachmentHandler>();
         services.AddScoped<ConversationSendMessageHandler>();
         // Add more handlers as features are created
 

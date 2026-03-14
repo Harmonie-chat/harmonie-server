@@ -482,6 +482,144 @@ public sealed class ConversationMessageEndpointsTests : IClassFixture<WebApplica
     }
 
     [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenAuthorDeletesOwnAttachment_ShouldReturn204AndRemoveAttachment()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var uploadedFile = await UploadAttachmentAsync(caller.AccessToken, "notes.txt", "text/plain", "attachment payload");
+
+        var sendResponse = await SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendMessageRequest("message with attachment", [uploadedFile.FileId]),
+            caller.AccessToken);
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        sendPayload.Should().NotBeNull();
+
+        var deleteResponse = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}/attachments/{uploadedFile.FileId}",
+            caller.AccessToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await SendAuthorizedGetAsync(
+            $"/api/conversations/{conversationId}/messages",
+            caller.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>();
+        listPayload.Should().NotBeNull();
+        listPayload!.Items.Should().ContainSingle();
+        listPayload.Items[0].Attachments.Should().BeEmpty();
+
+        var fileResponse = await SendAuthorizedGetAsync($"/api/files/{uploadedFile.FileId}", caller.AccessToken);
+        fileResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenConversationDoesNotExist_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/attachments/{Guid.NewGuid()}",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenCallerIsNotParticipant_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var outsider = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var uploadedFile = await UploadAttachmentAsync(participantOne.AccessToken, "notes.txt", "text/plain", "attachment payload");
+
+        var sendResponse = await SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendMessageRequest("message with attachment", [uploadedFile.FileId]),
+            participantOne.AccessToken);
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        sendPayload.Should().NotBeNull();
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}/attachments/{uploadedFile.FileId}",
+            outsider.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
+    }
+
+    [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenCallerIsNotAuthor_ShouldReturnForbidden()
+    {
+        var participantOne = await RegisterAsync();
+        var participantTwo = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var uploadedFile = await UploadAttachmentAsync(participantOne.AccessToken, "notes.txt", "text/plain", "attachment payload");
+
+        var sendResponse = await SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendMessageRequest("message with attachment", [uploadedFile.FileId]),
+            participantOne.AccessToken);
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        sendPayload.Should().NotBeNull();
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}/attachments/{uploadedFile.FileId}",
+            participantTwo.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.DeleteForbidden);
+    }
+
+    [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenAttachmentIsNotOnMessage_ShouldReturnNotFound()
+    {
+        var caller = await RegisterAsync();
+        var target = await RegisterAsync();
+        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var message = await SendConversationMessageAsync(conversationId, "message without attachment", caller.AccessToken);
+        var uploadedFile = await UploadAttachmentAsync(caller.AccessToken, "unused.txt", "text/plain", "unused attachment");
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/conversations/{conversationId}/messages/{message.MessageId}/attachments/{uploadedFile.FileId}",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Message.AttachmentNotFound);
+    }
+
+    [Fact]
+    public async Task DeleteConversationMessageAttachment_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var response = await _client.DeleteAsync(
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/attachments/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task DeleteConversationMessage_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         var response = await _client.DeleteAsync(

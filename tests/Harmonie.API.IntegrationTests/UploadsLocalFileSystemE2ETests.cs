@@ -3,6 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Conversations.OpenConversation;
+using ConversationSendMessageRequest = Harmonie.Application.Features.Conversations.SendMessage.SendMessageRequest;
+using ConversationSendMessageResponse = Harmonie.Application.Features.Conversations.SendMessage.SendMessageResponse;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Uploads.UploadFile;
@@ -323,6 +326,43 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
     }
 
     [Fact]
+    public async Task DeleteConversationMessageAttachment_WhenMessageHasUploadedAttachment_ShouldDeleteStoredFile()
+    {
+        using var factory = BuildFactory();
+        using var client = factory.CreateClient();
+
+        var caller = await RegisterAsync(client);
+        var target = await RegisterAsync(client);
+        var conversationId = await OpenConversationAsync(client, caller.AccessToken, target.UserId);
+        using var multipart = CreateMultipartContent("conversation-attachment-delete.txt", "text/plain", "conversation attachment to delete");
+
+        var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, caller.AccessToken);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+
+        var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
+        Assert.NotNull(uploadPayload);
+
+        var sendMessageResponse = await SendAuthorizedPostAsync(
+            client,
+            $"/api/conversations/{conversationId}/messages",
+            new ConversationSendMessageRequest("message with attachment", [uploadPayload!.FileId]),
+            caller.AccessToken);
+        Assert.Equal(HttpStatusCode.Created, sendMessageResponse.StatusCode);
+
+        var sendMessagePayload = await sendMessageResponse.Content.ReadFromJsonAsync<ConversationSendMessageResponse>();
+        Assert.NotNull(sendMessagePayload);
+
+        var deleteAttachmentResponse = await SendAuthorizedDeleteAsync(
+            client,
+            $"/api/conversations/{conversationId}/messages/{sendMessagePayload!.MessageId}/attachments/{uploadPayload.FileId}",
+            caller.AccessToken);
+        Assert.Equal(HttpStatusCode.NoContent, deleteAttachmentResponse.StatusCode);
+
+        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", caller.AccessToken);
+        Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task DeleteGuildIcon_WhenGuildHasUploadedIcon_ShouldDeleteStoredFile()
     {
         using var factory = BuildFactory();
@@ -397,6 +437,23 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
         Assert.NotNull(payload);
         return payload!;
+    }
+
+    private static async Task<string> OpenConversationAsync(
+        HttpClient client,
+        string accessToken,
+        string targetUserId)
+    {
+        var response = await SendAuthorizedPostAsync(
+            client,
+            "/api/conversations",
+            new OpenConversationRequest(targetUserId),
+            accessToken);
+        Assert.True(response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>();
+        Assert.NotNull(payload);
+        return payload!.ConversationId;
     }
 
     private static async Task<string> CreateGuildAsync(

@@ -16,6 +16,7 @@ using ChannelGetMessages = Harmonie.Application.Features.Channels.GetMessages.Ge
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using ChannelSendMessage = Harmonie.Application.Features.Channels.SendMessage.SendMessageEndpoint;
 using Harmonie.Application.Features.Channels.UpdateChannel;
+using ConversationDeleteMessageAttachment = Harmonie.Application.Features.Conversations.DeleteMessageAttachment.DeleteMessageAttachmentEndpoint;
 using ConversationDeleteMessage = Harmonie.Application.Features.Conversations.DeleteMessage.DeleteMessageEndpoint;
 using ConversationEditMessage = Harmonie.Application.Features.Conversations.EditMessage.EditMessageEndpoint;
 using ConversationGetMessages = Harmonie.Application.Features.Conversations.GetMessages.GetMessagesEndpoint;
@@ -292,6 +293,7 @@ ConversationGetMessages.Map(app);
 SearchConversationMessagesEndpoint.Map(app);
 ConversationEditMessage.Map(app);
 ConversationDeleteMessage.Map(app);
+ConversationDeleteMessageAttachment.Map(app);
 ConversationSendMessage.Map(app);
 app.MapHub<RealtimeHub>("/hubs/realtime");
 
