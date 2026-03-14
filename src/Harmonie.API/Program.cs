@@ -49,6 +49,7 @@ using Harmonie.Application.Features.Users.DeleteMyAvatar;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.SearchUsers;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
+using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
@@ -116,6 +117,7 @@ builder.Services.AddScoped<ITextChannelNotifier, SignalRTextChannelNotifier>();
 builder.Services.AddScoped<IGuildNotifier, SignalRGuildNotifier>();
 builder.Services.AddScoped<IVoicePresenceNotifier, SignalRVoicePresenceNotifier>();
 builder.Services.AddScoped<IConversationMessageNotifier, SignalRConversationMessageNotifier>();
+builder.Services.AddScoped<IUserPresenceNotifier, SignalRUserPresenceNotifier>();
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres")
     .AddCheck<LiveKitHealthCheck>("livekit");
@@ -309,6 +311,7 @@ DeleteMyAvatarEndpoint.Map(app);
 GetMyProfileEndpoint.Map(app);
 SearchUsersEndpoint.Map(app);
 UpdateMyProfileEndpoint.Map(app);
+UpdateUserStatusEndpoint.Map(app);
 UploadMyAvatarEndpoint.Map(app);
 UploadFileEndpoint.Map(app);
 DownloadFileEndpoint.Map(app);

@@ -51,7 +51,8 @@ public sealed class GetMyProfileHandler
             AvatarFileId: user.AvatarFileId?.ToString(),
             Avatar: avatar,
             Theme: user.Theme,
-            Language: user.Language);
+            Language: user.Language,
+            Status: user.Status);
 
         _logger.LogInformation(
             "GetMyProfile succeeded for user {UserId}",

@@ -176,6 +176,8 @@ public sealed class DeleteMyAvatarHandlerTests
             avatarBg: null,
             theme: "default",
             language: null,
+            status: "online",
+            statusUpdatedAtUtc: null,
             createdAtUtc: DateTime.UtcNow.AddDays(-2),
             updatedAtUtc: DateTime.UtcNow.AddDays(-1));
     }

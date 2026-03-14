@@ -108,6 +108,11 @@ public class RealtimeHubDocumentation
     [SubscribeOperation(typeof(ConversationUserTypingEvent),
         Summary = "Received when a user starts typing in a direct conversation.")]
     public void OnConversationUserTyping() { }
+
+    [Channel("hubs/realtime/UserPresenceChanged")]
+    [SubscribeOperation(typeof(UserPresenceChangedEvent),
+        Summary = "Received when a user changes their presence status. Invisible users appear as 'offline'.")]
+    public void OnUserPresenceChanged() { }
 }
 
 // ── Client → Server payload types ─────────────────────────────────

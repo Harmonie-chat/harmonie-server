@@ -91,6 +91,11 @@ public interface IUserRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Update only the status field for an existing user.
+    /// </summary>
+    Task UpdateStatusAsync(UserId userId, string status, DateTime statusUpdatedAtUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Delete a user (soft delete recommended)
     /// </summary>
     Task DeleteAsync(UserId userId, CancellationToken cancellationToken = default);

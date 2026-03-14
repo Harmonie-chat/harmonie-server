@@ -76,6 +76,16 @@ public sealed class User : Entity<UserId>
     /// </summary>
     public string? Language { get; private set; }
 
+    /// <summary>
+    /// User presence status (online, idle, dnd, invisible)
+    /// </summary>
+    public string Status { get; private set; } = "online";
+
+    /// <summary>
+    /// When the status was last updated (UTC)
+    /// </summary>
+    public DateTime? StatusUpdatedAtUtc { get; private set; }
+
     // Private constructor for EF Core / Dapper
     private User() { }
 
@@ -121,6 +131,8 @@ public sealed class User : Entity<UserId>
         string? avatarBg,
         string theme,
         string? language,
+        string status,
+        DateTime? statusUpdatedAtUtc,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc
     )
@@ -142,6 +154,8 @@ public sealed class User : Entity<UserId>
             AvatarBg = avatarBg,
             Theme = theme,
             Language = language,
+            Status = status,
+            StatusUpdatedAtUtc = statusUpdatedAtUtc,
             CreatedAtUtc = createdAtUtc,
             UpdatedAtUtc = updatedAtUtc
         };
@@ -280,6 +294,25 @@ public sealed class User : Entity<UserId>
             return Result.Failure("Language is too long");
 
         Language = language;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "online", "idle", "dnd", "invisible"
+    };
+
+    public Result UpdateStatus(string status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return Result.Failure("Status cannot be empty");
+
+        if (!ValidStatuses.Contains(status))
+            return Result.Failure("Status must be one of: online, idle, dnd, invisible");
+
+        Status = status.ToLowerInvariant();
+        StatusUpdatedAtUtc = DateTime.UtcNow;
         MarkAsUpdated();
         return Result.Success();
     }

@@ -47,6 +47,7 @@ using Harmonie.Application.Features.Users.DeleteMyAvatar;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.SearchUsers;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
+using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
@@ -104,6 +105,7 @@ public static class DependencyInjection
         services.AddScoped<GetMyProfileHandler>();
         services.AddScoped<SearchUsersHandler>();
         services.AddScoped<UpdateMyProfileHandler>();
+        services.AddScoped<UpdateUserStatusHandler>();
         services.AddScoped<UploadMyAvatarHandler>();
         services.AddScoped<UploadFileHandler>();
         services.AddScoped<DownloadFileHandler>();

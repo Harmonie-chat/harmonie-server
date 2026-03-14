@@ -24,6 +24,8 @@ public sealed class UserRepository : IUserRepository
                                                 avatar_bg as "AvatarBg",
                                                 theme as "Theme",
                                                 language as "Language",
+                                                status as "Status",
+                                                status_updated_at_utc as "StatusUpdatedAtUtc",
                                                 created_at_utc as "CreatedAtUtc",
                                                 updated_at_utc as "UpdatedAtUtc",
                                                 last_login_at_utc as "LastLoginAtUtc",
@@ -190,9 +192,11 @@ public sealed class UserRepository : IUserRepository
         const string sql = @"
             INSERT INTO users (id, email, username, password_hash, avatar_url, avatar_file_id, is_email_verified,
                 is_active, display_name, bio, avatar_color, avatar_icon, avatar_bg, theme, language,
+                status, status_updated_at_utc,
                 created_at_utc, updated_at_utc, last_login_at_utc)
             VALUES (@Id, @Email, @Username, @PasswordHash, NULL, @AvatarFileId, @IsEmailVerified,
                 @IsActive, @DisplayName, @Bio, @AvatarColor, @AvatarIcon, @AvatarBg, @Theme, @Language,
+                @Status, @StatusUpdatedAtUtc,
                 @CreatedAtUtc, @UpdatedAtUtc, @LastLoginAtUtc)";
 
         var conn = await _dbSession.GetOpenConnectionAsync(ct);
@@ -214,6 +218,8 @@ public sealed class UserRepository : IUserRepository
                 user.AvatarBg,
                 user.Theme,
                 user.Language,
+                user.Status,
+                user.StatusUpdatedAtUtc,
                 user.CreatedAtUtc,
                 user.UpdatedAtUtc,
                 user.LastLoginAtUtc
@@ -232,6 +238,7 @@ public sealed class UserRepository : IUserRepository
                 display_name = @DisplayName, bio = @Bio,
                 avatar_color = @AvatarColor, avatar_icon = @AvatarIcon, avatar_bg = @AvatarBg,
                 theme = @Theme, language = @Language,
+                status = @Status, status_updated_at_utc = @StatusUpdatedAtUtc,
                 updated_at_utc = @UpdatedAtUtc, last_login_at_utc = @LastLoginAtUtc
             WHERE id = @Id";
 
@@ -254,8 +261,36 @@ public sealed class UserRepository : IUserRepository
                 user.AvatarBg,
                 user.Theme,
                 user.Language,
+                user.Status,
+                user.StatusUpdatedAtUtc,
                 user.UpdatedAtUtc,
                 user.LastLoginAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: ct);
+
+        await conn.ExecuteAsync(cmd);
+    }
+
+    public async Task UpdateStatusAsync(UserId userId, string status, DateTime statusUpdatedAtUtc, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE users
+            SET status = @Status,
+                status_updated_at_utc = @StatusUpdatedAtUtc,
+                updated_at_utc = @UpdatedAtUtc
+            WHERE id = @Id
+              AND deleted_at IS NULL";
+
+        var conn = await _dbSession.GetOpenConnectionAsync(ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                Id = userId.Value,
+                Status = status,
+                StatusUpdatedAtUtc = statusUpdatedAtUtc,
+                UpdatedAtUtc = DateTime.UtcNow
             },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
@@ -350,6 +385,8 @@ public sealed class UserRepository : IUserRepository
             userRow.AvatarBg,
             userRow.Theme,
             userRow.Language,
+            userRow.Status,
+            userRow.StatusUpdatedAtUtc,
             userRow.CreatedAtUtc,
             userRow.UpdatedAtUtc);
     }

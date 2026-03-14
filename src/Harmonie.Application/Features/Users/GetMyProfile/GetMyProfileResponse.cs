@@ -8,4 +8,5 @@ public sealed record GetMyProfileResponse(
     string? AvatarFileId,
     AvatarAppearanceDto? Avatar,
     string Theme,
-    string? Language);
+    string? Language,
+    string Status);

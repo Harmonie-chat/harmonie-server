@@ -15,6 +15,8 @@ public sealed record UserRow(
     string? AvatarBg,
     string Theme,
     string? Language,
+    string Status,
+    DateTime? StatusUpdatedAtUtc,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     DateTime? LastLoginAtUtc,
