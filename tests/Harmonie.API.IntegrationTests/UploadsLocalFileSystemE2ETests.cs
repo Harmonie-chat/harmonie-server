@@ -283,6 +283,48 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task DeleteGuildIcon_WhenGuildHasUploadedIcon_ShouldDeleteStoredFile()
+    {
+        using var factory = BuildFactory();
+        using var client = factory.CreateClient();
+
+        var user = await RegisterAsync(client);
+        using var multipart = CreateMultipartContent("guild-icon-endpoint-delete.txt", "text/plain", "guild icon endpoint delete");
+
+        var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+
+        var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
+        Assert.NotNull(uploadPayload);
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            client,
+            "/api/guilds",
+            new CreateGuildRequest("Guild Icon Endpoint Delete"),
+            user.AccessToken);
+        Assert.Equal(HttpStatusCode.Created, createGuildResponse.StatusCode);
+
+        var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        Assert.NotNull(guild);
+
+        var setIconResponse = await SendAuthorizedPatchAsync(
+            client,
+            $"/api/guilds/{guild!.GuildId}",
+            new { iconFileId = uploadPayload!.FileId },
+            user.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, setIconResponse.StatusCode);
+
+        var deleteIconResponse = await SendAuthorizedDeleteAsync(
+            client,
+            $"/api/guilds/{guild.GuildId}/icon",
+            user.AccessToken);
+        Assert.Equal(HttpStatusCode.NoContent, deleteIconResponse.StatusCode);
+
+        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_tempDir))

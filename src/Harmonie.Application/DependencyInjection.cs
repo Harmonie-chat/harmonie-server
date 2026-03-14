@@ -25,6 +25,7 @@ using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
 using Harmonie.Application.Features.Guilds.DeleteGuild;
+using Harmonie.Application.Features.Guilds.DeleteGuildIcon;
 using Harmonie.Application.Features.Guilds.ListGuildInvites;
 using Harmonie.Application.Features.Guilds.PreviewInvite;
 using Harmonie.Application.Features.Guilds.RevokeInvite;
@@ -80,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<AcceptInviteHandler>();
         services.AddScoped<RevokeInviteHandler>();
         services.AddScoped<DeleteGuildHandler>();
+        services.AddScoped<DeleteGuildIconHandler>();
         services.AddScoped<ListUserGuildsHandler>();
         services.AddScoped<InviteMemberHandler>();
         services.AddScoped<LeaveGuildHandler>();

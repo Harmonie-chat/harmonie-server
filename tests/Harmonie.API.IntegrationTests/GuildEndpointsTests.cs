@@ -271,6 +271,107 @@ public sealed class GuildEndpointsTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task DeleteGuildIcon_WithOwnerAndExistingIcon_ShouldReturnNoContentAndClearGuildIcon()
+    {
+        var owner = await RegisterAsync();
+        var iconFileId = await UploadFileAsync(owner.AccessToken, "guild-icon-delete.png", "image/png", "guild icon delete");
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Guild Icon Delete"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        guild.Should().NotBeNull();
+
+        var seedResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{guild!.GuildId}",
+            new { iconFileId },
+            owner.AccessToken);
+        seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/guilds/{guild.GuildId}/icon",
+            owner.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<ListUserGuildsResponse>();
+        listPayload.Should().NotBeNull();
+        listPayload!.Guilds.Should().Contain(item =>
+            item.GuildId == guild.GuildId &&
+            item.IconFileId == null);
+    }
+
+    [Fact]
+    public async Task DeleteGuildIcon_WhenGuildHasNoIcon_ShouldReturnNotFound()
+    {
+        var owner = await RegisterAsync();
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Guild Without Icon"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        guild.Should().NotBeNull();
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/guilds/{guild!.GuildId}/icon",
+            owner.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Upload.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteGuildIcon_WhenCallerIsMember_ShouldReturnForbidden()
+    {
+        var owner = await RegisterAsync();
+        var member = await RegisterAsync();
+        var iconFileId = await UploadFileAsync(owner.AccessToken, "guild-icon-member.png", "image/png", "guild icon");
+
+        var createGuildResponse = await SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest("Guild Member Forbidden"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        guild.Should().NotBeNull();
+
+        var inviteResponse = await SendAuthorizedPostAsync(
+            $"/api/guilds/{guild!.GuildId}/members/invite",
+            new InviteMemberRequest(member.UserId),
+            owner.AccessToken);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var seedResponse = await SendAuthorizedPatchAsync(
+            $"/api/guilds/{guild.GuildId}",
+            new { iconFileId },
+            owner.AccessToken);
+        seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var response = await SendAuthorizedDeleteAsync(
+            $"/api/guilds/{guild.GuildId}/icon",
+            member.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
+    }
+
+    [Fact]
     public async Task CreateGuild_WithIconFields_ShouldPersistIconData()
     {
         var owner = await RegisterAsync();
