@@ -18,4 +18,20 @@ public interface IGuildBanRepository
         GuildId guildId,
         UserId userId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GuildBanWithUser>> GetByGuildIdAsync(
+        GuildId guildId,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record GuildBanWithUser(
+    UserId UserId,
+    Username Username,
+    string? DisplayName,
+    UploadedFileId? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg,
+    string? Reason,
+    UserId BannedBy,
+    DateTime CreatedAtUtc);
