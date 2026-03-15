@@ -25,7 +25,9 @@ using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using ConversationSendMessage = Harmonie.Application.Features.Conversations.SendMessage.SendMessageEndpoint;
 using ChannelAddReaction = Harmonie.Application.Features.Channels.AddReaction.AddReactionEndpoint;
+using ChannelRemoveReaction = Harmonie.Application.Features.Channels.RemoveReaction.RemoveReactionEndpoint;
 using ConversationAddReaction = Harmonie.Application.Features.Conversations.AddReaction.AddReactionEndpoint;
+using ConversationRemoveReaction = Harmonie.Application.Features.Conversations.RemoveReaction.RemoveReactionEndpoint;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
@@ -328,7 +330,9 @@ ConversationDeleteMessage.Map(app);
 ConversationDeleteMessageAttachment.Map(app);
 ConversationSendMessage.Map(app);
 ChannelAddReaction.Map(app);
+ChannelRemoveReaction.Map(app);
 ConversationAddReaction.Map(app);
+ConversationRemoveReaction.Map(app);
 app.MapHub<RealtimeHub>("/hubs/realtime");
 
 // Future endpoints will be added here as features are developed
