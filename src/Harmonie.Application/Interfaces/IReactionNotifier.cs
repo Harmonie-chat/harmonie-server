@@ -24,6 +24,7 @@ public interface IReactionNotifier
 public sealed record ChannelReactionAddedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    GuildId GuildId,
     UserId UserId,
     string Emoji);
 
@@ -36,6 +37,7 @@ public sealed record ConversationReactionAddedNotification(
 public sealed record ChannelReactionRemovedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    GuildId GuildId,
     UserId UserId,
     string Emoji);
 

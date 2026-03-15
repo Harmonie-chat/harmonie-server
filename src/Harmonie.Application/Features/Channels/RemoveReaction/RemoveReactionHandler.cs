@@ -110,7 +110,7 @@ public sealed class RemoveReactionHandler
             callerId);
 
         await NotifyReactionRemovedSafelyAsync(
-            new ChannelReactionRemovedNotification(messageId, channelId, callerId, emoji));
+            new ChannelReactionRemovedNotification(messageId, channelId, ctx.Channel.GuildId, callerId, emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }
