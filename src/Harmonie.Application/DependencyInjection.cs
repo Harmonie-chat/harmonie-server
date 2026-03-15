@@ -26,6 +26,7 @@ using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
 using Harmonie.Application.Features.Guilds.BanMember;
+using Harmonie.Application.Features.Guilds.ListBans;
 using Harmonie.Application.Features.Guilds.UnbanMember;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
 using Harmonie.Application.Features.Guilds.DeleteGuild;
@@ -90,6 +91,7 @@ public static class DependencyInjection
         services.AddScoped<PreviewInviteHandler>();
         services.AddScoped<AcceptInviteHandler>();
         services.AddScoped<BanMemberHandler>();
+        services.AddScoped<ListBansHandler>();
         services.AddScoped<UnbanMemberHandler>();
         services.AddScoped<RevokeInviteHandler>();
         services.AddScoped<DeleteGuildHandler>();
