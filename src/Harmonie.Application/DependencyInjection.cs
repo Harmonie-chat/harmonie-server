@@ -51,6 +51,8 @@ using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
+using ChannelAddReactionHandler = Harmonie.Application.Features.Channels.AddReaction.AddReactionHandler;
+using ConversationAddReactionHandler = Harmonie.Application.Features.Conversations.AddReaction.AddReactionHandler;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -123,6 +125,8 @@ public static class DependencyInjection
         services.AddScoped<ConversationDeleteMessageHandler>();
         services.AddScoped<ConversationDeleteMessageAttachmentHandler>();
         services.AddScoped<ConversationSendMessageHandler>();
+        services.AddScoped<ChannelAddReactionHandler>();
+        services.AddScoped<ConversationAddReactionHandler>();
         // Add more handlers as features are created
 
         return services;

@@ -69,6 +69,11 @@ public static class ApplicationErrorCodes
         public const string DeleteForbidden = "MESSAGE_DELETE_FORBIDDEN";
     }
 
+    public static class Reaction
+    {
+        public const string MessageNotFound = "REACTION_MESSAGE_NOT_FOUND";
+    }
+
     public static class User
     {
         public const string NotFound = "USER_NOT_FOUND";

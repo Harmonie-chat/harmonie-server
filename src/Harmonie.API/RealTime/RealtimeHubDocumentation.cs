@@ -113,6 +113,11 @@ public class RealtimeHubDocumentation
     [SubscribeOperation(typeof(UserPresenceChangedEvent),
         Summary = "Received when a user changes their presence status. Invisible users appear as 'offline'.")]
     public void OnUserPresenceChanged() { }
+
+    [Channel("hubs/realtime/ReactionAdded")]
+    [SubscribeOperation(typeof(ReactionAddedEvent),
+        Summary = "Received when a user adds an emoji reaction to a message (channel or conversation).")]
+    public void OnReactionAdded() { }
 }
 
 // ── Client → Server payload types ─────────────────────────────────

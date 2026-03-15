@@ -24,6 +24,8 @@ using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using ConversationSendMessage = Harmonie.Application.Features.Conversations.SendMessage.SendMessageEndpoint;
+using ChannelAddReaction = Harmonie.Application.Features.Channels.AddReaction.AddReactionEndpoint;
+using ConversationAddReaction = Harmonie.Application.Features.Conversations.AddReaction.AddReactionEndpoint;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
@@ -118,6 +120,7 @@ builder.Services.AddScoped<IGuildNotifier, SignalRGuildNotifier>();
 builder.Services.AddScoped<IVoicePresenceNotifier, SignalRVoicePresenceNotifier>();
 builder.Services.AddScoped<IConversationMessageNotifier, SignalRConversationMessageNotifier>();
 builder.Services.AddScoped<IUserPresenceNotifier, SignalRUserPresenceNotifier>();
+builder.Services.AddScoped<IReactionNotifier, SignalRReactionNotifier>();
 builder.Services.AddSingleton<IConnectionTracker, ConnectionTracker>();
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres")
@@ -324,6 +327,8 @@ ConversationEditMessage.Map(app);
 ConversationDeleteMessage.Map(app);
 ConversationDeleteMessageAttachment.Map(app);
 ConversationSendMessage.Map(app);
+ChannelAddReaction.Map(app);
+ConversationAddReaction.Map(app);
 app.MapHub<RealtimeHub>("/hubs/realtime");
 
 // Future endpoints will be added here as features are developed
