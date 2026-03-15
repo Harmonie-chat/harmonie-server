@@ -12,6 +12,7 @@
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Harmonie.API\Harmonie.API.csproj" />

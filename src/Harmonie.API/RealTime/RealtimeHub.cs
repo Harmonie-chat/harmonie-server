@@ -19,17 +19,42 @@ public sealed class RealtimeHub : Hub
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildRepository _guildRepository;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConnectionTracker _connectionTracker;
 
     public RealtimeHub(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
         IGuildRepository guildRepository,
-        IConversationRepository conversationRepository)
+        IConversationRepository conversationRepository,
+        IConnectionTracker connectionTracker)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildRepository = guildRepository;
         _conversationRepository = conversationRepository;
+        _connectionTracker = connectionTracker;
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        if (TryGetAuthenticatedUserId(out var userId) && userId is not null)
+        {
+            await _connectionTracker.HandleConnectedAsync(
+                userId, Context.ConnectionId, Context.ConnectionAborted);
+        }
+
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        if (TryGetAuthenticatedUserId(out var userId) && userId is not null)
+        {
+            await _connectionTracker.HandleDisconnectedAsync(
+                userId, Context.ConnectionId, Context.ConnectionAborted);
+        }
+
+        await base.OnDisconnectedAsync(exception);
     }
 
     public async Task JoinChannel(Guid channelId)

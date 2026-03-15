@@ -6,6 +6,9 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Harmonie.API.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Harmonie.Application\Harmonie.Application.csproj" />
     <ProjectReference Include="..\Harmonie.Infrastructure\Harmonie.Infrastructure.csproj" />
   </ItemGroup>
