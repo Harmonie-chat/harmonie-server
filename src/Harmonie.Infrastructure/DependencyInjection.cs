@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
+        services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();
         return services;
     }
 }

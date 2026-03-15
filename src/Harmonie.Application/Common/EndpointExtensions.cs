@@ -331,6 +331,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Conversation.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Conversation.CannotOpenSelf => HttpStatusCode.BadRequest,
             ApplicationErrorCodes.Conversation.AccessDenied => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Reaction.MessageNotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Invite.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Invite.Expired => HttpStatusCode.Gone,
             ApplicationErrorCodes.Invite.Exhausted => HttpStatusCode.Gone,
