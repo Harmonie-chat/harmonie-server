@@ -11,6 +11,14 @@ public interface IReactionNotifier
     Task NotifyReactionAddedToConversationAsync(
         ConversationReactionAddedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyReactionRemovedFromChannelAsync(
+        ChannelReactionRemovedNotification notification,
+        CancellationToken cancellationToken = default);
+
+    Task NotifyReactionRemovedFromConversationAsync(
+        ConversationReactionRemovedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ChannelReactionAddedNotification(
@@ -20,6 +28,18 @@ public sealed record ChannelReactionAddedNotification(
     string Emoji);
 
 public sealed record ConversationReactionAddedNotification(
+    MessageId MessageId,
+    ConversationId ConversationId,
+    UserId UserId,
+    string Emoji);
+
+public sealed record ChannelReactionRemovedNotification(
+    MessageId MessageId,
+    GuildChannelId ChannelId,
+    UserId UserId,
+    string Emoji);
+
+public sealed record ConversationReactionRemovedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
     UserId UserId,

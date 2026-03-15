@@ -118,6 +118,11 @@ public class RealtimeHubDocumentation
     [SubscribeOperation(typeof(ReactionAddedEvent),
         Summary = "Received when a user adds an emoji reaction to a message (channel or conversation).")]
     public void OnReactionAdded() { }
+
+    [Channel("hubs/realtime/ReactionRemoved")]
+    [SubscribeOperation(typeof(ReactionRemovedEvent),
+        Summary = "Received when a user removes an emoji reaction from a message (channel or conversation).")]
+    public void OnReactionRemoved() { }
 }
 
 // ── Client → Server payload types ─────────────────────────────────

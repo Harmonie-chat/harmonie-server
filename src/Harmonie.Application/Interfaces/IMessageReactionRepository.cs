@@ -16,4 +16,10 @@ public interface IMessageReactionRepository
         string emoji,
         DateTime createdAtUtc,
         CancellationToken cancellationToken = default);
+
+    Task RemoveAsync(
+        MessageId messageId,
+        UserId userId,
+        string emoji,
+        CancellationToken cancellationToken = default);
 }

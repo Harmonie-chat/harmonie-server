@@ -72,4 +72,32 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
 
         await connection.ExecuteAsync(command);
     }
+
+    public async Task RemoveAsync(
+        MessageId messageId,
+        UserId userId,
+        string emoji,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           DELETE FROM message_reactions
+                           WHERE message_id = @MessageId
+                             AND user_id    = @UserId
+                             AND emoji      = @Emoji
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                MessageId = messageId.Value,
+                UserId = userId.Value,
+                Emoji = emoji
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
 }

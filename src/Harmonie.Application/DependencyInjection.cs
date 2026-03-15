@@ -52,7 +52,9 @@ using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using ChannelAddReactionHandler = Harmonie.Application.Features.Channels.AddReaction.AddReactionHandler;
+using ChannelRemoveReactionHandler = Harmonie.Application.Features.Channels.RemoveReaction.RemoveReactionHandler;
 using ConversationAddReactionHandler = Harmonie.Application.Features.Conversations.AddReaction.AddReactionHandler;
+using ConversationRemoveReactionHandler = Harmonie.Application.Features.Conversations.RemoveReaction.RemoveReactionHandler;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -126,7 +128,9 @@ public static class DependencyInjection
         services.AddScoped<ConversationDeleteMessageAttachmentHandler>();
         services.AddScoped<ConversationSendMessageHandler>();
         services.AddScoped<ChannelAddReactionHandler>();
+        services.AddScoped<ChannelRemoveReactionHandler>();
         services.AddScoped<ConversationAddReactionHandler>();
+        services.AddScoped<ConversationRemoveReactionHandler>();
         // Add more handlers as features are created
 
         return services;
