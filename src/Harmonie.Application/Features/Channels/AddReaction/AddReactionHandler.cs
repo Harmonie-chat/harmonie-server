@@ -110,7 +110,7 @@ public sealed class AddReactionHandler
             callerId);
 
         await NotifyReactionAddedSafelyAsync(
-            new ChannelReactionAddedNotification(messageId, channelId, callerId, emoji));
+            new ChannelReactionAddedNotification(messageId, channelId, ctx.Channel.GuildId, callerId, emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

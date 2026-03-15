@@ -305,6 +305,7 @@ public sealed class EditMessageHandlerTests
             x => x.NotifyMessageUpdatedAsync(
                 It.Is<TextChannelMessageUpdatedNotification>(n =>
                     n.ChannelId == channel.Id &&
+                    n.GuildId == channel.GuildId &&
                     n.Content == "updated content"),
                 It.IsAny<CancellationToken>()),
             Times.Once);

@@ -157,6 +157,7 @@ public sealed class SendMessageHandlerTests
             x => x.NotifyMessageCreatedAsync(
                 It.Is<TextChannelMessageCreatedNotification>(n =>
                     n.ChannelId == channel.Id
+                    && n.GuildId == channel.GuildId
                     && n.AuthorUserId == userId
                     && n.Content == "hello team"),
                 It.IsAny<CancellationToken>()),

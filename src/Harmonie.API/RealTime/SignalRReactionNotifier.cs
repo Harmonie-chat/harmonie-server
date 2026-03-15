@@ -21,6 +21,7 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         var payload = new ReactionAddedEvent(
             MessageId: notification.MessageId.ToString(),
             ChannelId: notification.ChannelId.ToString(),
+            GuildId: notification.GuildId.ToString(),
             ConversationId: null,
             UserId: notification.UserId.ToString(),
             Emoji: notification.Emoji);
@@ -39,6 +40,7 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         var payload = new ReactionAddedEvent(
             MessageId: notification.MessageId.ToString(),
             ChannelId: null,
+            GuildId: null,
             ConversationId: notification.ConversationId.ToString(),
             UserId: notification.UserId.ToString(),
             Emoji: notification.Emoji);
@@ -57,6 +59,7 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         var payload = new ReactionRemovedEvent(
             MessageId: notification.MessageId.ToString(),
             ChannelId: notification.ChannelId.ToString(),
+            GuildId: notification.GuildId.ToString(),
             ConversationId: null,
             UserId: notification.UserId.ToString(),
             Emoji: notification.Emoji);
@@ -75,6 +78,7 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         var payload = new ReactionRemovedEvent(
             MessageId: notification.MessageId.ToString(),
             ChannelId: null,
+            GuildId: null,
             ConversationId: notification.ConversationId.ToString(),
             UserId: notification.UserId.ToString(),
             Emoji: notification.Emoji);
@@ -88,6 +92,7 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
 public sealed record ReactionAddedEvent(
     string MessageId,
     string? ChannelId,
+    string? GuildId,
     string? ConversationId,
     string UserId,
     string Emoji);
@@ -95,6 +100,7 @@ public sealed record ReactionAddedEvent(
 public sealed record ReactionRemovedEvent(
     string MessageId,
     string? ChannelId,
+    string? GuildId,
     string? ConversationId,
     string UserId,
     string Emoji);

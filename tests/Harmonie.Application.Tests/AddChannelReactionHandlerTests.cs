@@ -203,6 +203,7 @@ public sealed class AddChannelReactionHandlerTests
             x => x.NotifyReactionAddedToChannelAsync(
                 It.Is<ChannelReactionAddedNotification>(n =>
                     n.ChannelId == channel.Id &&
+                    n.GuildId == channel.GuildId &&
                     n.MessageId == messageId &&
                     n.UserId == callerId &&
                     n.Emoji == "👍"),

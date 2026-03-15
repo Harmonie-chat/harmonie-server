@@ -310,7 +310,8 @@ public sealed class DeleteMessageHandlerTests
             x => x.NotifyMessageDeletedAsync(
                 It.Is<TextChannelMessageDeletedNotification>(n =>
                     n.MessageId == messageId &&
-                    n.ChannelId == channel.Id),
+                    n.ChannelId == channel.Id &&
+                    n.GuildId == channel.GuildId),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

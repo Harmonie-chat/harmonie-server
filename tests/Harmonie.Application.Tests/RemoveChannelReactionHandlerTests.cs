@@ -203,6 +203,7 @@ public sealed class RemoveChannelReactionHandlerTests
             x => x.NotifyReactionRemovedFromChannelAsync(
                 It.Is<ChannelReactionRemovedNotification>(n =>
                     n.ChannelId == channel.Id &&
+                    n.GuildId == channel.GuildId &&
                     n.MessageId == messageId &&
                     n.UserId == callerId &&
                     n.Emoji == "👍"),

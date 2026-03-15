@@ -153,6 +153,7 @@ public sealed class EditMessageHandler
             new TextChannelMessageUpdatedNotification(
                 message.Id,
                 messageChannelId,
+                ctx.Channel.GuildId,
                 message.Content.Value,
                 updatedAtUtc.Value));
 

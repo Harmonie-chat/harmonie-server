@@ -124,7 +124,7 @@ public sealed class DeleteMessageHandler
             callerId);
 
         await NotifyMessageDeletedSafelyAsync(
-            new TextChannelMessageDeletedNotification(messageId, channelId));
+            new TextChannelMessageDeletedNotification(messageId, channelId, ctx.Channel.GuildId));
 
         return ApplicationResponse<bool>.Ok(true);
     }

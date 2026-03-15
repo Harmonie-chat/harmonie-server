@@ -21,6 +21,7 @@ public interface ITextChannelNotifier
 public sealed record TextChannelMessageCreatedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    GuildId GuildId,
     UserId AuthorUserId,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
@@ -29,9 +30,11 @@ public sealed record TextChannelMessageCreatedNotification(
 public sealed record TextChannelMessageUpdatedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    GuildId GuildId,
     string Content,
     DateTime UpdatedAtUtc);
 
 public sealed record TextChannelMessageDeletedNotification(
     MessageId MessageId,
-    GuildChannelId ChannelId);
+    GuildChannelId ChannelId,
+    GuildId GuildId);

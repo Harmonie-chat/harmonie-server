@@ -148,6 +148,7 @@ public sealed class SendMessageHandler
             new TextChannelMessageCreatedNotification(
                 messageResult.Value.Id,
                 messageChannelId,
+                ctx.Channel.GuildId,
                 messageResult.Value.AuthorUserId,
                 messageResult.Value.Content.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
