@@ -92,6 +92,7 @@ public sealed class MessageRepository : IMessageRepository
         GuildChannelId channelId,
         MessageCursor? beforeCursor,
         int limit,
+        UserId callerId,
         CancellationToken cancellationToken = default)
     {
         if (limit <= 0)
@@ -99,59 +100,68 @@ public sealed class MessageRepository : IMessageRepository
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
-        string sql;
-        object parameters;
 
-        if (beforeCursor is null)
+        string cursorFilter = beforeCursor is not null
+            ? "AND (created_at_utc, id) < (@BeforeCreatedAtUtc, @BeforeMessageId)"
+            : "";
+
+        var sql = $"""
+                   SELECT id AS "Id",
+                          channel_id AS "ChannelId",
+                          conversation_id AS "ConversationId",
+                          author_user_id AS "AuthorUserId",
+                          content AS "Content",
+                          created_at_utc AS "CreatedAtUtc",
+                          updated_at_utc AS "UpdatedAtUtc",
+                          deleted_at_utc AS "DeletedAtUtc"
+                   FROM messages
+                   WHERE channel_id = @ChannelId
+                     AND deleted_at_utc IS NULL
+                     {cursorFilter}
+                   ORDER BY created_at_utc DESC, id DESC
+                   LIMIT @Take;
+
+                   SELECT ma.message_id AS "MessageId",
+                          ma.position AS "Position",
+                          uf.id AS "UploadedFileId",
+                          uf.filename AS "FileName",
+                          uf.content_type AS "ContentType",
+                          uf.size_bytes AS "SizeBytes"
+                   FROM message_attachments ma
+                   INNER JOIN uploaded_files uf ON uf.id = ma.uploaded_file_id
+                   WHERE ma.message_id IN (
+                       SELECT id FROM messages
+                       WHERE channel_id = @ChannelId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   ORDER BY ma.message_id, ma.position;
+
+                   SELECT message_id AS "MessageId",
+                          emoji AS "Emoji",
+                          COUNT(*) AS "Count",
+                          BOOL_OR(user_id = @CallerId) AS "ReactedByCaller"
+                   FROM message_reactions
+                   WHERE message_id IN (
+                       SELECT id FROM messages
+                       WHERE channel_id = @ChannelId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   GROUP BY message_id, emoji
+                   ORDER BY message_id, MIN(created_at_utc);
+                   """;
+
+        var parameters = new DynamicParameters();
+        parameters.Add("ChannelId", channelId.Value);
+        parameters.Add("Take", take);
+        parameters.Add("CallerId", callerId.Value);
+        if (beforeCursor is not null)
         {
-            sql = """
-                  SELECT id AS "Id",
-                         channel_id AS "ChannelId",
-                         conversation_id AS "ConversationId",
-                         author_user_id AS "AuthorUserId",
-                         content AS "Content",
-                         created_at_utc AS "CreatedAtUtc",
-                         updated_at_utc AS "UpdatedAtUtc",
-                         deleted_at_utc AS "DeletedAtUtc"
-                  FROM messages
-                  WHERE channel_id = @ChannelId
-                    AND deleted_at_utc IS NULL
-                  ORDER BY created_at_utc DESC, id DESC
-                  LIMIT @Take
-                  """;
-
-            parameters = new
-            {
-                ChannelId = channelId.Value,
-                Take = take
-            };
-        }
-        else
-        {
-            sql = """
-                  SELECT id AS "Id",
-                         channel_id AS "ChannelId",
-                         conversation_id AS "ConversationId",
-                         author_user_id AS "AuthorUserId",
-                         content AS "Content",
-                         created_at_utc AS "CreatedAtUtc",
-                         updated_at_utc AS "UpdatedAtUtc",
-                         deleted_at_utc AS "DeletedAtUtc"
-                  FROM messages
-                  WHERE channel_id = @ChannelId
-                    AND deleted_at_utc IS NULL
-                    AND (created_at_utc, id) < (@BeforeCreatedAtUtc, @BeforeMessageId)
-                  ORDER BY created_at_utc DESC, id DESC
-                  LIMIT @Take
-                  """;
-
-            parameters = new
-            {
-                ChannelId = channelId.Value,
-                BeforeCreatedAtUtc = beforeCursor.CreatedAtUtc,
-                BeforeMessageId = beforeCursor.MessageId.Value,
-                Take = take
-            };
+            parameters.Add("BeforeCreatedAtUtc", beforeCursor.CreatedAtUtc);
+            parameters.Add("BeforeMessageId", beforeCursor.MessageId.Value);
         }
 
         var command = new CommandDefinition(
@@ -160,12 +170,19 @@ public sealed class MessageRepository : IMessageRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = (await connection.QueryAsync<MessageRow>(command)).ToArray();
+        using var multi = await connection.QueryMultipleAsync(command);
+        var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
+        var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
+        var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
-        var attachmentsByMessageId = await GetAttachmentsByMessageIdsAsync(
-            pageRows.Select(row => row.Id).ToArray(),
-            cancellationToken);
+        var pageMessageIds = new HashSet<Guid>(pageRows.Select(row => row.Id));
+
+        var attachmentsByMessageId = BuildAttachmentsDictionary(
+            attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+        var reactionsByMessageId = BuildReactionsDictionary(
+            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MapToMessage(row, attachmentsByMessageId))
@@ -180,13 +197,14 @@ public sealed class MessageRepository : IMessageRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        return new MessagePage(items, nextCursor);
+        return new MessagePage(items, nextCursor, reactionsByMessageId);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
         ConversationId conversationId,
         MessageCursor? cursor,
         int limit,
+        UserId callerId,
         CancellationToken cancellationToken = default)
     {
         if (limit <= 0)
@@ -194,59 +212,68 @@ public sealed class MessageRepository : IMessageRepository
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
-        string sql;
-        object parameters;
 
-        if (cursor is null)
+        string cursorFilter = cursor is not null
+            ? "AND (created_at_utc, id) < (@BeforeCreatedAtUtc, @BeforeMessageId)"
+            : "";
+
+        var sql = $"""
+                   SELECT id AS "Id",
+                          channel_id AS "ChannelId",
+                          conversation_id AS "ConversationId",
+                          author_user_id AS "AuthorUserId",
+                          content AS "Content",
+                          created_at_utc AS "CreatedAtUtc",
+                          updated_at_utc AS "UpdatedAtUtc",
+                          deleted_at_utc AS "DeletedAtUtc"
+                   FROM messages
+                   WHERE conversation_id = @ConversationId
+                     AND deleted_at_utc IS NULL
+                     {cursorFilter}
+                   ORDER BY created_at_utc DESC, id DESC
+                   LIMIT @Take;
+
+                   SELECT ma.message_id AS "MessageId",
+                          ma.position AS "Position",
+                          uf.id AS "UploadedFileId",
+                          uf.filename AS "FileName",
+                          uf.content_type AS "ContentType",
+                          uf.size_bytes AS "SizeBytes"
+                   FROM message_attachments ma
+                   INNER JOIN uploaded_files uf ON uf.id = ma.uploaded_file_id
+                   WHERE ma.message_id IN (
+                       SELECT id FROM messages
+                       WHERE conversation_id = @ConversationId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   ORDER BY ma.message_id, ma.position;
+
+                   SELECT message_id AS "MessageId",
+                          emoji AS "Emoji",
+                          COUNT(*) AS "Count",
+                          BOOL_OR(user_id = @CallerId) AS "ReactedByCaller"
+                   FROM message_reactions
+                   WHERE message_id IN (
+                       SELECT id FROM messages
+                       WHERE conversation_id = @ConversationId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   GROUP BY message_id, emoji
+                   ORDER BY message_id, MIN(created_at_utc);
+                   """;
+
+        var parameters = new DynamicParameters();
+        parameters.Add("ConversationId", conversationId.Value);
+        parameters.Add("Take", take);
+        parameters.Add("CallerId", callerId.Value);
+        if (cursor is not null)
         {
-            sql = """
-                  SELECT id AS "Id",
-                         channel_id AS "ChannelId",
-                         conversation_id AS "ConversationId",
-                         author_user_id AS "AuthorUserId",
-                         content AS "Content",
-                         created_at_utc AS "CreatedAtUtc",
-                         updated_at_utc AS "UpdatedAtUtc",
-                         deleted_at_utc AS "DeletedAtUtc"
-                  FROM messages
-                  WHERE conversation_id = @ConversationId
-                    AND deleted_at_utc IS NULL
-                  ORDER BY created_at_utc DESC, id DESC
-                  LIMIT @Take
-                  """;
-
-            parameters = new
-            {
-                ConversationId = conversationId.Value,
-                Take = take
-            };
-        }
-        else
-        {
-            sql = """
-                  SELECT id AS "Id",
-                         channel_id AS "ChannelId",
-                         conversation_id AS "ConversationId",
-                         author_user_id AS "AuthorUserId",
-                         content AS "Content",
-                         created_at_utc AS "CreatedAtUtc",
-                         updated_at_utc AS "UpdatedAtUtc",
-                         deleted_at_utc AS "DeletedAtUtc"
-                  FROM messages
-                  WHERE conversation_id = @ConversationId
-                    AND deleted_at_utc IS NULL
-                    AND (created_at_utc, id) < (@BeforeCreatedAtUtc, @BeforeMessageId)
-                  ORDER BY created_at_utc DESC, id DESC
-                  LIMIT @Take
-                  """;
-
-            parameters = new
-            {
-                ConversationId = conversationId.Value,
-                BeforeCreatedAtUtc = cursor.CreatedAtUtc,
-                BeforeMessageId = cursor.MessageId.Value,
-                Take = take
-            };
+            parameters.Add("BeforeCreatedAtUtc", cursor.CreatedAtUtc);
+            parameters.Add("BeforeMessageId", cursor.MessageId.Value);
         }
 
         var command = new CommandDefinition(
@@ -255,12 +282,19 @@ public sealed class MessageRepository : IMessageRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = (await connection.QueryAsync<MessageRow>(command)).ToArray();
+        using var multi = await connection.QueryMultipleAsync(command);
+        var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
+        var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
+        var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
-        var attachmentsByMessageId = await GetAttachmentsByMessageIdsAsync(
-            pageRows.Select(row => row.Id).ToArray(),
-            cancellationToken);
+        var pageMessageIds = new HashSet<Guid>(pageRows.Select(row => row.Id));
+
+        var attachmentsByMessageId = BuildAttachmentsDictionary(
+            attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+        var reactionsByMessageId = BuildReactionsDictionary(
+            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MapToMessage(row, attachmentsByMessageId))
@@ -275,7 +309,7 @@ public sealed class MessageRepository : IMessageRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        return new MessagePage(items, nextCursor);
+        return new MessagePage(items, nextCursor, reactionsByMessageId);
     }
 
     public async Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
@@ -715,6 +749,38 @@ public sealed class MessageRepository : IMessageRepository
             UpdatedAtUtc: row.UpdatedAtUtc);
     }
 
+    private static IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> BuildAttachmentsDictionary(
+        IEnumerable<MessageAttachmentRow> rows)
+    {
+        return rows
+            .GroupBy(row => row.MessageId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<MessageAttachment>)group
+                    .OrderBy(row => row.Position)
+                    .Select(row => new MessageAttachment(
+                        UploadedFileId.From(row.UploadedFileId),
+                        row.FileName,
+                        row.ContentType,
+                        row.SizeBytes))
+                    .ToArray());
+    }
+
+    private static IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> BuildReactionsDictionary(
+        IEnumerable<ReactionSummaryRow> rows)
+    {
+        return rows
+            .GroupBy(row => row.MessageId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<MessageReactionSummary>)group
+                    .Select(row => new MessageReactionSummary(
+                        row.Emoji,
+                        row.Count,
+                        row.ReactedByCaller))
+                    .ToArray());
+    }
+
     private sealed class MessageAttachmentRow
     {
         public Guid MessageId { get; init; }
@@ -723,5 +789,13 @@ public sealed class MessageRepository : IMessageRepository
         public string FileName { get; init; } = string.Empty;
         public string ContentType { get; init; } = string.Empty;
         public long SizeBytes { get; init; }
+    }
+
+    private sealed class ReactionSummaryRow
+    {
+        public Guid MessageId { get; init; }
+        public string Emoji { get; init; } = string.Empty;
+        public int Count { get; init; }
+        public bool ReactedByCaller { get; init; }
     }
 }

@@ -12,18 +12,15 @@ public sealed class GetMessagesHandler
 
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessageRepository _channelMessageRepository;
-    private readonly IMessageReactionRepository _reactionRepository;
     private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
         IMessageRepository channelMessageRepository,
-        IMessageReactionRepository reactionRepository,
         ILogger<GetMessagesHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
         _channelMessageRepository = channelMessageRepository;
-        _reactionRepository = reactionRepository;
         _logger = logger;
     }
 
@@ -107,6 +104,7 @@ public sealed class GetMessagesHandler
             channelId,
             beforeCursor,
             limit,
+            currentUserId,
             cancellationToken);
 
         _logger.LogInformation(
@@ -116,18 +114,12 @@ public sealed class GetMessagesHandler
             page.Items.Count,
             page.NextCursor is not null);
 
-        var messageIds = page.Items.Select(x => x.Id.Value).ToArray();
-        var reactionsByMessageId = await _reactionRepository.GetByMessageIdsAsync(
-            messageIds,
-            currentUserId,
-            cancellationToken);
-
         var items = page.Items
             .OrderBy(x => x.CreatedAtUtc)
             .ThenBy(x => x.Id.Value)
             .Select(x =>
             {
-                reactionsByMessageId.TryGetValue(x.Id.Value, out var reactions);
+                page.ReactionsByMessageId.TryGetValue(x.Id.Value, out var reactions);
                 return new GetMessagesItemResponse(
                     MessageId: x.Id.ToString(),
                     AuthorUserId: x.AuthorUserId.ToString(),

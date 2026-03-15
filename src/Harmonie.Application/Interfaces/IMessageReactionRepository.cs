@@ -22,11 +22,6 @@ public interface IMessageReactionRepository
         UserId userId,
         string emoji,
         CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>>> GetByMessageIdsAsync(
-        IReadOnlyCollection<Guid> messageIds,
-        UserId callerId,
-        CancellationToken cancellationToken = default);
 }
 
 public sealed record MessageReactionSummary(

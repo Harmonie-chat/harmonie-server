@@ -13,12 +13,14 @@ public interface IMessageRepository
         GuildChannelId channelId,
         MessageCursor? beforeCursor,
         int limit,
+        UserId callerId,
         CancellationToken cancellationToken = default);
 
     Task<MessagePage> GetConversationPageAsync(
         ConversationId conversationId,
         MessageCursor? cursor,
         int limit,
+        UserId callerId,
         CancellationToken cancellationToken = default);
 
     Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
@@ -55,7 +57,8 @@ public sealed record MessageCursor(
 
 public sealed record MessagePage(
     IReadOnlyList<Message> Items,
-    MessageCursor? NextCursor);
+    MessageCursor? NextCursor,
+    IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId);
 
 public sealed record SearchGuildMessagesQuery(
     GuildId GuildId,

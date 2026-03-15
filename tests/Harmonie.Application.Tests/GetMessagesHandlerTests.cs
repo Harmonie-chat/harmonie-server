@@ -15,19 +15,16 @@ public sealed class GetMessagesHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
-    private readonly Mock<IMessageReactionRepository> _reactionRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetMessagesHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
         _channelMessageRepositoryMock = new Mock<IMessageRepository>();
-        _reactionRepositoryMock = new Mock<IMessageReactionRepository>();
 
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
-            _reactionRepositoryMock.Object,
             NullLogger<GetMessagesHandler>.Instance);
     }
 
@@ -103,15 +100,12 @@ public sealed class GetMessagesHandlerTests
                 channel.Id,
                 It.IsAny<MessageCursor?>(),
                 50,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MessagePage([second, first], nextCursor));
-
-        _reactionRepositoryMock
-            .Setup(x => x.GetByMessageIdsAsync(
-                It.IsAny<IReadOnlyCollection<Guid>>(),
                 userId,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>());
+            .ReturnsAsync(new MessagePage(
+                [second, first],
+                nextCursor,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>()));
 
         var response = await _handler.HandleAsync(
             channel.Id,
@@ -124,6 +118,7 @@ public sealed class GetMessagesHandlerTests
         response.Data!.Items.Should().HaveCount(2);
         response.Data.Items[0].Content.Should().Be("First");
         response.Data.Items[0].Attachments.Should().BeEmpty();
+        response.Data.Items[0].Reactions.Should().BeEmpty();
         response.Data.Items[1].Content.Should().Be("Second");
         response.Data.NextCursor.Should().NotBeNullOrEmpty();
     }
