@@ -230,9 +230,10 @@ builder.Services.AddCors(options =>
         if (builder.Environment.IsDevelopment()
             && allowedOrigins.Contains("*", StringComparer.Ordinal))
         {
-            policy.AllowAnyOrigin()
+            policy.SetIsOriginAllowed(_ => true)
                 .AllowAnyMethod()
-                .AllowAnyHeader();
+                .AllowAnyHeader()
+                .AllowCredentials();
             return;
         }
 
@@ -243,6 +244,7 @@ builder.Services.AddCors(options =>
         if (configuredOrigins.Length > 0)
         {
             policy.WithOrigins(configuredOrigins)
+                .AllowCredentials()
                 .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .WithHeaders("Authorization", "Content-Type");
         }

@@ -14,7 +14,7 @@ public sealed class CorsPolicyTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
-    public async Task PreflightRequest_InDevelopment_ShouldAllowWildcardOrigin()
+    public async Task PreflightRequest_InDevelopment_ShouldAllowAnyOriginWithCredentials()
     {
         var request = new HttpRequestMessage(HttpMethod.Options, "/health");
         request.Headers.Add("Origin", "http://localhost:3000");
@@ -23,6 +23,9 @@ public sealed class CorsPolicyTests : IClassFixture<WebApplicationFactory<Progra
         var response = await _client.SendAsync(request);
 
         response.Headers.TryGetValues("Access-Control-Allow-Origin", out var origins).Should().BeTrue();
-        origins.Should().Contain("*");
+        origins.Should().Contain("http://localhost:3000");
+
+        response.Headers.TryGetValues("Access-Control-Allow-Credentials", out var credentials).Should().BeTrue();
+        credentials.Should().Contain("true");
     }
 }
