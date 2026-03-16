@@ -49,7 +49,11 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
             eventReceived.TrySetResult(payload);
         });
 
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var webhookResponse = await SendLiveKitWebhookAsync(
             CreateParticipantWebhookBody("participant_joined", voiceChannelId, member.UserId, member.Username));
@@ -84,7 +88,11 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
             eventReceived.TrySetResult(payload);
         });
 
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var webhookResponse = await SendLiveKitWebhookAsync(
             CreateParticipantWebhookBody("participant_left", voiceChannelId, member.UserId, member.Username));

@@ -46,6 +46,8 @@ public sealed class RealtimeHub : Hub
                 userId, Context.ConnectionId, Context.ConnectionAborted);
         }
 
+        await Clients.Caller.SendAsync("Ready", Context.ConnectionAborted);
+
         await base.OnConnectedAsync();
     }
 

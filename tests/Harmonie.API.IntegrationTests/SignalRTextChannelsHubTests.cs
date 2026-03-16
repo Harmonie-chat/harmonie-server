@@ -71,7 +71,11 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
             messageReceived.TrySetResult(payload);
         });
 
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var sendMessageResponse = await SendAuthorizedPostAsync(
             $"/api/channels/{textChannel.ChannelId}/messages",
@@ -142,7 +146,11 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
             eventReceived.TrySetResult(payload);
         });
 
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var editResponse = await SendAuthorizedPatchAsync(
             $"/api/channels/{textChannel.ChannelId}/messages/{sendMessagePayload!.MessageId}",
@@ -210,7 +218,11 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
             eventReceived.TrySetResult(payload);
         });
 
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var deleteResponse = await SendAuthorizedDeleteAsync(
             $"/api/channels/{textChannel.ChannelId}/messages/{sendMessagePayload!.MessageId}",
