@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();
+        services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
         return services;
     }
 }

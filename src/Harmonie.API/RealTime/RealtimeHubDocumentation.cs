@@ -12,36 +12,6 @@ public class RealtimeHubDocumentation
 {
     // ── Client → Server (Publish) ──────────────────────────────────
 
-    [Channel("hubs/realtime/JoinChannel")]
-    [PublishOperation(typeof(JoinChannelMessage),
-        Summary = "Join a text channel group to receive real-time messages.")]
-    public void JoinChannel() { }
-
-    [Channel("hubs/realtime/LeaveChannel")]
-    [PublishOperation(typeof(LeaveChannelMessage),
-        Summary = "Leave a text channel group.")]
-    public void LeaveChannel() { }
-
-    [Channel("hubs/realtime/JoinGuild")]
-    [PublishOperation(typeof(JoinGuildMessage),
-        Summary = "Join a guild group to receive voice presence events.")]
-    public void JoinGuild() { }
-
-    [Channel("hubs/realtime/LeaveGuild")]
-    [PublishOperation(typeof(LeaveGuildMessage),
-        Summary = "Leave a guild group.")]
-    public void LeaveGuild() { }
-
-    [Channel("hubs/realtime/JoinConversation")]
-    [PublishOperation(typeof(JoinConversationMessage),
-        Summary = "Join a direct conversation group to receive real-time messages.")]
-    public void JoinConversation() { }
-
-    [Channel("hubs/realtime/LeaveConversation")]
-    [PublishOperation(typeof(LeaveConversationMessage),
-        Summary = "Leave a direct conversation group.")]
-    public void LeaveConversation() { }
-
     [Channel("hubs/realtime/StartTypingChannel")]
     [PublishOperation(typeof(StartTypingChannelMessage),
         Summary = "Signal that the user is typing in a guild text channel. Throttled to 1 event per 5 seconds per user per channel.")]
@@ -127,11 +97,5 @@ public class RealtimeHubDocumentation
 
 // ── Client → Server payload types ─────────────────────────────────
 
-public sealed record JoinChannelMessage(Guid ChannelId);
-public sealed record LeaveChannelMessage(Guid ChannelId);
-public sealed record JoinGuildMessage(Guid GuildId);
-public sealed record LeaveGuildMessage(Guid GuildId);
-public sealed record JoinConversationMessage(Guid ConversationId);
-public sealed record LeaveConversationMessage(Guid ConversationId);
 public sealed record StartTypingChannelMessage(Guid ChannelId);
 public sealed record StartTypingConversationMessage(Guid ConversationId);

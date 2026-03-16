@@ -41,6 +41,7 @@ public sealed class CreateChannelHandlerTests
         _handler = new CreateChannelHandler(
             _guildRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             _unitOfWorkMock.Object,
             NullLogger<CreateChannelHandler>.Instance);
     }

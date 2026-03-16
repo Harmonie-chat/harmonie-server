@@ -39,6 +39,7 @@ public sealed class BanMemberHandlerTests
             _guildMemberRepositoryMock.Object,
             _guildBanRepositoryMock.Object,
             _messageRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             _unitOfWorkMock.Object,
             NullLogger<BanMemberHandler>.Instance);
     }

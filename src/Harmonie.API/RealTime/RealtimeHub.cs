@@ -17,22 +17,22 @@ public sealed class RealtimeHub : Hub
 
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
-    private readonly IGuildRepository _guildRepository;
     private readonly IConversationRepository _conversationRepository;
     private readonly IConnectionTracker _connectionTracker;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
 
     public RealtimeHub(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
-        IGuildRepository guildRepository,
         IConversationRepository conversationRepository,
-        IConnectionTracker connectionTracker)
+        IConnectionTracker connectionTracker,
+        IRealtimeGroupManager realtimeGroupManager)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
-        _guildRepository = guildRepository;
         _conversationRepository = conversationRepository;
         _connectionTracker = connectionTracker;
+        _realtimeGroupManager = realtimeGroupManager;
     }
 
     public override async Task OnConnectedAsync()
@@ -40,6 +40,9 @@ public sealed class RealtimeHub : Hub
         if (TryGetAuthenticatedUserId(out var userId) && userId is not null)
         {
             await _connectionTracker.HandleConnectedAsync(
+                userId, Context.ConnectionId, Context.ConnectionAborted);
+
+            await _realtimeGroupManager.SubscribeConnectionAsync(
                 userId, Context.ConnectionId, Context.ConnectionAborted);
         }
 
@@ -55,122 +58,6 @@ public sealed class RealtimeHub : Hub
         }
 
         await base.OnDisconnectedAsync(exception);
-    }
-
-    public async Task JoinChannel(Guid channelId)
-    {
-        if (channelId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        if (!TryGetAuthenticatedUserId(out var currentUserId) || currentUserId is null)
-            throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
-
-        var parsedChannelId = GuildChannelId.From(channelId);
-        var channel = await _guildChannelRepository.GetByIdAsync(parsedChannelId, Context.ConnectionAborted);
-        if (channel is null)
-            throw new HubException(ApplicationErrorCodes.Channel.NotFound);
-
-        if (channel.Type != GuildChannelType.Text)
-            throw new HubException(ApplicationErrorCodes.Channel.NotText);
-
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            channel.GuildId,
-            currentUserId,
-            Context.ConnectionAborted);
-        if (!isMember)
-            throw new HubException(ApplicationErrorCodes.Channel.AccessDenied);
-
-        await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            GetChannelGroupName(parsedChannelId),
-            Context.ConnectionAborted);
-    }
-
-    public async Task LeaveChannel(Guid channelId)
-    {
-        if (channelId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        var parsedChannelId = GuildChannelId.From(channelId);
-        await Groups.RemoveFromGroupAsync(
-            Context.ConnectionId,
-            GetChannelGroupName(parsedChannelId),
-            Context.ConnectionAborted);
-    }
-
-    public async Task JoinGuild(Guid guildId)
-    {
-        if (guildId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        if (!TryGetAuthenticatedUserId(out var currentUserId) || currentUserId is null)
-            throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
-
-        var parsedGuildId = GuildId.From(guildId);
-        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(
-            parsedGuildId,
-            currentUserId,
-            Context.ConnectionAborted);
-
-        if (guildAccess is null)
-            throw new HubException(ApplicationErrorCodes.Guild.NotFound);
-
-        if (guildAccess.CallerRole is null)
-            throw new HubException(ApplicationErrorCodes.Guild.AccessDenied);
-
-        await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            GetGuildGroupName(parsedGuildId),
-            Context.ConnectionAborted);
-    }
-
-    public async Task LeaveGuild(Guid guildId)
-    {
-        if (guildId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        var parsedGuildId = GuildId.From(guildId);
-        await Groups.RemoveFromGroupAsync(
-            Context.ConnectionId,
-            GetGuildGroupName(parsedGuildId),
-            Context.ConnectionAborted);
-    }
-
-    public async Task JoinConversation(Guid conversationId)
-    {
-        if (conversationId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        if (!TryGetAuthenticatedUserId(out var currentUserId) || currentUserId is null)
-            throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
-
-        var parsedConversationId = ConversationId.From(conversationId);
-        var conversation = await _conversationRepository.GetByIdAsync(
-            parsedConversationId,
-            Context.ConnectionAborted);
-
-        if (conversation is null)
-            throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
-
-        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
-            throw new HubException(ApplicationErrorCodes.Conversation.AccessDenied);
-
-        await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            GetConversationGroupName(parsedConversationId),
-            Context.ConnectionAborted);
-    }
-
-    public async Task LeaveConversation(Guid conversationId)
-    {
-        if (conversationId == Guid.Empty)
-            throw new HubException(ApplicationErrorCodes.Common.ValidationFailed);
-
-        var parsedConversationId = ConversationId.From(conversationId);
-        await Groups.RemoveFromGroupAsync(
-            Context.ConnectionId,
-            GetConversationGroupName(parsedConversationId),
-            Context.ConnectionAborted);
     }
 
     public async Task StartTypingChannel(Guid channelId)

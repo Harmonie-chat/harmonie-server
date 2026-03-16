@@ -13,6 +13,7 @@ public sealed class BanMemberHandler
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildBanRepository _guildBanRepository;
     private readonly IMessageRepository _messageRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<BanMemberHandler> _logger;
 
@@ -21,6 +22,7 @@ public sealed class BanMemberHandler
         IGuildMemberRepository guildMemberRepository,
         IGuildBanRepository guildBanRepository,
         IMessageRepository messageRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         IUnitOfWork unitOfWork,
         ILogger<BanMemberHandler> logger)
     {
@@ -28,6 +30,7 @@ public sealed class BanMemberHandler
         _guildMemberRepository = guildMemberRepository;
         _guildBanRepository = guildBanRepository;
         _messageRepository = messageRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -145,6 +148,17 @@ public sealed class BanMemberHandler
             await _messageRepository.SoftDeleteByAuthorInGuildAsync(guildId, targetId, purgeMessagesDays, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+
+        if (isMember)
+        {
+            await BestEffortNotificationHelper.TryNotifyAsync(
+                ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(targetId, guildId, ct),
+                TimeSpan.FromSeconds(5),
+                _logger,
+                "Failed to unsubscribe banned user {UserId} from guild {GuildId} SignalR groups",
+                targetId,
+                guildId);
+        }
 
         _logger.LogInformation(
             "BanMember succeeded. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}, IsMember={IsMember}, PurgeDays={PurgeDays}",

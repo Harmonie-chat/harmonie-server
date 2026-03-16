@@ -43,6 +43,7 @@ public sealed class CreateGuildHandlerTests
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             _unitOfWorkMock.Object,
             NullLogger<CreateGuildHandler>.Instance);
     }

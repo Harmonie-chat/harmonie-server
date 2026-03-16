@@ -103,6 +103,20 @@ public sealed class ConnectionTracker : IConnectionTracker, IDisposable
             && state.ConnectionIds.Count > 0;
     }
 
+    public IReadOnlyList<string> GetConnectionIds(UserId userId)
+    {
+        var userKey = userId.ToString();
+        if (!_states.TryGetValue(userKey, out var state))
+            return [];
+
+        lock (state.Lock)
+        {
+            return state.ConnectionIds.Count == 0
+                ? []
+                : state.ConnectionIds.ToArray();
+        }
+    }
+
     private void StartGracePeriod(UserId userId, UserConnectionState state)
     {
         var cts = new CancellationTokenSource();

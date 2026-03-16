@@ -10,15 +10,18 @@ public sealed class RemoveMemberHandler
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly ILogger<RemoveMemberHandler> _logger;
 
     public RemoveMemberHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         ILogger<RemoveMemberHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _logger = logger;
     }
 
@@ -84,6 +87,14 @@ public sealed class RemoveMemberHandler
         }
 
         await _guildMemberRepository.RemoveAsync(guildId, targetId, cancellationToken);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(targetId, guildId, ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to unsubscribe user {UserId} from guild {GuildId} SignalR groups",
+            targetId,
+            guildId);
 
         _logger.LogInformation(
             "RemoveMember succeeded. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}",

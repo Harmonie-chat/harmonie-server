@@ -12,6 +12,7 @@ public sealed class AcceptInviteHandler
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildBanRepository _guildBanRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AcceptInviteHandler> _logger;
 
@@ -19,12 +20,14 @@ public sealed class AcceptInviteHandler
         IGuildInviteRepository guildInviteRepository,
         IGuildMemberRepository guildMemberRepository,
         IGuildBanRepository guildBanRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         IUnitOfWork unitOfWork,
         ILogger<AcceptInviteHandler> logger)
     {
         _guildInviteRepository = guildInviteRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildBanRepository = guildBanRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -148,6 +151,14 @@ public sealed class AcceptInviteHandler
             inviteCode,
             invite.GuildId,
             callerUserId);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _realtimeGroupManager.AddUserToGuildGroupsAsync(callerUserId, invite.GuildId, ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to subscribe user {UserId} to guild {GuildId} SignalR groups",
+            callerUserId,
+            invite.GuildId);
 
         var payload = new AcceptInviteResponse(
             GuildId: invite.GuildId.ToString(),

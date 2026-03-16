@@ -14,6 +14,7 @@ public sealed class CreateGuildHandler
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateGuildHandler> _logger;
 
@@ -21,12 +22,14 @@ public sealed class CreateGuildHandler
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
         IGuildChannelRepository guildChannelRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         IUnitOfWork unitOfWork,
         ILogger<CreateGuildHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildChannelRepository = guildChannelRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -189,6 +192,14 @@ public sealed class CreateGuildHandler
             guild.OwnerUserId,
             defaultTextChannelResult.Value.Id,
             defaultVoiceChannelResult.Value.Id);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _realtimeGroupManager.AddUserToGuildGroupsAsync(currentUserId, guild.Id, ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to subscribe user {UserId} to guild {GuildId} SignalR groups",
+            currentUserId,
+            guild.Id);
 
         var payload = new CreateGuildResponse(
             GuildId: guild.Id.ToString(),

@@ -9,15 +9,18 @@ public sealed class LeaveGuildHandler
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly ILogger<LeaveGuildHandler> _logger;
 
     public LeaveGuildHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         ILogger<LeaveGuildHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _logger = logger;
     }
 
@@ -69,6 +72,14 @@ public sealed class LeaveGuildHandler
         }
 
         await _guildMemberRepository.RemoveAsync(guildId, userId, cancellationToken);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(userId, guildId, ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to unsubscribe user {UserId} from guild {GuildId} SignalR groups",
+            userId,
+            guildId);
 
         _logger.LogInformation(
             "LeaveGuild succeeded. GuildId={GuildId}, UserId={UserId}",

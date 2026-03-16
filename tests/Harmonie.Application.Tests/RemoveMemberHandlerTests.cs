@@ -25,6 +25,7 @@ public sealed class RemoveMemberHandlerTests
         _handler = new RemoveMemberHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             NullLogger<RemoveMemberHandler>.Instance);
     }
 

@@ -127,6 +127,7 @@ builder.Services.AddScoped<IConversationMessageNotifier, SignalRConversationMess
 builder.Services.AddScoped<IUserPresenceNotifier, SignalRUserPresenceNotifier>();
 builder.Services.AddScoped<IReactionNotifier, SignalRReactionNotifier>();
 builder.Services.AddSingleton<IConnectionTracker, ConnectionTracker>();
+builder.Services.AddScoped<IRealtimeGroupManager, SignalRRealtimeGroupManager>();
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres")
     .AddCheck<LiveKitHealthCheck>("livekit");

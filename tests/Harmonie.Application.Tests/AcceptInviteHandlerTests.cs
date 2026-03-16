@@ -40,6 +40,7 @@ public sealed class AcceptInviteHandlerTests
             _guildInviteRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _guildBanRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             _unitOfWorkMock.Object,
             NullLogger<AcceptInviteHandler>.Instance);
     }

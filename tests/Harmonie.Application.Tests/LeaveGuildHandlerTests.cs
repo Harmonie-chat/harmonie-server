@@ -25,6 +25,7 @@ public sealed class LeaveGuildHandlerTests
         _handler = new LeaveGuildHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
+            new Mock<IRealtimeGroupManager>().Object,
             NullLogger<LeaveGuildHandler>.Instance);
     }
 

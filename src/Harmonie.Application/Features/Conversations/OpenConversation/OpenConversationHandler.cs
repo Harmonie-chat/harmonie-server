@@ -9,15 +9,18 @@ public sealed class OpenConversationHandler
 {
     private readonly IUserRepository _userRepository;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly ILogger<OpenConversationHandler> _logger;
 
     public OpenConversationHandler(
         IUserRepository userRepository,
         IConversationRepository conversationRepository,
+        IRealtimeGroupManager realtimeGroupManager,
         ILogger<OpenConversationHandler> logger)
     {
         _userRepository = userRepository;
         _conversationRepository = conversationRepository;
+        _realtimeGroupManager = realtimeGroupManager;
         _logger = logger;
     }
 
@@ -82,6 +85,22 @@ public sealed class OpenConversationHandler
             callerUserId,
             targetUserId,
             result.WasCreated);
+
+        if (result.WasCreated)
+        {
+            var conversationId = result.Conversation.Id;
+            await BestEffortNotificationHelper.TryNotifyAsync(
+                async ct =>
+                {
+                    await Task.WhenAll(
+                        _realtimeGroupManager.AddUserToConversationGroupAsync(callerUserId, conversationId, ct),
+                        _realtimeGroupManager.AddUserToConversationGroupAsync(targetUserId, conversationId, ct));
+                },
+                TimeSpan.FromSeconds(5),
+                _logger,
+                "Failed to subscribe users to conversation {ConversationId} SignalR group",
+                conversationId);
+        }
 
         var payload = new OpenConversationResponse(
             ConversationId: result.Conversation.Id.ToString(),
