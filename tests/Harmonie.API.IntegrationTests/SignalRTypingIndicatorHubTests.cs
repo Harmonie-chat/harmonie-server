@@ -109,11 +109,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         });
 
         await receiverConnection.StartAsync();
-        await receiverConnection.InvokeAsync("JoinChannel", textChannelId);
 
         await using var senderConnection = CreateHubConnection(owner.AccessToken);
         await senderConnection.StartAsync();
-        await senderConnection.InvokeAsync("JoinChannel", textChannelId);
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -167,11 +165,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         });
 
         await receiverConnection.StartAsync();
-        await receiverConnection.InvokeAsync("JoinChannel", textChannelId);
 
         await using var senderConnection = CreateHubConnection(owner.AccessToken);
         await senderConnection.StartAsync();
-        await senderConnection.InvokeAsync("JoinChannel", textChannelId);
 
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
@@ -218,11 +214,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         });
 
         await receiverConnection.StartAsync();
-        await receiverConnection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
         await senderConnection.StartAsync();
-        await senderConnection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -250,11 +244,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         });
 
         await receiverConnection.StartAsync();
-        await receiverConnection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
         await senderConnection.StartAsync();
-        await senderConnection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));

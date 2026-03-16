@@ -30,43 +30,7 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
-    public async Task JoinChannel_WhenUserIsNotMember_ShouldReturnAccessDeniedHubException()
-    {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
-
-        var createGuildResponse = await SendAuthorizedPostAsync(
-            "/api/guilds",
-            new CreateGuildRequest("SignalR Guild"),
-            owner.AccessToken);
-        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
-        createGuildPayload.Should().NotBeNull();
-
-        var channelsResponse = await SendAuthorizedGetAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/channels",
-            owner.AccessToken);
-        channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
-        channelsPayload.Should().NotBeNull();
-
-        var textChannel = channelsPayload!.Channels.First(channel => channel.Type == "Text");
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
-
-        await using var connection = CreateHubConnection(outsider.AccessToken);
-        await connection.StartAsync();
-
-        var act = async () => await connection.InvokeAsync("JoinChannel", textChannelId);
-
-        var exception = await act.Should().ThrowAsync<HubException>();
-        exception.Which.Message.Should().Contain(ApplicationErrorCodes.Channel.AccessDenied);
-    }
-
-    [Fact]
-    public async Task MessageCreated_WhenMemberJoinedChannel_ShouldReceiveEvent()
+    public async Task MessageCreated_WhenMemberConnected_ShouldReceiveEvent()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -108,7 +72,6 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
         });
 
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinChannel", textChannelId);
 
         var sendMessageResponse = await SendAuthorizedPostAsync(
             $"/api/channels/{textChannel.ChannelId}/messages",
@@ -131,7 +94,7 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
-    public async Task MessageUpdated_WhenMemberJoinedChannel_ShouldReceiveEvent()
+    public async Task MessageUpdated_WhenMemberConnected_ShouldReceiveEvent()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -180,9 +143,6 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
         });
 
         await connection.StartAsync();
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
-        await connection.InvokeAsync("JoinChannel", textChannelId);
 
         var editResponse = await SendAuthorizedPatchAsync(
             $"/api/channels/{textChannel.ChannelId}/messages/{sendMessagePayload!.MessageId}",
@@ -202,7 +162,7 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
-    public async Task MessageDeleted_WhenMemberJoinedChannel_ShouldReceiveEvent()
+    public async Task MessageDeleted_WhenMemberConnected_ShouldReceiveEvent()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -251,9 +211,6 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<WebApplicationFa
         });
 
         await connection.StartAsync();
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
-        await connection.InvokeAsync("JoinChannel", textChannelId);
 
         var deleteResponse = await SendAuthorizedDeleteAsync(
             $"/api/channels/{textChannel.ChannelId}/messages/{sendMessagePayload!.MessageId}",

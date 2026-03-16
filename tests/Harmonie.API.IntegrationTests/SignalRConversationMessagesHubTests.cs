@@ -29,24 +29,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     }
 
     [Fact]
-    public async Task JoinConversation_WhenUserIsNotParticipant_ShouldReturnAccessDeniedHubException()
-    {
-        var participantOne = await RegisterAsync();
-        var participantTwo = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
-
-        await using var connection = CreateHubConnection(outsider.AccessToken);
-        await connection.StartAsync();
-
-        var act = async () => await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
-
-        var exception = await act.Should().ThrowAsync<HubException>();
-        exception.Which.Message.Should().Contain(ApplicationErrorCodes.Conversation.AccessDenied);
-    }
-
-    [Fact]
-    public async Task ConversationMessageCreated_WhenParticipantJoinedConversation_ShouldReceiveEvent()
+    public async Task ConversationMessageCreated_WhenParticipantConnected_ShouldReceiveEvent()
     {
         var sender = await RegisterAsync();
         var receiver = await RegisterAsync();
@@ -62,7 +45,6 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         });
 
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         var sendResponse = await SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
@@ -85,7 +67,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     }
 
     [Fact]
-    public async Task ConversationMessageUpdated_WhenParticipantJoinedConversation_ShouldReceiveEvent()
+    public async Task ConversationMessageUpdated_WhenParticipantConnected_ShouldReceiveEvent()
     {
         var sender = await RegisterAsync();
         var receiver = await RegisterAsync();
@@ -110,7 +92,6 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         });
 
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         var editResponse = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
@@ -130,7 +111,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     }
 
     [Fact]
-    public async Task ConversationMessageDeleted_WhenParticipantJoinedConversation_ShouldReceiveEvent()
+    public async Task ConversationMessageDeleted_WhenParticipantConnected_ShouldReceiveEvent()
     {
         var sender = await RegisterAsync();
         var receiver = await RegisterAsync();
@@ -155,7 +136,6 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         });
 
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinConversation", Guid.Parse(conversationId));
 
         var deleteResponse = await SendAuthorizedDeleteAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",

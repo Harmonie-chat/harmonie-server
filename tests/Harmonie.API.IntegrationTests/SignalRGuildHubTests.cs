@@ -25,7 +25,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
-    public async Task GuildDeleted_WhenMemberJoinedGuild_ShouldReceiveEventBeforeDeletion()
+    public async Task GuildDeleted_WhenMemberConnected_ShouldReceiveEventBeforeDeletion()
     {
         var owner = await RegisterAsync();
         var member = await RegisterAsync();
@@ -55,7 +55,6 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
         });
 
         await connection.StartAsync();
-        await connection.InvokeAsync("JoinGuild", Guid.Parse(createGuildPayload.GuildId));
 
         var deleteGuildResponse = await SendAuthorizedDeleteAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",
