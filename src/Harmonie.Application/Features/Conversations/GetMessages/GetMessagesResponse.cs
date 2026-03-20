@@ -5,7 +5,8 @@ namespace Harmonie.Application.Features.Conversations.GetMessages;
 public sealed record GetMessagesResponse(
     string ConversationId,
     IReadOnlyList<GetMessagesItemResponse> Items,
-    string? NextCursor);
+    string? NextCursor,
+    string? LastReadMessageId);
 
 public sealed record GetMessagesItemResponse(
     string MessageId,

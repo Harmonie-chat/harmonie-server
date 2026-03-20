@@ -55,6 +55,7 @@ using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Features.Channels.AcknowledgeRead;
+using ConversationAcknowledgeReadHandler = Harmonie.Application.Features.Conversations.AcknowledgeRead.AcknowledgeReadHandler;
 using ChannelAddReactionHandler = Harmonie.Application.Features.Channels.AddReaction.AddReactionHandler;
 using ChannelRemoveReactionHandler = Harmonie.Application.Features.Channels.RemoveReaction.RemoveReactionHandler;
 using ConversationAddReactionHandler = Harmonie.Application.Features.Conversations.AddReaction.AddReactionHandler;
@@ -137,6 +138,7 @@ public static class DependencyInjection
         services.AddScoped<AcknowledgeReadHandler>();
         services.AddScoped<ChannelAddReactionHandler>();
         services.AddScoped<ChannelRemoveReactionHandler>();
+        services.AddScoped<ConversationAcknowledgeReadHandler>();
         services.AddScoped<ConversationAddReactionHandler>();
         services.AddScoped<ConversationRemoveReactionHandler>();
         // Add more handlers as features are created

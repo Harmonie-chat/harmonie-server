@@ -54,6 +54,10 @@ public interface IMessageRepository
         GuildChannelId channelId,
         CancellationToken cancellationToken = default);
 
+    Task<MessageId?> GetLatestConversationMessageIdAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default);
+
     Task<int> SoftDeleteByAuthorInGuildAsync(
         GuildId guildId,
         UserId authorUserId,
