@@ -10,7 +10,6 @@ using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.SendMessage;
-using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
@@ -22,7 +21,7 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ChannelMessagesTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -30,320 +29,10 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public ChannelEndpointsTests(WebApplicationFactory<Program> factory)
+    public ChannelMessagesTests(WebApplicationFactory<Program> factory)
     {
         _client = factory.CreateClient();
     }
-
-    [Fact]
-    public async Task CreateChannel_WhenTypeIsMissing_ShouldReturn400()
-    {
-        var owner = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Missing Type Guild");
-
-        var createResponse = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/channels",
-            new { name = "missing-type", position = 0 },
-            owner.AccessToken);
-        createResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var error = await createResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    [Fact]
-    public async Task CreateChannel_WhenNameAlreadyExists_ShouldReturn409()
-    {
-        var owner = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Create Channel Name Conflict Guild");
-
-        await CreateChannelInGuildAsync(
-            guildId,
-            new CreateChannelRequest("taken-name", ChannelTypeInput.Text, 1),
-            owner.AccessToken);
-
-        var createResponse = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/channels",
-            new CreateChannelRequest("taken-name", ChannelTypeInput.Text, 2),
-            owner.AccessToken);
-        createResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
-
-        var error = await createResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenAdminRenamesChannel_ShouldReturn200()
-    {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "original-name");
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { name = "renamed-channel" },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var payload = await updateResponse.Content.ReadFromJsonAsync<UpdateChannelResponse>();
-        payload.Should().NotBeNull();
-        payload!.ChannelId.Should().Be(channelId);
-        payload.Name.Should().Be("renamed-channel");
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenAdminUpdatesPosition_ShouldReturn200()
-    {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "position-channel", position: 1);
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { position = 10 },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var payload = await updateResponse.Content.ReadFromJsonAsync<UpdateChannelResponse>();
-        payload.Should().NotBeNull();
-        payload!.Position.Should().Be(10);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenFieldsAreExplicitlyNull_ShouldTreatThemAsNotProvided()
-    {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "stable-channel", position: 3);
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { name = (string?)null, position = (int?)null },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var payload = await updateResponse.Content.ReadFromJsonAsync<UpdateChannelResponse>();
-        payload.Should().NotBeNull();
-        payload!.Name.Should().Be("stable-channel");
-        payload.Position.Should().Be(3);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenMemberTriesToUpdate_ShouldReturn403()
-    {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
-
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden Update Guild");
-        await InviteMemberAsync(guildId, member.UserId, owner.AccessToken);
-
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "member-test-channel", guildId: guildId);
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { name = "hacked-name" },
-            member.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
-        var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenNonMemberTriesToUpdate_ShouldReturn403()
-    {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "outsider-channel");
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { name = "outsider-rename" },
-            outsider.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
-        var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenChannelNotFound_ShouldReturn404()
-    {
-        var owner = await RegisterAsync();
-        var nonExistentChannelId = Guid.NewGuid();
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{nonExistentChannelId}",
-            new { name = "ghost-channel" },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
-
-        var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenNameAlreadyExists_ShouldReturn409()
-    {
-        var owner = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Name Conflict Guild");
-
-        await CreateChannelInGuildAsync(
-            guildId,
-            new CreateChannelRequest("taken-name", ChannelTypeInput.Text, 1),
-            owner.AccessToken);
-
-        var channelToRenameId = await CreateChannelAndGetIdAsync(
-            owner.AccessToken,
-            "original-channel",
-            guildId: guildId,
-            position: 2);
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelToRenameId}",
-            new { name = "taken-name" },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
-
-        var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenNotAuthenticated_ShouldReturn401()
-    {
-        var nonExistentChannelId = Guid.NewGuid();
-
-        var updateResponse = await _client.PatchAsJsonAsync(
-            $"/api/channels/{nonExistentChannelId}",
-            new { name = "anon-rename" });
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task UpdateChannel_WhenNameIsEmpty_ShouldReturn400()
-    {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "valid-name");
-
-        var updateResponse = await SendAuthorizedPatchAsync(
-            $"/api/channels/{channelId}",
-            new { name = "" },
-            owner.AccessToken);
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    // ─── DeleteChannel Tests ───────────────────────────────────────────────────
-
-    [Fact]
-    public async Task DeleteChannel_WhenAdminDeletesChannel_ShouldReturn204()
-    {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "channel-to-delete");
-
-        var deleteResponse = await SendAuthorizedDeleteAsync(
-            $"/api/channels/{channelId}",
-            owner.AccessToken);
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    }
-
-    [Fact]
-    public async Task DeleteChannel_WhenMemberTriesToDelete_ShouldReturn403()
-    {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
-
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden Delete Guild");
-        await InviteMemberAsync(guildId, member.UserId, owner.AccessToken);
-
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "member-delete-channel", guildId: guildId);
-
-        var deleteResponse = await SendAuthorizedDeleteAsync(
-            $"/api/channels/{channelId}",
-            member.AccessToken);
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
-    }
-
-    [Fact]
-    public async Task DeleteChannel_WhenNonMemberTriesToDelete_ShouldReturn403()
-    {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "outsider-delete-channel");
-
-        var deleteResponse = await SendAuthorizedDeleteAsync(
-            $"/api/channels/{channelId}",
-            outsider.AccessToken);
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
-    }
-
-    [Fact]
-    public async Task DeleteChannel_WhenChannelNotFound_ShouldReturn404()
-    {
-        var owner = await RegisterAsync();
-        var nonExistentChannelId = Guid.NewGuid();
-
-        var deleteResponse = await SendAuthorizedDeleteAsync(
-            $"/api/channels/{nonExistentChannelId}",
-            owner.AccessToken);
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
-
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
-    }
-
-    [Fact]
-    public async Task DeleteChannel_WhenNotAuthenticated_ShouldReturn401()
-    {
-        var nonExistentChannelId = Guid.NewGuid();
-
-        var deleteResponse = await _client.DeleteAsync($"/api/channels/{nonExistentChannelId}");
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task DeleteChannel_WhenDefaultChannel_ShouldReturn409()
-    {
-        var owner = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Default Channel Delete Guild");
-
-        var channelsResponse = await SendAuthorizedGetAsync(
-            $"/api/guilds/{guildId}/channels",
-            owner.AccessToken);
-        channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var channelsPayload = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
-        channelsPayload.Should().NotBeNull();
-
-        var defaultChannel = channelsPayload!.Channels.First(c => c.IsDefault);
-
-        var deleteResponse = await SendAuthorizedDeleteAsync(
-            $"/api/channels/{defaultChannel.ChannelId}",
-            owner.AccessToken);
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
-
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Channel.CannotDeleteDefault);
-    }
-
-    // ─── EditMessage Tests ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task SendMessage_WithAttachmentFileIds_ShouldReturnCreatedAndExposeAttachmentsInList()
@@ -1013,18 +702,6 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         return payload!.Channels.First(channel => channel.Type == "Voice").ChannelId;
     }
 
-    private async Task CreateChannelInGuildAsync(
-        string guildId,
-        CreateChannelRequest request,
-        string accessToken)
-    {
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/channels",
-            request,
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
     private async Task<string> SendMessageAndGetIdAsync(
         string channelId,
         string content,
@@ -1080,6 +757,15 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         return await _client.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAuthorizedPostWithoutBodyAsync(
+        string uri,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await _client.SendAsync(request);
+    }
+
     private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
         string uri,
         TRequest payload,
@@ -1089,15 +775,6 @@ public sealed class ChannelEndpointsTests : IClassFixture<WebApplicationFactory<
         {
             Content = JsonContent.Create(payload, options: _jsonOptions)
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostWithoutBodyAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await _client.SendAsync(request);
     }
