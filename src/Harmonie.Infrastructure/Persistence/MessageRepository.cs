@@ -152,6 +152,11 @@ public sealed class MessageRepository : IMessageRepository
                        LIMIT @Take)
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
+
+                   SELECT last_read_message_id
+                   FROM channel_read_states
+                   WHERE user_id    = @CallerId
+                     AND channel_id = @ChannelId;
                    """;
 
         var parameters = new DynamicParameters();
@@ -174,6 +179,7 @@ public sealed class MessageRepository : IMessageRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+        var lastReadMessageIdRaw = await multi.ReadSingleOrDefaultAsync<Guid?>();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -197,7 +203,11 @@ public sealed class MessageRepository : IMessageRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId);
+        var lastReadMessageId = lastReadMessageIdRaw.HasValue
+            ? MessageId.From(lastReadMessageIdRaw.Value)
+            : null;
+
+        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadMessageId);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
@@ -264,6 +274,11 @@ public sealed class MessageRepository : IMessageRepository
                        LIMIT @Take)
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
+
+                   SELECT last_read_message_id
+                   FROM conversation_read_states
+                   WHERE user_id         = @CallerId
+                     AND conversation_id = @ConversationId;
                    """;
 
         var parameters = new DynamicParameters();
@@ -286,6 +301,7 @@ public sealed class MessageRepository : IMessageRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+        var lastReadMessageIdRaw = await multi.ReadSingleOrDefaultAsync<Guid?>();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -309,7 +325,11 @@ public sealed class MessageRepository : IMessageRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId);
+        var lastReadMessageId = lastReadMessageIdRaw.HasValue
+            ? MessageId.From(lastReadMessageIdRaw.Value)
+            : null;
+
+        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadMessageId);
     }
 
     public async Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
@@ -601,6 +621,54 @@ public sealed class MessageRepository : IMessageRepository
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
+    }
+
+    public async Task<MessageId?> GetLatestChannelMessageIdAsync(
+        GuildChannelId channelId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT id
+                           FROM messages
+                           WHERE channel_id = @ChannelId
+                             AND deleted_at_utc IS NULL
+                           ORDER BY created_at_utc DESC, id DESC
+                           LIMIT 1
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ChannelId = channelId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var result = await connection.QuerySingleOrDefaultAsync<Guid?>(command);
+        return result.HasValue ? MessageId.From(result.Value) : null;
+    }
+
+    public async Task<MessageId?> GetLatestConversationMessageIdAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT id
+                           FROM messages
+                           WHERE conversation_id = @ConversationId
+                             AND deleted_at_utc IS NULL
+                           ORDER BY created_at_utc DESC, id DESC
+                           LIMIT 1
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ConversationId = conversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var result = await connection.QuerySingleOrDefaultAsync<Guid?>(command);
+        return result.HasValue ? MessageId.From(result.Value) : null;
     }
 
     public async Task<int> SoftDeleteByAuthorInGuildAsync(

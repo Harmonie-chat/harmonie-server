@@ -36,15 +36,18 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
 
         await using var connection = CreateHubConnection(receiver.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var messageReceived = new TaskCompletionSource<SignalRConversationMessageCreatedEvent>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
+        connection.On("Ready", () => ready.TrySetResult());
         connection.On<SignalRConversationMessageCreatedEvent>("ConversationMessageCreated", payload =>
         {
             messageReceived.TrySetResult(payload);
         });
 
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         var sendResponse = await SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
@@ -83,15 +86,18 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         sendPayload.Should().NotBeNull();
 
         await using var connection = CreateHubConnection(receiver.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var messageReceived = new TaskCompletionSource<SignalRConversationMessageUpdatedEvent>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
+        connection.On("Ready", () => ready.TrySetResult());
         connection.On<SignalRConversationMessageUpdatedEvent>("ConversationMessageUpdated", payload =>
         {
             messageReceived.TrySetResult(payload);
         });
 
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         var editResponse = await SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
@@ -127,15 +133,18 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         sendPayload.Should().NotBeNull();
 
         await using var connection = CreateHubConnection(receiver.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var messageReceived = new TaskCompletionSource<SignalRConversationMessageDeletedEvent>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
+        connection.On("Ready", () => ready.TrySetResult());
         connection.On<SignalRConversationMessageDeletedEvent>("ConversationMessageDeleted", payload =>
         {
             messageReceived.TrySetResult(payload);
         });
 
         await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         var deleteResponse = await SendAuthorizedDeleteAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",

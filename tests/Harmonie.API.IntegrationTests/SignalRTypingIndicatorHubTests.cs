@@ -58,7 +58,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         textChannelIdParsed.Should().BeTrue();
 
         await using var connection = CreateHubConnection(outsider.AccessToken);
-        await connection.StartAsync();
+        await StartAndWaitReadyAsync(connection);
 
         var act = async () => await connection.InvokeAsync("StartTypingChannel", textChannelId);
 
@@ -108,10 +108,10 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
             typingReceived.TrySetResult(payload);
         });
 
-        await receiverConnection.StartAsync();
+        await StartAndWaitReadyAsync(receiverConnection);
 
         await using var senderConnection = CreateHubConnection(owner.AccessToken);
-        await senderConnection.StartAsync();
+        await StartAndWaitReadyAsync(senderConnection);
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -164,10 +164,10 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
             Interlocked.Increment(ref eventsReceived);
         });
 
-        await receiverConnection.StartAsync();
+        await StartAndWaitReadyAsync(receiverConnection);
 
         await using var senderConnection = CreateHubConnection(owner.AccessToken);
-        await senderConnection.StartAsync();
+        await StartAndWaitReadyAsync(senderConnection);
 
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
         await senderConnection.InvokeAsync("StartTypingChannel", textChannelId);
@@ -189,7 +189,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
         var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
 
         await using var connection = CreateHubConnection(outsider.AccessToken);
-        await connection.StartAsync();
+        await StartAndWaitReadyAsync(connection);
 
         var act = async () => await connection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
 
@@ -213,10 +213,10 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
             typingReceived.TrySetResult(payload);
         });
 
-        await receiverConnection.StartAsync();
+        await StartAndWaitReadyAsync(receiverConnection);
 
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
-        await senderConnection.StartAsync();
+        await StartAndWaitReadyAsync(senderConnection);
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -243,10 +243,10 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
             Interlocked.Increment(ref eventsReceived);
         });
 
-        await receiverConnection.StartAsync();
+        await StartAndWaitReadyAsync(receiverConnection);
 
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
-        await senderConnection.StartAsync();
+        await StartAndWaitReadyAsync(senderConnection);
 
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
         await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
@@ -258,6 +258,14 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<WebApplicatio
     }
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    private static async Task StartAndWaitReadyAsync(HubConnection connection)
+    {
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On("Ready", () => ready.TrySetResult());
+        await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    }
 
     private HubConnection CreateHubConnection(string accessToken)
     {

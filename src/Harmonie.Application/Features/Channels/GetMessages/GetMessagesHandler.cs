@@ -137,7 +137,8 @@ public sealed class GetMessagesHandler
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null
-                : MessageCursorCodec.Encode(page.NextCursor));
+                : MessageCursorCodec.Encode(page.NextCursor),
+            LastReadMessageId: page.LastReadMessageId?.ToString());
 
         return ApplicationResponse<GetMessagesResponse>.Ok(payload);
     }

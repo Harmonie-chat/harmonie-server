@@ -50,6 +50,14 @@ public interface IMessageRepository
         Message message,
         CancellationToken cancellationToken = default);
 
+    Task<MessageId?> GetLatestChannelMessageIdAsync(
+        GuildChannelId channelId,
+        CancellationToken cancellationToken = default);
+
+    Task<MessageId?> GetLatestConversationMessageIdAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default);
+
     Task<int> SoftDeleteByAuthorInGuildAsync(
         GuildId guildId,
         UserId authorUserId,
@@ -64,7 +72,8 @@ public sealed record MessageCursor(
 public sealed record MessagePage(
     IReadOnlyList<Message> Items,
     MessageCursor? NextCursor,
-    IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId);
+    IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId,
+    MessageId? LastReadMessageId = null);
 
 public sealed record SearchGuildMessagesQuery(
     GuildId GuildId,
