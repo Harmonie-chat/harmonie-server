@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  checks: write
 
 jobs:
   auto-link-pr-issue:
@@ -155,10 +156,18 @@ jobs:
         ASPNETCORE_ENVIRONMENT: Development
 
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage"
+      run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results
+        path: '**/test-results.trx'
+        reporter: dotnet-trx
 
     - name: Stop containers
       if: always()
