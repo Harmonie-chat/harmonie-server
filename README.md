@@ -2,32 +2,6 @@
 
 Open-source, self-hosted communication platform backend.
 
-## Current Scope
-
-This repository currently provides:
-- User registration, login, refresh token rotation, session logout, and logout-all session revocation
-- Refresh token persistence in PostgreSQL
-- Refresh token reuse detection with family session revocation on security incident
-- Guild creation, membership management, and settings updates
-- Guild channel listing with default text and voice channels
-- Direct conversation open/get by user pair
-- Direct conversation listing for the current user
-- Direct message retrieval in conversations with cursor pagination
-- Direct message full-text search in conversations with cursor pagination
-- Direct message editing in conversations
-- Direct message deletion in conversations
-- Direct message attachment deletion in conversations
-- Direct message sending in conversations
-- Voice channel join token issuance via LiveKit
-- Voice presence notifications via LiveKit webhooks and SignalR
-- Text messaging (send + read with cursor-based pagination)
-- Guild message full-text search with optional filters and cursor pagination
-- User search by username/display name with optional guild scoping
-- File upload with persisted metadata and local filesystem storage
-- SignalR real-time delivery for text channel messages
-- Rate limiting for message posting
-- Unit and integration tests for auth, guild flows, messaging, and real-time delivery
-
 ## Tech Stack
 
 - .NET 10 (Minimal APIs)
@@ -39,108 +13,9 @@ This repository currently provides:
 - LiveKit
 - OpenAPI + Scalar API reference
 
-## Quick Start
+## Getting Started
 
-1. Start PostgreSQL and LiveKit:
-
-```bash
-podman compose up -d postgres livekit
-```
-
-2. Run migrations:
-
-```bash
-dotnet run --project tools/Harmonie.Migrations
-```
-
-3. Run API in Development:
-
-PowerShell:
-
-```powershell
-$env:ASPNETCORE_ENVIRONMENT = "Development"
-dotnet run --project src/Harmonie.API
-```
-
-The default Development config uses:
-- `LiveKit:PublicUrl=ws://localhost:7880` for tokens returned to clients
-- `LiveKit:InternalUrl=http://localhost:7880` for server-to-server API calls
-- `ObjectStorage:LocalBasePath=uploads` for uploaded files on disk
-- `ObjectStorage:LocalBaseUrl=http://localhost:5000/files` for public file URLs returned by the API
-
-The API serves uploaded files itself from `/files/*`. In `docker-compose`, the
-API container stores them in `/app/uploads`, backed by the `uploads-data`
-volume.
-
-In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http://livekit:7880` while keeping `LiveKit:PublicUrl=ws://localhost:7880` so browser clients can still connect through the published host port.
-
-### Upload Storage
-
-```json
-"ObjectStorage": {
-  "LocalBasePath": "/var/harmonie/uploads",
-  "LocalBaseUrl": "http://localhost:5001/files"
-}
-```
-
-No external object storage service is required right now. If upload volume or
-deployment topology eventually justifies it, the storage abstraction can later
-be backed by an S3-compatible service.
-
-`dotnet test` includes a local-filesystem upload E2E test. No external object
-storage service is required for the current suite.
-
-## API Response Model
-
-Endpoints return:
-- Success: feature response DTOs
-- Error: standardized JSON payload with `code`, `detail`, `status`, optional `traceId`, and optional field-level `errors`
-
-Success example:
-
-```json
-{
-  "userId": "d8f2a3d1-3f27-4f8b-8f42-7b79f12ad7b7",
-  "email": "user@harmonie.chat",
-  "username": "user123",
-  "accessToken": "eyJ...",
-  "refreshToken": "vL...",
-  "expiresAt": "2026-02-22T12:00:00Z"
-}
-```
-
-Error example:
-
-```json
-{
-  "code": "AUTH_INVALID_CREDENTIALS",
-  "detail": "Invalid email/username or password",
-  "status": 401,
-  "traceId": "0HNHBM2G7M4SL:00000001",
-  "errors": null
-}
-```
-
-Validation error example:
-
-```json
-{
-  "code": "COMMON_VALIDATION_FAILED",
-  "detail": "Request validation failed",
-  "status": 400,
-  "traceId": "0HNHBM2G7M4SL:00000002",
-  "errors": {
-    "displayName": [
-      {
-        "code": "VALIDATION_MAX_LENGTH",
-        "detail": "Display name cannot exceed 100 characters"
-      }
-    ]
-  }
-}
-```
-
-Refresh-token security incidents return stable code `AUTH_REFRESH_TOKEN_REUSE_DETECTED` with HTTP `401`.
+See `docs/GETTING_STARTED.md` for setup instructions.
 
 ## Agent Dev Container
 
@@ -195,22 +70,20 @@ tools/
 docs/
   ARCHITECTURE.md
   GETTING_STARTED.md
-  VERTICAL_SLICE_ARCHITECTURE.md
   MVP/
 ```
 
 ## Documentation
 
-- `docs/GETTING_STARTED.md`
-- `docs/ARCHITECTURE.md`
-- `docs/VERTICAL_SLICE_ARCHITECTURE.md`
-- `AGENTS.md` (AI assistant context)
-- `CONTRIBUTING.md`
+- `docs/GETTING_STARTED.md` — setup and local development
+- `docs/ARCHITECTURE.md` — layers, request flow, cross-cutting concerns
+- `CLAUDE.md` — AI agent instructions and conventions
+
+## Scalability TODOs
 
 ### Critical (required for multi-instance)
 
 - **SignalR backplane**: real-time delivery only works on a single instance today. Add a Redis or Azure SignalR backplane so messages are broadcast across all instances.
-
 
 ### Observability
 

@@ -39,53 +39,42 @@ $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project src/Harmonie.API
 ```
 
-LiveKit defaults are split on purpose:
-- `LiveKit:PublicUrl` is the client-facing WebSocket URL returned by the API.
-- `LiveKit:InternalUrl` is the HTTP base URL used by the server SDK for room queries.
-- `LiveKit:RequestTimeoutSeconds` controls the timeout applied to outbound LiveKit HTTP calls. The development default is `5`.
+The default Development config uses:
+- `LiveKit:PublicUrl=ws://localhost:7880` for tokens returned to clients
+- `LiveKit:InternalUrl=http://localhost:7880` for server-to-server API calls
+- `ObjectStorage:LocalBasePath=uploads` for uploaded files on disk
+- `ObjectStorage:LocalBaseUrl=http://localhost:5000/files` for public file URLs returned by the API
 
-When you run through `docker-compose`, the API container uses `http://livekit:7880` internally while clients still use `ws://localhost:7880`.
+The API serves uploaded files itself from `/files/*`. In `docker-compose`, the
+API container stores them in `/app/uploads`, backed by the `uploads-data`
+volume.
+
+In `docker-compose`, the API container overrides `LiveKit:InternalUrl` to `http://livekit:7880` while keeping `LiveKit:PublicUrl=ws://localhost:7880` so browser clients can still connect through the published host port.
+
+LiveKit defaults:
+- `LiveKit:RequestTimeoutSeconds` controls the timeout applied to outbound LiveKit HTTP calls. The development default is `5`.
 
 CORS allowed origins are configured through `Cors:AllowedOrigins`.
 In `Development`, the default is `["*"]`.
 For non-development environments, set explicit origins in configuration or environment variables such as `Cors__AllowedOrigins__0=https://app.example.com`.
 
-Uploads are stored on the local filesystem and served by the API from `/files/*`.
-In `docker-compose`, the API stores them in the `uploads-data` volume.
+Upload storage configuration:
+
+```json
+"ObjectStorage": {
+  "LocalBasePath": "/var/harmonie/uploads",
+  "LocalBaseUrl": "http://localhost:5001/files"
+}
+```
+
+No external object storage service is required right now. If upload volume or
+deployment topology eventually justifies it, the storage abstraction can later
+be backed by an S3-compatible service.
 
 ## 4. Verify the API
 
-- Health: `GET /health` (checks both PostgreSQL and LiveKit reachability)
-- Register: `POST /api/auth/register`
-- Login: `POST /api/auth/login`
-- Logout current session: `POST /api/auth/logout`
-- Logout all sessions: `POST /api/auth/logout-all`
-- Refresh token: `POST /api/auth/refresh`
-- Create guild: `POST /api/guilds`
-- List guilds: `GET /api/guilds`
-- Update guild: `PATCH /api/guilds/{guildId}`
-- List guild channels: `GET /api/guilds/{guildId}/channels`
-- Open direct conversation: `POST /api/conversations`
-- List direct conversations: `GET /api/conversations`
-- Read conversation messages: `GET /api/conversations/{conversationId}/messages`
-- Edit conversation message: `PATCH /api/conversations/{conversationId}/messages/{messageId}`
-- Delete conversation message: `DELETE /api/conversations/{conversationId}/messages/{messageId}`
-- Delete conversation attachment: `DELETE /api/conversations/{conversationId}/messages/{messageId}/attachments/{attachmentId}`
-- Send conversation message: `POST /api/conversations/{conversationId}/messages`
-- Send message: `POST /api/channels/{channelId}/messages`
-- Read messages: `GET /api/channels/{channelId}/messages`
-- Get current user profile: `GET /api/users/me`
-- Update current user profile: `PUT /api/users/me`
-
-Example register payload:
-
-```json
-{
-  "email": "test@harmonie.chat",
-  "username": "testuser",
-  "password": "Test123!@#"
-}
-```
+- Health: `GET /health`
+- OpenAPI: browse Scalar API reference at `/scalar` (Development only)
 
 ## 5. Run Tests
 
