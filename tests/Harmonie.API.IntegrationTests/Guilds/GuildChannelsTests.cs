@@ -180,7 +180,7 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
 
         var error = await createChannelResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+        error!.Code.Should().Be(ApplicationErrorCodes.Validation.WrongEnumValue);
     }
 
     [Fact]
