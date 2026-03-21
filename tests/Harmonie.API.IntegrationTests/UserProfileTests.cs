@@ -8,10 +8,8 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Uploads.UploadFile;
-using Harmonie.Application.Features.Users;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
-using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,12 +18,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
     private readonly IConfiguration _configuration;
 
-    public UsersEndpointsTests(WebApplicationFactory<Program> factory)
+    public UserProfileTests(WebApplicationFactory<Program> factory)
     {
         _client = factory.CreateClient();
         _configuration = factory.Services.GetRequiredService<IConfiguration>();
@@ -428,142 +426,6 @@ public sealed class UsersEndpointsTests : IClassFixture<WebApplicationFactory<Pr
         payload.Should().NotBeNull();
         payload!.FileId.Should().NotBeNullOrWhiteSpace();
         return payload.FileId;
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_WithValidStatus_ShouldUpdateAndReturnStatus()
-    {
-        var user = await RegisterAsync();
-
-        var response = await SendAuthorizedPutAsync(
-            "/api/users/me/status",
-            new { status = "dnd" },
-            user.AccessToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
-        payload.Should().NotBeNull();
-        payload!.UserId.Should().Be(user.UserId);
-        payload.Status.Should().Be("dnd");
-
-        var profileResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
-        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
-        profile.Should().NotBeNull();
-        profile!.Status.Should().Be("dnd");
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_WithInvisible_ShouldPersistInvisible()
-    {
-        var user = await RegisterAsync();
-
-        var response = await SendAuthorizedPutAsync(
-            "/api/users/me/status",
-            new { status = "invisible" },
-            user.AccessToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
-        payload.Should().NotBeNull();
-        payload!.Status.Should().Be("invisible");
-
-        // Verify persistence via GET profile
-        var profileResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
-        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
-        profile.Should().NotBeNull();
-        profile!.Status.Should().Be("invisible");
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_WithInvalidStatus_ShouldReturnValidationError()
-    {
-        var user = await RegisterAsync();
-
-        var response = await SendAuthorizedPutAsync(
-            "/api/users/me/status",
-            new { status = "away" },
-            user.AccessToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_WithEmptyStatus_ShouldReturnValidationError()
-    {
-        var user = await RegisterAsync();
-
-        var response = await SendAuthorizedPutAsync(
-            "/api/users/me/status",
-            new { status = "" },
-            user.AccessToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
-        error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_WithoutAuthentication_ShouldReturnUnauthorized()
-    {
-        var response = await _client.PutAsJsonAsync(
-            "/api/users/me/status",
-            new { status = "online" });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task UpdateUserStatus_AllValidStatuses_ShouldSucceed()
-    {
-        var user = await RegisterAsync();
-
-        foreach (var status in new[] { "online", "idle", "dnd", "invisible" })
-        {
-            var response = await SendAuthorizedPutAsync(
-                "/api/users/me/status",
-                new { status },
-                user.AccessToken);
-
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
-            payload.Should().NotBeNull();
-            payload!.Status.Should().Be(status);
-        }
-    }
-
-    [Fact]
-    public async Task GetMyProfile_ShouldReturnDefaultOnlineStatus()
-    {
-        var user = await RegisterAsync();
-
-        var response = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var profile = await response.Content.ReadFromJsonAsync<GetMyProfileResponse>();
-        profile.Should().NotBeNull();
-        profile!.Status.Should().Be("online");
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private string BuildAccessToken(string userId)
