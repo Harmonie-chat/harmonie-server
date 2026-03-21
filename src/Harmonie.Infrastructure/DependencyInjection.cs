@@ -5,6 +5,7 @@ using Harmonie.Infrastructure.HealthChecks;
 using Harmonie.Infrastructure.LiveKit;
 using Harmonie.Infrastructure.ObjectStorage;
 using Harmonie.Infrastructure.Persistence;
+using Harmonie.Infrastructure.Persistence.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<IGuildInviteRepository, GuildInviteRepository>();
         services.AddScoped<IGuildChannelRepository, GuildChannelRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IMessagePaginationRepository, MessagePaginationRepository>();
+        services.AddScoped<IMessageSearchRepository, MessageSearchRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();

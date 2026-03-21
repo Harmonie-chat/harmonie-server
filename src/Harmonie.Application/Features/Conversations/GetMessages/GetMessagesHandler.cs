@@ -10,12 +10,12 @@ public sealed class GetMessagesHandler
     private const int DefaultLimit = 50;
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IMessageRepository _conversationMessageRepository;
+    private readonly IMessagePaginationRepository _conversationMessageRepository;
     private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IConversationRepository conversationRepository,
-        IMessageRepository conversationMessageRepository,
+        IMessagePaginationRepository conversationMessageRepository,
         ILogger<GetMessagesHandler> logger)
     {
         _conversationRepository = conversationRepository;

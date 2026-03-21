@@ -4,9 +4,9 @@ using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
 using Harmonie.Infrastructure.Rows;
 
-namespace Harmonie.Infrastructure.Persistence;
+namespace Harmonie.Infrastructure.Persistence.Messages;
 
-public sealed partial class MessageRepository : IMessageRepository
+internal sealed class MessageRepository : IMessageRepository
 {
     private readonly DbSession _dbSession;
 
@@ -116,8 +116,9 @@ public sealed partial class MessageRepository : IMessageRepository
         if (row is null)
             return null;
 
-        var attachmentsByMessageId = await GetAttachmentsByMessageIdsAsync([row.Id], cancellationToken);
-        return MapToMessage(row, attachmentsByMessageId);
+        var attachmentsByMessageId = await MessageRepositoryHelpers.GetAttachmentsByMessageIdsAsync(
+            _dbSession, [row.Id], cancellationToken);
+        return MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId);
     }
 
     public async Task UpdateAsync(
@@ -279,103 +280,5 @@ public sealed partial class MessageRepository : IMessageRepository
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>>> GetAttachmentsByMessageIdsAsync(
-        IReadOnlyCollection<Guid> messageIds,
-        CancellationToken cancellationToken)
-    {
-        if (messageIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<MessageAttachment>>();
-
-        const string sql = """
-                           SELECT ma.message_id AS "MessageId",
-                                  ma.position AS "Position",
-                                  uf.id AS "UploadedFileId",
-                                  uf.filename AS "FileName",
-                                  uf.content_type AS "ContentType",
-                                  uf.size_bytes AS "SizeBytes"
-                           FROM message_attachments ma
-                           INNER JOIN uploaded_files uf ON uf.id = ma.uploaded_file_id
-                           WHERE ma.message_id = ANY(@MessageIds)
-                           ORDER BY ma.message_id, ma.position
-                           """;
-
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(
-            sql,
-            new { MessageIds = messageIds.ToArray() },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken);
-
-        var rows = await connection.QueryAsync<MessageAttachmentRow>(command);
-
-        return rows
-            .GroupBy(row => row.MessageId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<MessageAttachment>)group
-                    .OrderBy(row => row.Position)
-                    .Select(row => new MessageAttachment(
-                        UploadedFileId.From(row.UploadedFileId),
-                        row.FileName,
-                        row.ContentType,
-                        row.SizeBytes))
-                    .ToArray());
-    }
-
-    private static Message MapToMessage(
-        MessageRow row,
-        IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> attachmentsByMessageId)
-    {
-        var contentResult = MessageContent.Create(row.Content);
-        if (contentResult.IsFailure || contentResult.Value is null)
-            throw new InvalidOperationException("Stored message content is invalid.");
-
-        GuildChannelId? channelId = row.ChannelId.HasValue
-            ? GuildChannelId.From(row.ChannelId.Value)
-            : null;
-        ConversationId? conversationId = row.ConversationId.HasValue
-            ? ConversationId.From(row.ConversationId.Value)
-            : null;
-        attachmentsByMessageId.TryGetValue(row.Id, out var attachments);
-
-        return Message.Rehydrate(
-            MessageId.From(row.Id),
-            channelId,
-            conversationId,
-            UserId.From(row.AuthorUserId),
-            contentResult.Value,
-            row.CreatedAtUtc,
-            row.UpdatedAtUtc,
-            row.DeletedAtUtc,
-            attachments);
-    }
-
-    private static IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> BuildAttachmentsDictionary(
-        IEnumerable<MessageAttachmentRow> rows)
-    {
-        return rows
-            .GroupBy(row => row.MessageId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<MessageAttachment>)group
-                    .OrderBy(row => row.Position)
-                    .Select(row => new MessageAttachment(
-                        UploadedFileId.From(row.UploadedFileId),
-                        row.FileName,
-                        row.ContentType,
-                        row.SizeBytes))
-                    .ToArray());
-    }
-
-    private sealed class MessageAttachmentRow
-    {
-        public Guid MessageId { get; init; }
-        public int Position { get; init; }
-        public Guid UploadedFileId { get; init; }
-        public string FileName { get; init; } = string.Empty;
-        public string ContentType { get; init; } = string.Empty;
-        public long SizeBytes { get; init; }
     }
 }

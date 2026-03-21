@@ -14,13 +14,13 @@ namespace Harmonie.Application.Tests;
 public sealed class GetMessagesHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessagePaginationRepository> _channelMessageRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetMessagesHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessagePaginationRepository>();
 
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,

@@ -5,10 +5,17 @@ using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
 using Harmonie.Infrastructure.Rows;
 
-namespace Harmonie.Infrastructure.Persistence;
+namespace Harmonie.Infrastructure.Persistence.Messages;
 
-public sealed partial class MessageRepository
+internal sealed class MessageSearchRepository : IMessageSearchRepository
 {
+    private readonly DbSession _dbSession;
+
+    public MessageSearchRepository(DbSession dbSession)
+    {
+        _dbSession = dbSession;
+    }
+
     public async Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
         SearchGuildMessagesQuery query,
         int limit,
@@ -100,7 +107,8 @@ public sealed partial class MessageRepository
         var rows = (await connection.QueryAsync<ChannelMessageSearchRow>(command)).ToArray();
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
-        var attachmentsByMessageId = await GetAttachmentsByMessageIdsAsync(
+        var attachmentsByMessageId = await MessageRepositoryHelpers.GetAttachmentsByMessageIdsAsync(
+            _dbSession,
             pageRows.Select(row => row.MessageId).ToArray(),
             cancellationToken);
 
@@ -195,7 +203,8 @@ public sealed partial class MessageRepository
         var rows = (await connection.QueryAsync<ConversationMessageSearchRow>(command)).ToArray();
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
-        var attachmentsByMessageId = await GetAttachmentsByMessageIdsAsync(
+        var attachmentsByMessageId = await MessageRepositoryHelpers.GetAttachmentsByMessageIdsAsync(
+            _dbSession,
             pageRows.Select(row => row.MessageId).ToArray(),
             cancellationToken);
 

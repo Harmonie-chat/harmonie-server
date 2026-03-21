@@ -11,12 +11,12 @@ public sealed class GetMessagesHandler
     private const int DefaultLimit = 50;
 
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IMessageRepository _channelMessageRepository;
+    private readonly IMessagePaginationRepository _channelMessageRepository;
     private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessageRepository channelMessageRepository,
+        IMessagePaginationRepository channelMessageRepository,
         ILogger<GetMessagesHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;

@@ -13,13 +13,13 @@ namespace Harmonie.Application.Tests;
 public sealed class GetConversationMessagesHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
-    private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessagePaginationRepository> _directMessageRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetConversationMessagesHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
-        _directMessageRepositoryMock = new Mock<IMessageRepository>();
+        _directMessageRepositoryMock = new Mock<IMessagePaginationRepository>();
 
         _handler = new GetMessagesHandler(
             _conversationRepositoryMock.Object,

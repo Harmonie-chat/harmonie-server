@@ -9,30 +9,6 @@ public interface IMessageRepository
         Message message,
         CancellationToken cancellationToken = default);
 
-    Task<MessagePage> GetChannelPageAsync(
-        GuildChannelId channelId,
-        MessageCursor? beforeCursor,
-        int limit,
-        UserId callerId,
-        CancellationToken cancellationToken = default);
-
-    Task<MessagePage> GetConversationPageAsync(
-        ConversationId conversationId,
-        MessageCursor? cursor,
-        int limit,
-        UserId callerId,
-        CancellationToken cancellationToken = default);
-
-    Task<SearchGuildMessagesPage> SearchGuildMessagesAsync(
-        SearchGuildMessagesQuery query,
-        int limit,
-        CancellationToken cancellationToken = default);
-
-    Task<SearchConversationMessagesPage> SearchConversationMessagesAsync(
-        SearchConversationMessagesQuery query,
-        int limit,
-        CancellationToken cancellationToken = default);
-
     Task<Message?> GetByIdAsync(
         MessageId messageId,
         CancellationToken cancellationToken = default);

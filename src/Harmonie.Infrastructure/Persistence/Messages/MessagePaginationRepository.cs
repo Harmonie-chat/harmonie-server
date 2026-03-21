@@ -4,10 +4,17 @@ using Harmonie.Domain.Entities;
 using Harmonie.Domain.ValueObjects;
 using Harmonie.Infrastructure.Rows;
 
-namespace Harmonie.Infrastructure.Persistence;
+namespace Harmonie.Infrastructure.Persistence.Messages;
 
-public sealed partial class MessageRepository
+internal sealed class MessagePaginationRepository : IMessagePaginationRepository
 {
+    private readonly DbSession _dbSession;
+
+    public MessagePaginationRepository(DbSession dbSession)
+    {
+        _dbSession = dbSession;
+    }
+
     public async Task<MessagePage> GetChannelPageAsync(
         GuildChannelId channelId,
         MessageCursor? beforeCursor,
@@ -105,13 +112,13 @@ public sealed partial class MessageRepository
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
         var pageMessageIds = new HashSet<Guid>(pageRows.Select(row => row.Id));
 
-        var attachmentsByMessageId = BuildAttachmentsDictionary(
+        var attachmentsByMessageId = MessageRepositoryHelpers.BuildAttachmentsDictionary(
             attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
-        var reactionsByMessageId = BuildReactionsDictionary(
+        var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
             reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
-            .Select(row => MapToMessage(row, attachmentsByMessageId))
+            .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
             .OrderBy(x => x.CreatedAtUtc)
             .ThenBy(x => x.Id.Value)
             .ToArray();
@@ -227,13 +234,13 @@ public sealed partial class MessageRepository
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
         var pageMessageIds = new HashSet<Guid>(pageRows.Select(row => row.Id));
 
-        var attachmentsByMessageId = BuildAttachmentsDictionary(
+        var attachmentsByMessageId = MessageRepositoryHelpers.BuildAttachmentsDictionary(
             attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
-        var reactionsByMessageId = BuildReactionsDictionary(
+        var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
             reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
-            .Select(row => MapToMessage(row, attachmentsByMessageId))
+            .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
             .OrderBy(x => x.CreatedAtUtc)
             .ThenBy(x => x.Id.Value)
             .ToArray();
@@ -250,28 +257,5 @@ public sealed partial class MessageRepository
             : null;
 
         return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadMessageId);
-    }
-
-    private static IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> BuildReactionsDictionary(
-        IEnumerable<ReactionSummaryRow> rows)
-    {
-        return rows
-            .GroupBy(row => row.MessageId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<MessageReactionSummary>)group
-                    .Select(row => new MessageReactionSummary(
-                        row.Emoji,
-                        row.Count,
-                        row.ReactedByCaller))
-                    .ToArray());
-    }
-
-    private sealed class ReactionSummaryRow
-    {
-        public Guid MessageId { get; init; }
-        public string Emoji { get; init; } = string.Empty;
-        public int Count { get; init; }
-        public bool ReactedByCaller { get; init; }
     }
 }
