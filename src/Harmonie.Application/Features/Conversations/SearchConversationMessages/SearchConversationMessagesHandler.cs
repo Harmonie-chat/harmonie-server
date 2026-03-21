@@ -12,12 +12,12 @@ public sealed class SearchConversationMessagesHandler
     private const int DefaultLimit = 25;
 
     private readonly IConversationRepository _conversationRepository;
-    private readonly IMessageRepository _directMessageRepository;
+    private readonly IMessageSearchRepository _directMessageRepository;
     private readonly ILogger<SearchConversationMessagesHandler> _logger;
 
     public SearchConversationMessagesHandler(
         IConversationRepository conversationRepository,
-        IMessageRepository directMessageRepository,
+        IMessageSearchRepository directMessageRepository,
         ILogger<SearchConversationMessagesHandler> logger)
     {
         _conversationRepository = conversationRepository;

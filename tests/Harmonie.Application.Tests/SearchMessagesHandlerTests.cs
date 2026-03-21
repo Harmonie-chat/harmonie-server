@@ -15,14 +15,14 @@ public sealed class SearchMessagesHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageSearchRepository> _channelMessageRepositoryMock;
     private readonly SearchMessagesHandler _handler;
 
     public SearchMessagesHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _channelMessageRepositoryMock = new Mock<IMessageRepository>();
+        _channelMessageRepositoryMock = new Mock<IMessageSearchRepository>();
 
         _handler = new SearchMessagesHandler(
             _guildRepositoryMock.Object,

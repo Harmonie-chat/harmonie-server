@@ -14,13 +14,13 @@ public sealed class SearchMessagesHandler
 
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IMessageRepository _channelMessageRepository;
+    private readonly IMessageSearchRepository _channelMessageRepository;
     private readonly ILogger<SearchMessagesHandler> _logger;
 
     public SearchMessagesHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IMessageRepository channelMessageRepository,
+        IMessageSearchRepository channelMessageRepository,
         ILogger<SearchMessagesHandler> logger)
     {
         _guildRepository = guildRepository;
