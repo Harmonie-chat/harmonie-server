@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -35,9 +36,7 @@ public sealed class AcceptInviteHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new AcceptInviteHandler(
             _guildInviteRepositoryMock.Object,

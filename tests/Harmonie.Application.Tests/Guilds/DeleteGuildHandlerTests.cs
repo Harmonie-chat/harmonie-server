@@ -5,6 +5,7 @@ using Harmonie.Application.Features.Guilds.DeleteGuild;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.Enums;
@@ -36,17 +37,7 @@ public sealed class DeleteGuildHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
-
-        _transactionMock
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _guildNotifierMock
             .Setup(x => x.NotifyGuildDeletedAsync(It.IsAny<GuildDeletedNotification>(), It.IsAny<CancellationToken>()))
@@ -84,7 +75,7 @@ public sealed class DeleteGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotOwner_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
 
         _guildRepositoryMock
@@ -102,7 +93,7 @@ public sealed class DeleteGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenOwnerDeletesGuild_ShouldDeleteGuildAndCommit()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var ownerId = guild.OwnerUserId;
 
         _guildRepositoryMock
@@ -128,7 +119,7 @@ public sealed class DeleteGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenOwnerDeletesGuild_ShouldNotifyAfterCommit()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var ownerId = guild.OwnerUserId;
         var sequence = new MockSequence();
 
@@ -162,9 +153,9 @@ public sealed class DeleteGuildHandlerTests
     public async Task HandleAsync_WhenGuildHasIconFile_ShouldDeleteStoredObjectAfterCommit()
     {
         var iconFileId = UploadedFileId.From(Guid.Parse("b0c7172f-7770-4c05-af10-2ac1a3381995"));
-        var guild = CreateGuild(iconFileId);
+        var guild = ApplicationTestBuilders.CreateGuild(iconFileId: iconFileId);
         var ownerId = guild.OwnerUserId;
-        var uploadedFile = CreateUploadedFile("guild-icon.png", "uploads/2026/03/icon.png");
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(fileName: "guild-icon.png", storageKey: "uploads/2026/03/icon.png", contentType: "image/png", sizeBytes: 128, purpose: UploadPurpose.GuildIcon);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -188,7 +179,7 @@ public sealed class DeleteGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenNotificationFails_ShouldStillDeleteGuild()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var ownerId = guild.OwnerUserId;
 
         _guildRepositoryMock
@@ -210,34 +201,4 @@ public sealed class DeleteGuildHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UploadedFileId? iconFileId = null)
-    {
-        var guildNameResult = GuildName.Create("Delete Guild");
-        if (guildNameResult.IsFailure || guildNameResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        return Guild.Rehydrate(
-            GuildId.New(),
-            guildNameResult.Value,
-            UserId.New(),
-            DateTime.UtcNow.AddDays(-2),
-            DateTime.UtcNow.AddDays(-1),
-            iconFileId: iconFileId);
-    }
-
-    private static UploadedFile CreateUploadedFile(string fileName, string storageKey)
-    {
-        var uploadedFileResult = UploadedFile.Create(
-            UserId.New(),
-            fileName,
-            "image/png",
-            128,
-            storageKey,
-            UploadPurpose.GuildIcon);
-
-        if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
-            throw new InvalidOperationException("Failed to create uploaded file for tests.");
-
-        return uploadedFileResult.Value;
-    }
 }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Entities.Guilds;
@@ -104,7 +105,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     [Fact]
     public async Task HandleAsync_WhenParticipantJoined_ShouldNotifyGuildGroup()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
         var occurredAtUtc = DateTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
@@ -145,7 +146,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     [Fact]
     public async Task HandleAsync_WhenParticipantLeft_ShouldNotifyGuildGroup()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
         var occurredAtUtc = DateTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
@@ -183,17 +184,4 @@ public sealed class HandleLiveKitWebhookHandlerTests
             Times.Once);
     }
 
-    private static GuildChannel CreateChannel(GuildChannelType type)
-    {
-        var channelResult = GuildChannel.Create(
-            GuildId.New(),
-            "voice-room",
-            type,
-            isDefault: false,
-            position: 1);
-        if (channelResult.IsFailure || channelResult.Value is null)
-            throw new InvalidOperationException("Failed to create channel for tests.");
-
-        return channelResult.Value;
-    }
 }

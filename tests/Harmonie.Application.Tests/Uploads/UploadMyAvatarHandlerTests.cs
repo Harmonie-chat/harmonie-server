@@ -5,6 +5,7 @@ using Harmonie.Application.Features.Users.UploadMyAvatar;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Interfaces.Users;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,13 +33,7 @@ public sealed class UploadMyAvatarHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
-
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new UploadMyAvatarHandler(
             _userRepositoryMock.Object,
@@ -80,7 +75,7 @@ public sealed class UploadMyAvatarHandlerTests
     [Fact]
     public async Task HandleAsync_WhenObjectStorageUploadFails_ShouldReturnServiceUnavailable()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -106,7 +101,7 @@ public sealed class UploadMyAvatarHandlerTests
     [Fact]
     public async Task HandleAsync_WithValidRequest_ShouldUploadResizeAndUpdateAvatarFile()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         ObjectStorageUploadRequest? capturedUploadRequest = null;
 
         _userRepositoryMock
@@ -150,7 +145,7 @@ public sealed class UploadMyAvatarHandlerTests
     [Fact]
     public async Task HandleAsync_WhenPersistenceFails_ShouldDeleteUploadedObject()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         string? uploadedStorageKey = null;
 
         _userRepositoryMock
@@ -192,23 +187,4 @@ public sealed class UploadMyAvatarHandlerTests
         return stream;
     }
 
-    private static User CreateUser()
-    {
-        var emailResult = Email.Create($"test-{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure || emailResult.Value is null)
-            throw new InvalidOperationException("Failed to create email for tests.");
-
-        var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new InvalidOperationException("Failed to create username for tests.");
-
-        var userResult = User.Create(
-            emailResult.Value,
-            usernameResult.Value,
-            "hashed_password");
-        if (userResult.IsFailure || userResult.Value is null)
-            throw new InvalidOperationException("Failed to create user for tests.");
-
-        return userResult.Value;
-    }
 }

@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Users;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.ValueObjects.Users;
 using Moq;
@@ -33,13 +34,7 @@ public sealed class LoginHandlerTests
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
 
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
-
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new LoginHandler(
             _userRepositoryMock.Object,

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Auth;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Users;
@@ -37,7 +38,7 @@ public sealed class RefreshTokenHandlerTests
     public async Task HandleAsync_WithValidRefreshToken_ShouldRotateAndReturnNewTokens()
     {
         // Arrange
-        var user = CreateValidUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var session = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: user.Id,
@@ -227,7 +228,7 @@ public sealed class RefreshTokenHandlerTests
     public async Task HandleAsync_WhenRotateLosesRaceAndTokenBecomesRevoked_ShouldReturnReuseDetectedFailure()
     {
         // Arrange
-        var user = CreateValidUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var tokenId = Guid.NewGuid();
         var originalSession = new RefreshTokenSession(
             Id: tokenId,
@@ -429,25 +430,4 @@ public sealed class RefreshTokenHandlerTests
             Times.Never);
     }
 
-    private static User CreateValidUser()
-    {
-        var emailResult = Email.Create("test@harmonie.chat");
-        var usernameResult = Username.Create("testuser");
-
-        if (emailResult.IsFailure)
-            throw new InvalidOperationException("Failed to create valid email for test.");
-
-        if (usernameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create valid username for test.");
-
-        var userResult = User.Create(
-            emailResult.Value!,
-            usernameResult.Value!,
-            "hashed_password");
-
-        if (userResult.IsFailure)
-            throw new InvalidOperationException("Failed to create valid user for test.");
-
-        return userResult.Value!;
-    }
 }

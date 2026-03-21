@@ -1,12 +1,11 @@
-using System.Runtime.InteropServices.JavaScript;
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Users;
-using Harmonie.Domain.Entities.Guilds;
-using Harmonie.Domain.Entities.Users;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.ValueObjects.Guilds;
+using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -36,7 +35,7 @@ public sealed class UpdateUserStatusHandlerTests
     [Fact]
     public async Task HandleAsync_WithValidStatus_ShouldUpdateAndReturnStatus()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var request = new UpdateUserStatusRequest("dnd");
 
         _userRepositoryMock
@@ -92,7 +91,7 @@ public sealed class UpdateUserStatusHandlerTests
     [Fact]
     public async Task HandleAsync_WithInvalidStatus_ShouldReturnValidationFailure()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var request = new UpdateUserStatusRequest("away");
 
         _userRepositoryMock
@@ -119,10 +118,10 @@ public sealed class UpdateUserStatusHandlerTests
     [Fact]
     public async Task HandleAsync_WithInvisible_ShouldBroadcastOfflineToGuilds()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var request = new UpdateUserStatusRequest("invisible");
         var guildId = GuildId.New();
-        var guild = CreateGuild(guildId, user.Id);
+        var guild = ApplicationTestBuilders.CreateGuild(user.Id, guildId);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -154,10 +153,10 @@ public sealed class UpdateUserStatusHandlerTests
     [Fact]
     public async Task HandleAsync_WithOnline_ShouldBroadcastOnlineToGuilds()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var request = new UpdateUserStatusRequest("online");
         var guildId = GuildId.New();
-        var guild = CreateGuild(guildId, user.Id);
+        var guild = ApplicationTestBuilders.CreateGuild(user.Id, guildId);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -185,7 +184,7 @@ public sealed class UpdateUserStatusHandlerTests
     [Fact]
     public async Task HandleAsync_WhenUserHasNoGuilds_ShouldNotBroadcast()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
         var request = new UpdateUserStatusRequest("idle");
 
         _userRepositoryMock
@@ -207,37 +206,4 @@ public sealed class UpdateUserStatusHandlerTests
             Times.Never);
     }
 
-    private static User CreateUser()
-    {
-        var emailResult = Email.Create($"test-{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure || emailResult.Value is null)
-            throw new InvalidOperationException("Failed to create email for tests.");
-
-        var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new InvalidOperationException("Failed to create username for tests.");
-
-        var userResult = User.Create(
-            emailResult.Value,
-            usernameResult.Value,
-            "hashed_password");
-        if (userResult.IsFailure || userResult.Value is null)
-            throw new InvalidOperationException("Failed to create user for tests.");
-
-        return userResult.Value;
-    }
-
-    private static Guild CreateGuild(GuildId guildId, UserId ownerId)
-    {
-        var nameResult = GuildName.Create($"guild-{Guid.NewGuid():N}"[..20]);
-        if (nameResult.IsFailure || nameResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        return Guild.Rehydrate(
-            guildId,
-            nameResult.Value,
-            ownerId,
-            createdAtUtc: DateTime.UtcNow,
-            updatedAtUtc: DateTime.UtcNow);
-    }
 }

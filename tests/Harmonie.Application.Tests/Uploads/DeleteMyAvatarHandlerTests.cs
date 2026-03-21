@@ -5,6 +5,7 @@ using Harmonie.Application.Features.Users.DeleteMyAvatar;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Interfaces.Users;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.Enums;
@@ -74,7 +75,7 @@ public sealed class DeleteMyAvatarHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAvatarIsNotSet_ShouldReturnNotFound()
     {
-        var user = CreateUser();
+        var user = ApplicationTestBuilders.CreateUser();
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -95,12 +96,9 @@ public sealed class DeleteMyAvatarHandlerTests
     public async Task HandleAsync_WhenAvatarExists_ShouldClearAvatarAfterCommitAndCleanupStoredFile()
     {
         var avatarFileId = UploadedFileId.From(Guid.Parse("7d839916-c19a-45db-a0e2-cf7ea8ad31fb"));
-        var user = CreateUser(avatarFileId);
-        var uploadedFile = CreateUploadedFile(
-            avatarFileId,
-            user.Id,
-            "avatar-old.png",
-            "avatars/old-avatar.png");
+        var user = ApplicationTestBuilders.CreateUser();
+        user.UpdateAvatarFile(avatarFileId);
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(id: avatarFileId, uploaderUserId: user.Id, fileName: "avatar-old.png", contentType: "image/png", sizeBytes: 123, storageKey: "avatars/old-avatar.png", purpose: UploadPurpose.Avatar);
         var sequence = new MockSequence();
 
         _userRepositoryMock
@@ -155,63 +153,4 @@ public sealed class DeleteMyAvatarHandlerTests
             Times.Once);
     }
 
-    private static User CreateUser(UploadedFileId? avatarFileId = null)
-    {
-        var emailResult = Email.Create($"test-{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure || emailResult.Value is null)
-            throw new InvalidOperationException("Failed to create email for tests.");
-
-        var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new InvalidOperationException("Failed to create username for tests.");
-
-        return User.Rehydrate(
-            UserId.New(),
-            emailResult.Value,
-            usernameResult.Value,
-            "hashed_password",
-            avatarFileId,
-            isEmailVerified: true,
-            isActive: true,
-            lastLoginAtUtc: null,
-            displayName: null,
-            bio: null,
-            avatarColor: null,
-            avatarIcon: null,
-            avatarBg: null,
-            theme: "default",
-            language: null,
-            status: "online",
-            statusUpdatedAtUtc: null,
-            createdAtUtc: DateTime.UtcNow.AddDays(-2),
-            updatedAtUtc: DateTime.UtcNow.AddDays(-1));
-    }
-
-    private static UploadedFile CreateUploadedFile(
-        UploadedFileId expectedId,
-        UserId uploaderUserId,
-        string fileName,
-        string storageKey)
-    {
-        var uploadedFileResult = UploadedFile.Create(
-            uploaderUserId,
-            fileName,
-            "image/png",
-            123,
-            storageKey,
-            UploadPurpose.Avatar);
-
-        if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
-            throw new InvalidOperationException("Failed to create uploaded file for tests.");
-
-        return UploadedFile.Rehydrate(
-            expectedId,
-            uploadedFileResult.Value.UploaderUserId,
-            uploadedFileResult.Value.FileName,
-            uploadedFileResult.Value.ContentType,
-            uploadedFileResult.Value.SizeBytes,
-            uploadedFileResult.Value.StorageKey,
-            uploadedFileResult.Value.Purpose,
-            uploadedFileResult.Value.CreatedAtUtc);
-    }
 }

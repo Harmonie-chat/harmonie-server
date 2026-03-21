@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Guilds.DeleteGuildIcon;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Uploads;
@@ -72,7 +73,7 @@ public sealed class DeleteGuildIconHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsMemberNotAdminNorOwner_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild(UploadedFileId.From(Guid.Parse("08f8d69f-5b34-4037-8fb0-ccf6d98af75d")));
+        var guild = ApplicationTestBuilders.CreateGuild(iconFileId: UploadedFileId.From(Guid.Parse("08f8d69f-5b34-4037-8fb0-ccf6d98af75d")));
         var callerId = UserId.New();
 
         _guildRepositoryMock
@@ -89,7 +90,7 @@ public sealed class DeleteGuildIconHandlerTests
     [Fact]
     public async Task HandleAsync_WhenGuildHasNoIcon_ShouldReturnNotFound()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var ownerId = guild.OwnerUserId;
 
         _guildRepositoryMock
@@ -107,12 +108,9 @@ public sealed class DeleteGuildIconHandlerTests
     public async Task HandleAsync_WhenOwnerDeletesExistingIcon_ShouldClearIconAfterCommitAndCleanupStoredFile()
     {
         var iconFileId = UploadedFileId.From(Guid.Parse("08f8d69f-5b34-4037-8fb0-ccf6d98af75d"));
-        var guild = CreateGuild(iconFileId);
+        var guild = ApplicationTestBuilders.CreateGuild(iconFileId: iconFileId);
         var ownerId = guild.OwnerUserId;
-        var uploadedFile = CreateUploadedFile(
-            iconFileId,
-            "guild-icon-old.png",
-            "guild-icons/old-file.png");
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(id: iconFileId, fileName: "guild-icon-old.png", contentType: "image/png", sizeBytes: 123, storageKey: "guild-icons/old-file.png", purpose: UploadPurpose.GuildIcon);
         var sequence = new MockSequence();
 
         _guildRepositoryMock
@@ -164,45 +162,4 @@ public sealed class DeleteGuildIconHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UploadedFileId? iconFileId = null)
-    {
-        var guildNameResult = GuildName.Create("Guild Alpha");
-        if (guildNameResult.IsFailure || guildNameResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        return Guild.Rehydrate(
-            GuildId.New(),
-            guildNameResult.Value,
-            UserId.New(),
-            DateTime.UtcNow.AddDays(-2),
-            DateTime.UtcNow.AddDays(-1),
-            iconFileId: iconFileId);
-    }
-
-    private static UploadedFile CreateUploadedFile(
-        UploadedFileId expectedId,
-        string fileName,
-        string storageKey)
-    {
-        var uploadedFileResult = UploadedFile.Create(
-            UserId.New(),
-            fileName,
-            "image/png",
-            123,
-            storageKey,
-            UploadPurpose.GuildIcon);
-
-        if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
-            throw new InvalidOperationException("Failed to create uploaded file for tests.");
-
-        return UploadedFile.Rehydrate(
-            expectedId,
-            uploadedFileResult.Value.UploaderUserId,
-            uploadedFileResult.Value.FileName,
-            uploadedFileResult.Value.ContentType,
-            uploadedFileResult.Value.SizeBytes,
-            uploadedFileResult.Value.StorageKey,
-            uploadedFileResult.Value.Purpose,
-            uploadedFileResult.Value.CreatedAtUtc);
-    }
 }

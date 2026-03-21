@@ -3,7 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Users.SearchUsers;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Users;
-using Harmonie.Domain.Entities.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -59,7 +59,7 @@ public sealed class SearchUsersHandlerTests
     {
         var ownerId = UserId.New();
         var currentUserId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, currentUserId, It.IsAny<CancellationToken>()))
@@ -82,7 +82,7 @@ public sealed class SearchUsersHandlerTests
     public async Task HandleAsync_WithValidRequest_ShouldReturnMappedUsers()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
         var matchedUser = CreateSearchUser("alice-dev", "Alice Dev", isActive: true);
 
         _guildRepositoryMock
@@ -114,19 +114,6 @@ public sealed class SearchUsersHandlerTests
         response.Data.Users[0].Username.Should().Be("alice-dev");
         response.Data.Users[0].DisplayName.Should().Be("Alice Dev");
         response.Data.Users[0].Status.Should().Be("Active");
-    }
-
-    private static Guild CreateGuild(UserId ownerId)
-    {
-        var nameResult = GuildName.Create("Search Users Guild");
-        if (nameResult.IsFailure || nameResult.Value is null)
-            throw new InvalidOperationException("Failed to create test guild name.");
-
-        var guildResult = Guild.Create(nameResult.Value, ownerId);
-        if (guildResult.IsFailure || guildResult.Value is null)
-            throw new InvalidOperationException("Failed to create test guild.");
-
-        return guildResult.Value;
     }
 
     private static SearchUserResult CreateSearchUser(string username, string? displayName, bool isActive)

@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.UnbanMember;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -29,9 +30,7 @@ public sealed class UnbanMemberHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new UnbanMemberHandler(
             _guildRepositoryMock.Object,
@@ -61,7 +60,7 @@ public sealed class UnbanMemberHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotAdmin_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -78,7 +77,7 @@ public sealed class UnbanMemberHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -97,7 +96,7 @@ public sealed class UnbanMemberHandlerTests
     {
         var ownerId = UserId.New();
         var targetId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -118,7 +117,7 @@ public sealed class UnbanMemberHandlerTests
     {
         var ownerId = UserId.New();
         var targetId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -141,16 +140,4 @@ public sealed class UnbanMemberHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UserId? ownerId = null)
-    {
-        var nameResult = GuildName.Create("Unban Member Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, ownerId ?? UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
-    }
 }

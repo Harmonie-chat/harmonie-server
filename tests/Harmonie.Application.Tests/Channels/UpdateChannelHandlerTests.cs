@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -27,17 +28,7 @@ public sealed class UpdateChannelHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
-
-        _transactionMock
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new UpdateChannelHandler(
             _guildChannelRepositoryMock.Object,

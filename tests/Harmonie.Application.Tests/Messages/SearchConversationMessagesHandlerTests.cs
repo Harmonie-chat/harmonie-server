@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices.JavaScript;
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -60,7 +60,7 @@ public sealed class SearchConversationMessagesHandlerTests
         var user1 = UserId.New();
         var user2 = UserId.New();
         var outsider = UserId.New();
-        var conversation = CreateConversation(user1, user2);
+        var conversation = ApplicationTestBuilders.CreateConversation(user1, user2);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -81,7 +81,7 @@ public sealed class SearchConversationMessagesHandlerTests
     {
         var user1 = UserId.New();
         var user2 = UserId.New();
-        var conversation = CreateConversation(user1, user2);
+        var conversation = ApplicationTestBuilders.CreateConversation(user1, user2);
         var before = new DateTime(2026, 3, 8, 12, 0, 0, DateTimeKind.Utc);
         var after = before.AddHours(-2);
         var item = CreateSearchItem(
@@ -125,15 +125,6 @@ public sealed class SearchConversationMessagesHandlerTests
         response.Data.Items[0].Content.Should().Be("deploy succeeded");
         response.Data.Items[0].Attachments.Should().BeEmpty();
         response.Data.NextCursor.Should().NotBeNullOrWhiteSpace();
-    }
-
-    private static Conversation CreateConversation(UserId user1Id, UserId user2Id)
-    {
-        var result = Conversation.Create(user1Id, user2Id);
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation.");
-
-        return result.Value;
     }
 
     private static SearchConversationMessagesItem CreateSearchItem(

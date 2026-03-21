@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -30,17 +31,7 @@ public sealed class CreateChannelHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
-
-        _transactionMock
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new CreateChannelHandler(
             _guildRepositoryMock.Object,
@@ -70,7 +61,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
 
         _guildRepositoryMock
@@ -87,7 +78,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsMemberNotAdmin_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
 
         _guildRepositoryMock
@@ -104,7 +95,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenNameAlreadyExistsInGuild_ShouldReturnNameConflict()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var adminId = UserId.New();
 
         _guildRepositoryMock
@@ -129,7 +120,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminCreatesTextChannel_ShouldReturnCreatedChannel()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var adminId = UserId.New();
 
         _guildRepositoryMock
@@ -152,7 +143,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminCreatesVoiceChannel_ShouldReturnCreatedChannel()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var adminId = UserId.New();
 
         _guildRepositoryMock
@@ -172,7 +163,7 @@ public sealed class CreateChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminCreatesChannel_ShouldPersistAndCommit()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var adminId = UserId.New();
 
         _guildRepositoryMock
@@ -190,16 +181,4 @@ public sealed class CreateChannelHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild()
-    {
-        var nameResult = GuildName.Create("Create Channel Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
-    }
 }

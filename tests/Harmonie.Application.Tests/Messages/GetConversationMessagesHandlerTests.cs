@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -71,7 +72,7 @@ public sealed class GetConversationMessagesHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var outsider = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -92,9 +93,9 @@ public sealed class GetConversationMessagesHandlerTests
     {
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
-        var first = CreateConversationMessage(conversation.Id, participantOne, "First", DateTime.UtcNow.AddMinutes(-2));
-        var second = CreateConversationMessage(conversation.Id, participantTwo, "Second", DateTime.UtcNow.AddMinutes(-1));
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
+        var first = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "First", createdAtUtc: DateTime.UtcNow.AddMinutes(-2));
+        var second = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Second", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
         var nextCursor = new MessageCursor(first.CreatedAtUtc, first.Id);
 
         _conversationRepositoryMock
@@ -129,33 +130,4 @@ public sealed class GetConversationMessagesHandlerTests
         response.Data.NextCursor.Should().NotBeNullOrEmpty();
     }
 
-    private static Conversation CreateConversation(UserId user1Id, UserId user2Id)
-    {
-        var result = Conversation.Create(user1Id, user2Id);
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation.");
-
-        return result.Value;
-    }
-
-    private static Message CreateConversationMessage(
-        ConversationId conversationId,
-        UserId authorUserId,
-        string content,
-        DateTime createdAtUtc)
-    {
-        var contentResult = MessageContent.Create(content);
-        if (contentResult.IsFailure || contentResult.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation message content.");
-
-        return Message.Rehydrate(
-            id: MessageId.New(),
-            channelId: null,
-            conversationId: conversationId,
-            authorUserId: authorUserId,
-            content: contentResult.Value,
-            createdAtUtc: createdAtUtc,
-            updatedAtUtc: null,
-            deletedAtUtc: null);
-    }
 }

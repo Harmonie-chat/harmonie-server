@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -48,7 +49,7 @@ public sealed class GetGuildMembersHandlerTests
     [Fact]
     public async Task HandleAsync_WhenRequesterIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var requesterUserId = UserId.New();
 
         _guildRepositoryMock
@@ -65,7 +66,7 @@ public sealed class GetGuildMembersHandlerTests
     [Fact]
     public async Task HandleAsync_WhenRequesterIsMember_ShouldReturnGuildMembers()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var requesterUserId = UserId.New();
         var adminUser = CreateMemberUser(GuildRole.Admin, "owner", displayName: "Owner");
         var memberUser = CreateMemberUser(GuildRole.Member, "member", displayName: null);
@@ -89,20 +90,6 @@ public sealed class GetGuildMembersHandlerTests
         response.Data.Members[0].DisplayName.Should().Be("Owner");
         response.Data.Members[1].Role.Should().Be("Member");
         response.Data.Members[1].DisplayName.Should().BeNull();
-    }
-
-    private static Guild CreateGuild()
-    {
-        var guildNameResult = GuildName.Create("Guild Alpha");
-        if (guildNameResult.IsFailure || guildNameResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        return Guild.Rehydrate(
-            GuildId.New(),
-            guildNameResult.Value,
-            UserId.New(),
-            DateTime.UtcNow.AddDays(-2),
-            DateTime.UtcNow.AddDays(-1));
     }
 
     private static GuildMemberUser CreateMemberUser(

@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.RemoveMember;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -52,7 +53,7 @@ public sealed class RemoveMemberHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -70,7 +71,7 @@ public sealed class RemoveMemberHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsMemberNotAdmin_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -89,7 +90,7 @@ public sealed class RemoveMemberHandlerTests
     public async Task HandleAsync_WhenTargetIsNotMember_ShouldReturnMemberNotFound()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
         var targetId = UserId.New();
 
         _guildRepositoryMock
@@ -112,7 +113,7 @@ public sealed class RemoveMemberHandlerTests
     {
         var ownerId = UserId.New();
         var callerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
@@ -135,7 +136,7 @@ public sealed class RemoveMemberHandlerTests
         var ownerId = UserId.New();
         var callerId = UserId.New();
         var targetId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
@@ -160,16 +161,4 @@ public sealed class RemoveMemberHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UserId? ownerId = null)
-    {
-        var nameResult = GuildName.Create("Remove Member Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, ownerId ?? UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
-    }
 }

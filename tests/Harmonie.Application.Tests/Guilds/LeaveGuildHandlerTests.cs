@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -52,7 +53,7 @@ public sealed class LeaveGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenUserIsNotMember_ShouldReturnForbidden()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var userId = UserId.New();
 
         _guildRepositoryMock
@@ -70,7 +71,7 @@ public sealed class LeaveGuildHandlerTests
     public async Task HandleAsync_WhenUserIsOwner_ShouldReturnConflict()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -86,7 +87,7 @@ public sealed class LeaveGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenMemberLeaves_ShouldReturnSuccess()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var memberId = UserId.New();
 
         _guildRepositoryMock
@@ -111,7 +112,7 @@ public sealed class LeaveGuildHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminNonOwnerLeaves_ShouldReturnSuccess()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var adminId = UserId.New();
 
         _guildRepositoryMock
@@ -133,16 +134,4 @@ public sealed class LeaveGuildHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UserId? ownerId = null)
-    {
-        var nameResult = GuildName.Create("Leave Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, ownerId ?? UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
-    }
 }

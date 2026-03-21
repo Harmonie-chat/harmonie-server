@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Users;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.ValueObjects.Users;
@@ -82,7 +83,7 @@ public sealed class OpenConversationHandlerTests
         var callerUserId = UserId.New();
         var targetUserId = UserId.New();
         var targetUser = CreateUser(targetUserId, "target");
-        var conversation = CreateConversation(callerUserId, targetUserId);
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
@@ -108,7 +109,7 @@ public sealed class OpenConversationHandlerTests
         var callerUserId = UserId.New();
         var targetUserId = UserId.New();
         var targetUser = CreateUser(targetUserId, "target");
-        var conversation = CreateConversation(callerUserId, targetUserId);
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
@@ -160,12 +161,4 @@ public sealed class OpenConversationHandlerTests
             updatedAtUtc: DateTime.UtcNow);
     }
 
-    private static Conversation CreateConversation(UserId callerUserId, UserId targetUserId)
-    {
-        var result = Conversation.Create(callerUserId, targetUserId);
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation.");
-
-        return result.Value;
-    }
 }

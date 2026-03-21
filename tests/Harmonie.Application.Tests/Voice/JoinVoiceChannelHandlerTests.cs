@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Users;
@@ -60,7 +61,7 @@ public sealed class JoinVoiceChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenChannelIsText_ShouldReturnNotVoice()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
@@ -77,7 +78,7 @@ public sealed class JoinVoiceChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenUserIsNotGuildMember_ShouldReturnAccessDenied()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
@@ -98,7 +99,7 @@ public sealed class JoinVoiceChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenUserDoesNotExist_ShouldReturnUserNotFound()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var userId = UserId.New();
 
         _guildChannelRepositoryMock
@@ -123,8 +124,8 @@ public sealed class JoinVoiceChannelHandlerTests
     [Fact]
     public async Task HandleAsync_WhenRequestIsValid_ShouldReturnLiveKitConnectionInfo()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
-        var user = CreateUser();
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
+        var user = ApplicationTestBuilders.CreateUser();
         var roomToken = new LiveKitRoomToken(
             Token: "eyJ.token",
             Url: "ws://localhost:7880",
@@ -160,37 +161,4 @@ public sealed class JoinVoiceChannelHandlerTests
         response.Data.RoomName.Should().Be(roomToken.RoomName);
     }
 
-    private static GuildChannel CreateChannel(GuildChannelType type)
-    {
-        var channelResult = GuildChannel.Create(
-            GuildId.New(),
-            "voice-room",
-            type,
-            isDefault: false,
-            position: 1);
-        if (channelResult.IsFailure || channelResult.Value is null)
-            throw new InvalidOperationException("Failed to create channel for tests.");
-
-        return channelResult.Value;
-    }
-
-    private static User CreateUser()
-    {
-        var emailResult = Email.Create($"test-{Guid.NewGuid():N}@harmonie.chat");
-        if (emailResult.IsFailure || emailResult.Value is null)
-            throw new InvalidOperationException("Failed to create email for tests.");
-
-        var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new InvalidOperationException("Failed to create username for tests.");
-
-        var userResult = User.Create(
-            emailResult.Value,
-            usernameResult.Value,
-            "hashed_password");
-        if (userResult.IsFailure || userResult.Value is null)
-            throw new InvalidOperationException("Failed to create user for tests.");
-
-        return userResult.Value;
-    }
 }

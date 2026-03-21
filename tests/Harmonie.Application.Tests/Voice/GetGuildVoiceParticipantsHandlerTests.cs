@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Entities.Guilds;
@@ -54,7 +55,7 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
     [Fact]
     public async Task HandleAsync_WhenUserIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var userId = UserId.New();
 
         _guildRepositoryMock
@@ -71,7 +72,7 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
     [Fact]
     public async Task HandleAsync_WithValidMember_ShouldReturnParticipantsGroupedByChannel()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var requesterUserId = UserId.New();
         var channelId = GuildChannelId.New();
         var participantUserId = UserId.New();
@@ -104,16 +105,4 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
         response.Data.Channels[0].Participants[0].Username.Should().Be("alice");
     }
 
-    private static Guild CreateGuild()
-    {
-        var nameResult = GuildName.Create("Voice Guild");
-        if (nameResult.IsFailure || nameResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value, UserId.New());
-        if (guildResult.IsFailure || guildResult.Value is null)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value;
-    }
 }

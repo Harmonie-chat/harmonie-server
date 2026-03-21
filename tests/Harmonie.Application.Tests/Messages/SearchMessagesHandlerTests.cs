@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices.JavaScript;
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Features.Guilds.SearchMessages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Guilds;
@@ -43,7 +43,7 @@ public sealed class SearchMessagesHandlerTests
     public async Task HandleAsync_WhenCursorIsInvalid_ShouldReturnValidationFailure()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -88,7 +88,7 @@ public sealed class SearchMessagesHandlerTests
     {
         var ownerId = UserId.New();
         var currentUserId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, currentUserId, It.IsAny<CancellationToken>()))
@@ -108,8 +108,8 @@ public sealed class SearchMessagesHandlerTests
     public async Task HandleAsync_WhenChannelFilterIsVoice_ShouldReturnNotText()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
-        var channel = CreateChannel(guild.Id, GuildChannelType.Voice, "voice-room");
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice, guildId: guild.Id, name: "voice-room");
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
@@ -138,8 +138,8 @@ public sealed class SearchMessagesHandlerTests
     {
         var ownerId = UserId.New();
         var authorId = UserId.New();
-        var guild = CreateGuild(ownerId);
-        var channel = CreateChannel(guild.Id, GuildChannelType.Text, "deployments");
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text, guildId: guild.Id, name: "deployments");
         var before = new DateTime(2026, 3, 8, 12, 0, 0, DateTimeKind.Utc);
         var after = before.AddHours(-1);
         var item = CreateSearchItem(
@@ -193,33 +193,6 @@ public sealed class SearchMessagesHandlerTests
         response.Data.Items[0].Content.Should().Be("deploy finished");
         response.Data.Items[0].Attachments.Should().BeEmpty();
         response.Data.NextCursor.Should().NotBeNullOrWhiteSpace();
-    }
-
-    private static Guild CreateGuild(UserId ownerId)
-    {
-        var nameResult = GuildName.Create("Search Guild");
-        if (nameResult.IsFailure || nameResult.Value is null)
-            throw new InvalidOperationException("Failed to create test guild name.");
-
-        var guildResult = Guild.Create(nameResult.Value, ownerId);
-        if (guildResult.IsFailure || guildResult.Value is null)
-            throw new InvalidOperationException("Failed to create test guild.");
-
-        return guildResult.Value;
-    }
-
-    private static GuildChannel CreateChannel(GuildId guildId, GuildChannelType type, string name)
-    {
-        var channelResult = GuildChannel.Create(
-            guildId,
-            name,
-            type,
-            isDefault: false,
-            position: 1);
-        if (channelResult.IsFailure || channelResult.Value is null)
-            throw new InvalidOperationException("Failed to create test channel.");
-
-        return channelResult.Value;
     }
 
     private static SearchGuildMessagesItem CreateSearchItem(

@@ -1,6 +1,6 @@
-
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Common;
@@ -34,13 +34,7 @@ public sealed class RegisterHandlerTests
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
 
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
-
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new RegisterHandler(
             _userRepositoryMock.Object,

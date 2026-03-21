@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Channels.DeleteMessage;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
@@ -34,17 +35,7 @@ public sealed class DeleteMessageHandlerTests
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
-
-        _transactionMock
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _textChannelNotifierMock
             .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
@@ -78,7 +69,7 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenChannelIsVoice_ShouldReturnChannelNotText()
     {
-        var channel = CreateChannel(GuildChannelType.Voice);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var callerId = UserId.New();
 
         _guildChannelRepositoryMock
@@ -96,7 +87,7 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnChannelAccessDenied()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
 
         _guildChannelRepositoryMock
@@ -114,7 +105,7 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenMessageDoesNotExist_ShouldReturnMessageNotFound()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
         var messageId = MessageId.New();
 
@@ -137,10 +128,10 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenMessageBelongsToAnotherChannel_ShouldReturnMessageNotFound()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
         var messageId = MessageId.New();
-        var messageFromOtherChannel = CreateMessage(GuildChannelId.New(), callerId);
+        var messageFromOtherChannel = ApplicationTestBuilders.CreateChannelMessage(GuildChannelId.New(), callerId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
@@ -161,11 +152,11 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenMemberTriesToDeleteAnotherUsersMessage_ShouldReturnDeleteForbidden()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
@@ -186,10 +177,10 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAuthorDeletesOwnMessage_ShouldReturnSuccess()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, authorId, It.IsAny<CancellationToken>()))
@@ -208,10 +199,10 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAuthorDeletesOwnMessage_ShouldPersistAndCommit()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, authorId, It.IsAny<CancellationToken>()))
@@ -240,11 +231,11 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminDeletesAnotherUsersMessage_ShouldReturnSuccess()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var adminId = UserId.New();
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
@@ -263,11 +254,11 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAdminDeletesAnotherUsersMessage_ShouldPersistAndCommit()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var adminId = UserId.New();
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
@@ -296,10 +287,10 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAuthorDeletesOwnMessage_ShouldNotifyMessageDeleted()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, authorId, It.IsAny<CancellationToken>()))
@@ -325,10 +316,10 @@ public sealed class DeleteMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WhenNotifierThrows_ShouldStillSucceed()
     {
-        var channel = CreateChannel(GuildChannelType.Text);
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var authorId = UserId.New();
         var messageId = MessageId.New();
-        var message = CreateMessage(channel.Id, authorId);
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, authorId);
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, authorId, It.IsAny<CancellationToken>()))
@@ -345,36 +336,5 @@ public sealed class DeleteMessageHandlerTests
         var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
 
         response.Success.Should().BeTrue();
-    }
-    private static GuildChannel CreateChannel(GuildChannelType type)
-    {
-        var result = GuildChannel.Create(
-            GuildId.New(),
-            "general",
-            type,
-            isDefault: false,
-            position: 0);
-
-        if (result.IsFailure)
-            throw new InvalidOperationException("Failed to create channel for tests.");
-
-        return result.Value!;
-    }
-
-    private static Message CreateMessage(GuildChannelId channelId, UserId authorId)
-    {
-        var contentResult = MessageContent.Create("test content");
-        if (contentResult.IsFailure || contentResult.Value is null)
-            throw new InvalidOperationException("Failed to create message content for tests.");
-
-        return Message.Rehydrate(
-            id: MessageId.New(),
-            channelId: channelId,
-            conversationId: null,
-            authorUserId: authorId,
-            content: contentResult.Value,
-            createdAtUtc: DateTime.UtcNow,
-            updatedAtUtc: null,
-            deletedAtUtc: null);
     }
 }

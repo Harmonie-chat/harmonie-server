@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Uploads.DownloadFile;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.Enums;
@@ -53,7 +54,7 @@ public sealed class DownloadFileHandlerTests
     public async Task HandleAsync_WhenStorageStreamIsNull_ShouldReturnStorageUnavailable()
     {
         var userId = UserId.New();
-        var uploadedFile = CreateUploadedFile(userId);
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(uploaderUserId: userId, fileName: "test.txt", contentType: "text/plain", sizeBytes: 42, storageKey: "uploads/2026/03/abc123.txt");
 
         _uploadedFileRepositoryMock
             .Setup(x => x.GetByIdAsync(uploadedFile.Id, It.IsAny<CancellationToken>()))
@@ -74,7 +75,7 @@ public sealed class DownloadFileHandlerTests
     public async Task HandleAsync_WithValidRequest_ShouldReturnFileStream()
     {
         var userId = UserId.New();
-        var uploadedFile = CreateUploadedFile(userId);
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(uploaderUserId: userId, fileName: "test.txt", contentType: "text/plain", sizeBytes: 42, storageKey: "uploads/2026/03/abc123.txt");
         var fileStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("file content"));
 
         _uploadedFileRepositoryMock
@@ -94,19 +95,4 @@ public sealed class DownloadFileHandlerTests
         response.Data.Content.Should().BeSameAs(fileStream);
     }
 
-    private static UploadedFile CreateUploadedFile(UserId uploaderId)
-    {
-        var result = UploadedFile.Create(
-            uploaderId,
-            "test.txt",
-            "text/plain",
-            42,
-            "uploads/2026/03/abc123.txt",
-            UploadPurpose.Attachment);
-
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create uploaded file for tests.");
-
-        return result.Value;
-    }
 }

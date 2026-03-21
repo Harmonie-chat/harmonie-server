@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -50,7 +51,7 @@ public sealed class UpdateMemberRoleHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotMember_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -68,7 +69,7 @@ public sealed class UpdateMemberRoleHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotAdmin_ShouldReturnAccessDenied()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -86,7 +87,7 @@ public sealed class UpdateMemberRoleHandlerTests
     [Fact]
     public async Task HandleAsync_WhenTargetIsNotMember_ShouldReturnMemberNotFound()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -109,7 +110,7 @@ public sealed class UpdateMemberRoleHandlerTests
     public async Task HandleAsync_WhenTargetIsOwner_ShouldReturnOwnerRoleCannotBeChanged()
     {
         var ownerId = UserId.New();
-        var guild = CreateGuild(ownerId);
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
         var callerId = UserId.New();
 
         _guildRepositoryMock
@@ -130,7 +131,7 @@ public sealed class UpdateMemberRoleHandlerTests
     [Fact]
     public async Task HandleAsync_WhenPromotingMemberToAdmin_ShouldSucceed()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -160,7 +161,7 @@ public sealed class UpdateMemberRoleHandlerTests
     [Fact]
     public async Task HandleAsync_WhenDemotingAdminToMember_ShouldSucceed()
     {
-        var guild = CreateGuild();
+        var guild = ApplicationTestBuilders.CreateGuild();
         var callerId = UserId.New();
         var targetId = UserId.New();
 
@@ -187,16 +188,4 @@ public sealed class UpdateMemberRoleHandlerTests
             Times.Once);
     }
 
-    private static Guild CreateGuild(UserId? ownerId = null)
-    {
-        var nameResult = GuildName.Create("Update Role Test Guild");
-        if (nameResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild name for tests.");
-
-        var guildResult = Guild.Create(nameResult.Value!, ownerId ?? UserId.New());
-        if (guildResult.IsFailure)
-            throw new InvalidOperationException("Failed to create guild for tests.");
-
-        return guildResult.Value!;
-    }
 }

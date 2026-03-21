@@ -6,10 +6,10 @@ using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Entities.Uploads;
-using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -40,13 +40,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
-        _unitOfWorkMock
-            .Setup(x => x.BeginAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transactionMock.Object);
-
-        _transactionMock
-            .Setup(x => x.DisposeAsync())
-            .Returns(ValueTask.CompletedTask);
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new DeleteMessageAttachmentHandler(
             _conversationRepositoryMock.Object,
@@ -84,7 +78,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var outsider = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -106,9 +100,9 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
     {
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
         var attachmentId = UploadedFileId.New();
-        var message = CreateConversationMessage(conversation.Id, participantTwo, attachmentId);
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "hello", attachments: [new MessageAttachment(attachmentId, "notes.txt", "text/plain", 12)]);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
@@ -130,8 +124,9 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
     {
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
-        var message = CreateConversationMessage(conversation.Id, participantOne, UploadedFileId.New());
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
+        var otherAttachmentId = UploadedFileId.New();
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "hello", attachments: [new MessageAttachment(otherAttachmentId, "notes.txt", "text/plain", 12)]);
         var missingAttachmentId = UploadedFileId.New();
 
         _conversationRepositoryMock
@@ -158,10 +153,10 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
     {
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
-        var conversation = CreateConversation(participantOne, participantTwo);
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
         var attachmentId = UploadedFileId.New();
-        var message = CreateConversationMessage(conversation.Id, participantOne, attachmentId);
-        var uploadedFile = CreateUploadedFile(attachmentId, participantOne);
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "hello", attachments: [new MessageAttachment(attachmentId, "notes.txt", "text/plain", 12)]);
+        var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(id: attachmentId, uploaderUserId: participantOne, fileName: "notes.txt", contentType: "text/plain", sizeBytes: 12, storageKey: "attachments/file.txt");
         var sequence = new MockSequence();
 
         _conversationRepositoryMock
@@ -223,51 +218,4 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             Times.Once);
     }
 
-    private static Conversation CreateConversation(UserId user1Id, UserId user2Id)
-    {
-        var result = Conversation.Create(user1Id, user2Id);
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation.");
-
-        return result.Value;
-    }
-
-    private static Message CreateConversationMessage(
-        ConversationId conversationId,
-        UserId authorId,
-        UploadedFileId attachmentId)
-    {
-        var contentResult = MessageContent.Create("hello");
-        if (contentResult.IsFailure || contentResult.Value is null)
-            throw new InvalidOperationException("Failed to create message content for tests.");
-
-        return Message.Rehydrate(
-            MessageId.New(),
-            channelId: null,
-            conversationId,
-            authorId,
-            contentResult.Value,
-            createdAtUtc: DateTime.UtcNow.AddMinutes(-5),
-            updatedAtUtc: null,
-            deletedAtUtc: null,
-            attachments:
-            [
-                new MessageAttachment(attachmentId, "notes.txt", "text/plain", 12)
-            ]);
-    }
-
-    private static UploadedFile CreateUploadedFile(
-        UploadedFileId attachmentId,
-        UserId uploaderUserId)
-    {
-        return UploadedFile.Rehydrate(
-            attachmentId,
-            uploaderUserId,
-            "notes.txt",
-            "text/plain",
-            12,
-            "attachments/file.txt",
-            UploadPurpose.Attachment,
-            DateTime.UtcNow.AddMinutes(-10));
-    }
 }
