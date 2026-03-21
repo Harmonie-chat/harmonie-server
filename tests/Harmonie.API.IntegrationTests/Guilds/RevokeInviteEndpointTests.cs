@@ -13,11 +13,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RevokeInviteEndpointTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public RevokeInviteEndpointTests(WebApplicationFactory<Program> factory)
+    public RevokeInviteEndpointTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

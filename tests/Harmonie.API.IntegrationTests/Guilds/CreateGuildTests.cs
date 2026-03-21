@@ -13,11 +13,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CreateGuildTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public CreateGuildTests(WebApplicationFactory<Program> factory)
+    public CreateGuildTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

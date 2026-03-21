@@ -13,11 +13,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class DeleteGuildEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class DeleteGuildEndpointTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public DeleteGuildEndpointTests(WebApplicationFactory<Program> factory)
+    public DeleteGuildEndpointTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

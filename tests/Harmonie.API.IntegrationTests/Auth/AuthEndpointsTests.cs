@@ -15,11 +15,11 @@ namespace Harmonie.API.IntegrationTests;
 /// <summary>
 /// Integration tests for Auth endpoints
 /// </summary>
-public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public AuthEndpointsTests(WebApplicationFactory<Program> factory)
+    public AuthEndpointsTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

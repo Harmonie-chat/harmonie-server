@@ -14,12 +14,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class UploadsEndpointsTests : IClassFixture<HarmonieWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public UploadsEndpointsTests(WebApplicationFactory<Program> factory)
+    public UploadsEndpointsTests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

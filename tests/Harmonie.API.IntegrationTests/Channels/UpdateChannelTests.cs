@@ -10,11 +10,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class UpdateChannelTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public UpdateChannelTests(WebApplicationFactory<Program> factory)
+    public UpdateChannelTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

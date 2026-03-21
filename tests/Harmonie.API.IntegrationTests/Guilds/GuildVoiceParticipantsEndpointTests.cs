@@ -18,12 +18,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class GuildVoiceParticipantsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GuildVoiceParticipantsEndpointTests : IClassFixture<HarmonieWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public GuildVoiceParticipantsEndpointTests(WebApplicationFactory<Program> factory)
+    public GuildVoiceParticipantsEndpointTests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

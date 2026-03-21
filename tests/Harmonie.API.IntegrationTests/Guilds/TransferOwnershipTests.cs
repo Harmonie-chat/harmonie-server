@@ -11,11 +11,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class TransferOwnershipTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class TransferOwnershipTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public TransferOwnershipTests(WebApplicationFactory<Program> factory)
+    public TransferOwnershipTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

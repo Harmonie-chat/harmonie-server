@@ -12,12 +12,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public SignalRGuildHubTests(WebApplicationFactory<Program> factory)
+    public SignalRGuildHubTests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

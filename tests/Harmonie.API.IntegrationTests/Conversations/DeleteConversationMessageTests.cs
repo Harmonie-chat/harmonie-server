@@ -9,11 +9,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class DeleteConversationMessageTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class DeleteConversationMessageTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public DeleteConversationMessageTests(WebApplicationFactory<Program> factory)
+    public DeleteConversationMessageTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

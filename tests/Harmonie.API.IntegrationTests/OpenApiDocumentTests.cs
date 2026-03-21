@@ -1,3 +1,4 @@
+using Harmonie.API.IntegrationTests.Common;
 using System.Net;
 using System.Text.Json.Nodes;
 using FluentAssertions;
@@ -8,11 +9,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class OpenApiDocumentTests : IClassFixture<HarmonieWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
 
-    public OpenApiDocumentTests(WebApplicationFactory<Program> factory)
+    public OpenApiDocumentTests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
     }

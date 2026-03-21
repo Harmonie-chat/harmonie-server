@@ -12,11 +12,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class ConversationMessageAttachmentsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ConversationMessageAttachmentsTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public ConversationMessageAttachmentsTests(WebApplicationFactory<Program> factory)
+    public ConversationMessageAttachmentsTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

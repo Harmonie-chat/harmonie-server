@@ -16,12 +16,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebApplicationFactory>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
     private readonly string _tempDir;
 
-    public UploadsLocalFileSystemE2ETests(WebApplicationFactory<Program> factory)
+    public UploadsLocalFileSystemE2ETests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
         _tempDir = Path.Combine(Path.GetTempPath(), $"harmonie-uploads-test-{Guid.NewGuid():N}");

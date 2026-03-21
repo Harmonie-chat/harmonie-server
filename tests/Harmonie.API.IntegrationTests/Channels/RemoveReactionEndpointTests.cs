@@ -11,11 +11,11 @@ using ConversationSendMessageResponse = Harmonie.Application.Features.Conversati
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class RemoveReactionEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public RemoveReactionEndpointTests(WebApplicationFactory<Program> factory)
+    public RemoveReactionEndpointTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

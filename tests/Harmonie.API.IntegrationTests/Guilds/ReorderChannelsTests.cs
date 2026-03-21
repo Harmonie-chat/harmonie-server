@@ -9,11 +9,11 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class ReorderChannelsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public ReorderChannelsTests(WebApplicationFactory<Program> factory)
+    public ReorderChannelsTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

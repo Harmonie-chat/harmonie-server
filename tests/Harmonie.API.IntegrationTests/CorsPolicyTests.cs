@@ -1,14 +1,15 @@
+using Harmonie.API.IntegrationTests.Common;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class CorsPolicyTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CorsPolicyTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public CorsPolicyTests(WebApplicationFactory<Program> factory)
+    public CorsPolicyTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

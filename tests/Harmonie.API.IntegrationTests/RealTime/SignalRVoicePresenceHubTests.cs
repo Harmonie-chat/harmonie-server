@@ -19,15 +19,15 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private const string LiveKitApiKey = "devkey";
     private const string LiveKitApiSecret = "devsecret-that-is-long-enough-for-hmac-signing";
 
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HarmonieWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public SignalRVoicePresenceHubTests(WebApplicationFactory<Program> factory)
+    public SignalRVoicePresenceHubTests(HarmonieWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

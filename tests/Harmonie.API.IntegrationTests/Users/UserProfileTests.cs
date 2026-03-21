@@ -16,12 +16,12 @@ using Xunit;
 
 namespace Harmonie.API.IntegrationTests;
 
-public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class UserProfileTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;
     private readonly IConfiguration _configuration;
 
-    public UserProfileTests(WebApplicationFactory<Program> factory)
+    public UserProfileTests(HarmonieWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
         _configuration = factory.Services.GetRequiredService<IConfiguration>();
