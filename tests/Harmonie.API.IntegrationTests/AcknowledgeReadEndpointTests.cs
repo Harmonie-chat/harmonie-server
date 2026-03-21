@@ -1,11 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.AcknowledgeRead;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateChannel;
@@ -18,10 +15,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public AcknowledgeReadEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -31,12 +24,12 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WithMessageId_ShouldReturn204()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         var message = await SendChannelMessageAsync(channelId, "ack this", owner.AccessToken);
 
-        var response = await SendAckAsync(
-            channelId,
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
 
@@ -46,12 +39,12 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WithNullMessageId_ShouldReturn204()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         await SendChannelMessageAsync(channelId, "ack all", owner.AccessToken);
 
-        var response = await SendAckAsync(
-            channelId,
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(null),
             owner.AccessToken);
 
@@ -61,18 +54,18 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WhenCalledTwice_ShouldBeIdempotent()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         var message = await SendChannelMessageAsync(channelId, "ack twice", owner.AccessToken);
 
-        var firstResponse = await SendAckAsync(
-            channelId,
+        var firstResponse = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var secondResponse = await SendAckAsync(
-            channelId,
+        var secondResponse = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -81,11 +74,11 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WhenChannelHasNoMessages_ShouldReturn204()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
 
-        var response = await SendAckAsync(
-            channelId,
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(null),
             owner.AccessToken);
 
@@ -95,10 +88,10 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WhenChannelDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAckAsync(
-            Guid.NewGuid().ToString(),
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{Guid.NewGuid()}/ack",
             new AcknowledgeReadRequest(null),
             caller.AccessToken);
 
@@ -112,12 +105,12 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WhenCallerIsNotMember_ShouldReturnForbidden()
     {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
 
-        var response = await SendAckAsync(
-            channelId,
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(null),
             outsider.AccessToken);
 
@@ -131,11 +124,11 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WhenMessageDoesNotExist_ShouldReturnNotFound()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
 
-        var response = await SendAckAsync(
-            channelId,
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/ack",
             new AcknowledgeReadRequest(Guid.NewGuid().ToString()),
             owner.AccessToken);
 
@@ -159,10 +152,10 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WithInvalidChannelId_ShouldReturnBadRequest()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAckAsync(
-            "not-a-guid",
+        var response = await _client.SendAuthorizedPostAsync(
+            "/api/channels/not-a-guid/ack",
             new AcknowledgeReadRequest(null),
             caller.AccessToken);
 
@@ -176,10 +169,10 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task AcknowledgeRead_WithInvalidMessageId_ShouldReturnBadRequest()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAckAsync(
-            Guid.NewGuid().ToString(),
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{Guid.NewGuid()}/ack",
             new AcknowledgeReadRequest("not-a-guid"),
             caller.AccessToken);
 
@@ -190,27 +183,10 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
     private async Task<(string GuildId, string ChannelId)> CreateGuildAndChannelAsync(string accessToken)
     {
         var guildName = $"guild{Guid.NewGuid():N}"[..16];
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest(guildName),
             accessToken);
@@ -219,7 +195,7 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
         var guildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guildPayload!.GuildId}/channels",
             new CreateChannelRequest($"chan{Guid.NewGuid():N}"[..16], ChannelTypeInput.Text, 1),
             accessToken);
@@ -236,7 +212,7 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
         string content,
         string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
             new SendMessageRequest(content),
             accessToken);
@@ -245,31 +221,5 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<WebApplicationF
         var payload = await response.Content.ReadFromJsonAsync<SendMessageResponse>();
         payload.Should().NotBeNull();
         return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAckAsync(
-        string channelId,
-        AcknowledgeReadRequest request,
-        string accessToken)
-    {
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/channels/{channelId}/ack")
-        {
-            Content = JsonContent.Create(request, options: JsonOptions)
-        };
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(httpRequest);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: JsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

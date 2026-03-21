@@ -1,9 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendMessage;
@@ -28,15 +27,15 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task GetConversationMessages_WhenCallerIsParticipant_ShouldReturnMessagesAscending()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
 
         await SendConversationMessageAsync(conversationId, "first direct", caller.AccessToken);
         await Task.Delay(20);
         await SendConversationMessageAsync(conversationId, "second direct", target.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             caller.AccessToken);
 
@@ -51,9 +50,9 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task GetConversationMessages_WhenConversationDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages",
             caller.AccessToken);
 
@@ -67,12 +66,12 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task GetConversationMessages_WhenCallerIsNotParticipant_ShouldReturnForbidden()
     {
-        var participantOne = await RegisterAsync();
-        var participantTwo = await RegisterAsync();
-        var outsider = await RegisterAsync();
+        var participantOne = await AuthTestHelper.RegisterAsync(_client);
+        var participantTwo = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             outsider.AccessToken);
 
@@ -86,8 +85,8 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task GetConversationMessages_WithCursorPagination_ShouldReturnNextPage()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
 
         await SendConversationMessageAsync(conversationId, "first page item", caller.AccessToken);
@@ -96,7 +95,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
         await Task.Delay(20);
         await SendConversationMessageAsync(conversationId, "third page item", caller.AccessToken);
 
-        var firstResponse = await SendAuthorizedGetAsync(
+        var firstResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages?limit=2",
             caller.AccessToken);
 
@@ -107,7 +106,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
         firstPayload!.Items.Select(x => x.Content).Should().Equal("second page item", "third page item");
         firstPayload.NextCursor.Should().NotBeNullOrWhiteSpace();
 
-        var secondResponse = await SendAuthorizedGetAsync(
+        var secondResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages?cursor={Uri.EscapeDataString(firstPayload.NextCursor!)}&limit=2",
             caller.AccessToken);
 
@@ -122,8 +121,8 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task GetConversationMessages_ShouldExcludeSoftDeletedMessages()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
 
         var visibleMessage = await SendConversationMessageAsync(conversationId, "visible direct", caller.AccessToken);
@@ -132,7 +131,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
 
         await SoftDeleteConversationMessageAsync(deletedMessage.MessageId);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             caller.AccessToken);
 
@@ -156,7 +155,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
 
     private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(targetUserId),
             accessToken);
@@ -167,27 +166,12 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
         return payload!.ConversationId;
     }
 
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
     private async Task<SendMessageResponse> SendConversationMessageAsync(
         string conversationId,
         string content,
         string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest(content),
             accessToken);
@@ -196,28 +180,6 @@ public sealed class GetConversationMessagesTests : IClassFixture<WebApplicationF
         var payload = await response.Content.ReadFromJsonAsync<SendMessageResponse>();
         payload.Should().NotBeNull();
         return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private async Task SoftDeleteConversationMessageAsync(string messageId)

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateGuild;
@@ -35,8 +36,8 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task VoiceParticipantJoined_WhenMemberConnected_ShouldReceiveEvent()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
         var guildId = await CreateGuildAndInviteMemberAsync(owner, member);
         var voiceChannelId = await GetVoiceChannelIdAsync(guildId, member.AccessToken);
 
@@ -74,8 +75,8 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task VoiceParticipantLeft_WhenMemberConnected_ShouldReceiveEvent()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
         var guildId = await CreateGuildAndInviteMemberAsync(owner, member);
         var voiceChannelId = await GetVoiceChannelIdAsync(guildId, member.AccessToken);
 
@@ -127,7 +128,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
 
     private async Task<string> CreateGuildAndInviteMemberAsync(RegisterResponse owner, RegisterResponse member)
     {
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Voice Presence Delivery Guild"),
             owner.AccessToken);
@@ -136,7 +137,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
@@ -147,7 +148,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
 
     private async Task<string> GetVoiceChannelIdAsync(string guildId, string accessToken)
     {
-        var channelsResponse = await SendAuthorizedGetAsync(
+        var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guildId}/channels",
             accessToken);
         channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -195,43 +196,6 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<WebApplicationF
         return new Livekit.Server.Sdk.Dotnet.AccessToken(LiveKitApiKey, LiveKitApiSecret)
             .WithSha256(checksum)
             .ToJwt();
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private sealed record SignalRVoiceParticipantJoinedEvent(

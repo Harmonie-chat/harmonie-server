@@ -1,11 +1,9 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Guilds.CreateChannel;
@@ -20,10 +18,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public AddReactionEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -35,11 +29,11 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddChannelReaction_WhenCallerIsMember_ShouldReturn204()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         var message = await SendChannelMessageAsync(channelId, "react to this", owner.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{channelId}/messages/{message.MessageId}/reactions/%F0%9F%91%8D",
             owner.AccessToken);
 
@@ -49,16 +43,16 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddChannelReaction_WhenCalledTwice_ShouldBeIdempotent()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         var message = await SendChannelMessageAsync(channelId, "react twice", owner.AccessToken);
 
-        var firstResponse = await SendAuthorizedPutAsync(
+        var firstResponse = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{channelId}/messages/{message.MessageId}/reactions/%F0%9F%91%8D",
             owner.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var secondResponse = await SendAuthorizedPutAsync(
+        var secondResponse = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{channelId}/messages/{message.MessageId}/reactions/%F0%9F%91%8D",
             owner.AccessToken);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -67,9 +61,9 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddChannelReaction_WhenChannelDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%F0%9F%91%8D",
             caller.AccessToken);
 
@@ -83,12 +77,12 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddChannelReaction_WhenCallerIsNotMember_ShouldReturnForbidden()
     {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
         var message = await SendChannelMessageAsync(channelId, "can't react", owner.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{channelId}/messages/{message.MessageId}/reactions/%F0%9F%91%8D",
             outsider.AccessToken);
 
@@ -102,10 +96,10 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddChannelReaction_WhenMessageDoesNotExist_ShouldReturnNotFound()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await CreateGuildAndChannelAsync(owner.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/channels/{channelId}/messages/{Guid.NewGuid()}/reactions/%F0%9F%91%8D",
             owner.AccessToken);
 
@@ -131,12 +125,12 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddConversationReaction_WhenCallerIsParticipant_ShouldReturn204()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
         var message = await SendConversationMessageAsync(conversationId, "react to this dm", caller.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}/reactions/%E2%9D%A4",
             caller.AccessToken);
 
@@ -146,17 +140,17 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddConversationReaction_WhenCalledTwice_ShouldBeIdempotent()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
         var message = await SendConversationMessageAsync(conversationId, "react twice dm", caller.AccessToken);
 
-        var firstResponse = await SendAuthorizedPutAsync(
+        var firstResponse = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}/reactions/%E2%9D%A4",
             caller.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var secondResponse = await SendAuthorizedPutAsync(
+        var secondResponse = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}/reactions/%E2%9D%A4",
             caller.AccessToken);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -165,9 +159,9 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddConversationReaction_WhenConversationDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%E2%9D%A4",
             caller.AccessToken);
 
@@ -181,13 +175,13 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddConversationReaction_WhenCallerIsNotParticipant_ShouldReturnForbidden()
     {
-        var participantOne = await RegisterAsync();
-        var participantTwo = await RegisterAsync();
-        var outsider = await RegisterAsync();
+        var participantOne = await AuthTestHelper.RegisterAsync(_client);
+        var participantTwo = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
         var message = await SendConversationMessageAsync(conversationId, "private dm", participantOne.AccessToken);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{conversationId}/messages/{message.MessageId}/reactions/%E2%9D%A4",
             outsider.AccessToken);
 
@@ -201,11 +195,11 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task AddConversationReaction_WhenMessageDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
         var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await SendAuthorizedPutNoBodyAsync(
             $"/api/conversations/{conversationId}/messages/{Guid.NewGuid()}/reactions/%E2%9D%A4",
             caller.AccessToken);
 
@@ -226,27 +220,10 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
     private async Task<(string GuildId, string ChannelId)> CreateGuildAndChannelAsync(string accessToken)
     {
         var guildName = $"guild{Guid.NewGuid():N}"[..16];
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest(guildName),
             accessToken);
@@ -255,7 +232,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
         var guildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guildPayload!.GuildId}/channels",
             new CreateChannelRequest($"chan{Guid.NewGuid():N}"[..16], ChannelTypeInput.Text, 1),
             accessToken);
@@ -272,7 +249,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
         string content,
         string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
             new SendMessageRequest(content),
             accessToken);
@@ -285,7 +262,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
 
     private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(targetUserId),
             accessToken);
@@ -301,7 +278,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
         string content,
         string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new ConversationSendMessageRequest(content),
             accessToken);
@@ -312,20 +289,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<WebApplicationFacto
         return payload!;
     }
 
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: JsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync(
+    private async Task<HttpResponseMessage> SendAuthorizedPutNoBodyAsync(
         string uri,
         string accessToken)
     {

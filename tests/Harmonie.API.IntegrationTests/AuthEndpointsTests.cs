@@ -1,7 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.Logout;
@@ -38,7 +38,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        
+
         var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
         result.Should().NotBeNull();
 
@@ -89,7 +89,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
+
         var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
         result.Should().NotBeNull();
 
@@ -117,7 +117,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
+
         var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
         result.Should().NotBeNull();
 
@@ -247,7 +247,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         registerPayload.Should().NotBeNull();
 
         // Act - Logout current session
-        var logoutResponse = await SendAuthorizedPostAsync(
+        var logoutResponse = await _client.SendAuthorizedPostAsync(
             "/api/auth/logout",
             new LogoutRequest(registerPayload!.RefreshToken),
             registerPayload.AccessToken);
@@ -291,7 +291,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         userBPayload.Should().NotBeNull();
 
         // Act - user A tries to revoke user B refresh token
-        var logoutResponse = await SendAuthorizedPostAsync(
+        var logoutResponse = await _client.SendAuthorizedPostAsync(
             "/api/auth/logout",
             new LogoutRequest(userBPayload!.RefreshToken),
             userAPayload!.AccessToken);
@@ -341,7 +341,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         loginPayload.Should().NotBeNull();
 
         // Act
-        var logoutAllResponse = await SendAuthorizedPostAsync(
+        var logoutAllResponse = await _client.SendAuthorizedPostNoBodyAsync(
             "/api/auth/logout-all",
             registerPayload!.AccessToken);
 
@@ -395,7 +395,7 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         registerPayload.Should().NotBeNull();
 
         // Act
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/auth/logout",
             new LogoutRequest(string.Empty),
             registerPayload!.AccessToken);
@@ -406,27 +406,5 @@ public sealed class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

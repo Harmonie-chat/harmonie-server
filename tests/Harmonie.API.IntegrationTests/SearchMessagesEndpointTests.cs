@@ -1,16 +1,10 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.SendMessage;
-using Harmonie.Application.Features.Guilds.CreateChannel;
-using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.SearchMessages;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -20,10 +14,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public SearchMessagesEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -33,13 +23,13 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
     [Fact]
     public async Task SearchMessages_WhenCallerIsGuildMember_ShouldReturnMatchesWithContext()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Search Guild");
-        await InviteMemberAsync(guildId, member.UserId, owner.AccessToken);
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Search Guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
 
         var generalChannelId = await GetDefaultTextChannelIdAsync(owner.AccessToken, guildId);
-        var deploymentsChannelId = await CreateChannelAndGetIdAsync(owner.AccessToken, guildId, "deployments");
+        var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
 
         await SendMessageAsync(generalChannelId, "deploy alpha", owner.AccessToken);
         await Task.Delay(20);
@@ -47,7 +37,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
         await Task.Delay(20);
         await SendMessageAsync(deploymentsChannelId, "deploy beta", member.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             BuildSearchUri(guildId, "deploy"),
             member.AccessToken);
 
@@ -66,12 +56,12 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
     [Fact]
     public async Task SearchMessages_WithFiltersAndCursor_ShouldReturnNextPage()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Search Pagination Guild");
-        await InviteMemberAsync(guildId, member.UserId, owner.AccessToken);
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Search Pagination Guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
 
-        var deploymentsChannelId = await CreateChannelAndGetIdAsync(owner.AccessToken, guildId, "deployments");
+        var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
 
         await SendMessageAsync(deploymentsChannelId, "incident one", owner.AccessToken);
         await Task.Delay(20);
@@ -81,7 +71,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
         await Task.Delay(20);
         await SendMessageAsync(deploymentsChannelId, "incident four", owner.AccessToken);
 
-        var firstResponse = await SendAuthorizedGetAsync(
+        var firstResponse = await _client.SendAuthorizedGetAsync(
             BuildSearchUri(
                 guildId,
                 "incident",
@@ -97,7 +87,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
         firstPayload!.Items.Select(item => item.Content).Should().Equal("incident three", "incident four");
         firstPayload.NextCursor.Should().NotBeNullOrWhiteSpace();
 
-        var secondResponse = await SendAuthorizedGetAsync(
+        var secondResponse = await _client.SendAuthorizedGetAsync(
             BuildSearchUri(
                 guildId,
                 "incident",
@@ -118,11 +108,11 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
     [Fact]
     public async Task SearchMessages_WhenCallerIsNotGuildMember_ShouldReturnForbidden()
     {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden Search Guild");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden Search Guild");
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             BuildSearchUri(guildId, "deploy"),
             outsider.AccessToken);
 
@@ -133,48 +123,9 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
         error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
     }
 
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<string> CreateGuildAndGetIdAsync(string accessToken, string guildName)
-    {
-        var response = await SendAuthorizedPostAsync(
-            "/api/guilds",
-            new CreateGuildRequest(guildName),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<CreateGuildResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!.GuildId;
-    }
-
-    private async Task InviteMemberAsync(string guildId, string userId, string accessToken)
-    {
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/members/invite",
-            new InviteMemberRequest(userId),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
     private async Task<string> GetDefaultTextChannelIdAsync(string accessToken, string guildId)
     {
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guildId}/channels",
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -185,23 +136,9 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
         return payload!.Channels.First(channel => channel.Type == "Text").ChannelId;
     }
 
-    private async Task<string> CreateChannelAndGetIdAsync(string accessToken, string guildId, string name)
-    {
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/channels",
-            new CreateChannelRequest(name, ChannelTypeInput.Text, 10),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<CreateChannelResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!.ChannelId;
-    }
-
     private async Task SendMessageAsync(string channelId, string content, string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
             new SendMessageRequest(content),
             accessToken);
@@ -234,25 +171,5 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<WebApplicationFa
             parts.Add($"cursor={Uri.EscapeDataString(cursor)}");
 
         return $"/api/guilds/{guildId}/messages/search?{string.Join("&", parts)}";
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

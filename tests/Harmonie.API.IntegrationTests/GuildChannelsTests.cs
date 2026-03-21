@@ -1,14 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -17,10 +14,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public GuildChannelsTests(WebApplicationFactory<Program> factory)
     {
@@ -30,9 +23,9 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenAdminCreatesTextChannel_ShouldReturn201()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Channel Text Guild"),
             owner.AccessToken);
@@ -41,7 +34,7 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/channels",
             new CreateChannelRequest("announcements", ChannelTypeInput.Text, 2),
             owner.AccessToken);
@@ -60,9 +53,9 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenAdminCreatesVoiceChannel_ShouldReturn201()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Channel Voice Guild"),
             owner.AccessToken);
@@ -71,7 +64,7 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/channels",
             new CreateChannelRequest("Gaming", ChannelTypeInput.Voice, 5),
             owner.AccessToken);
@@ -86,10 +79,10 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenMemberTriesToCreate_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Member Create Channel Guild"),
             owner.AccessToken);
@@ -98,12 +91,9 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        await SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, member.UserId, owner.AccessToken);
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",
             new CreateChannelRequest("member-channel", ChannelTypeInput.Text, 3),
             member.AccessToken);
@@ -117,10 +107,10 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenNonMemberTriesToCreate_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Non Member Create Channel Guild"),
             owner.AccessToken);
@@ -129,7 +119,7 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/channels",
             new CreateChannelRequest("outsider-channel", ChannelTypeInput.Text, 3),
             outsider.AccessToken);
@@ -143,10 +133,10 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenGuildNotFound_ShouldReturn404()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var nonExistentGuildId = Guid.NewGuid();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{nonExistentGuildId}/channels",
             new CreateChannelRequest("lost-channel", ChannelTypeInput.Text, 0),
             user.AccessToken);
@@ -171,9 +161,9 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenInvalidType_ShouldReturn400()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Invalid Type Channel Guild"),
             owner.AccessToken);
@@ -196,9 +186,9 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task CreateChannel_WhenNegativePosition_ShouldReturn400()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Negative Position Channel Guild"),
             owner.AccessToken);
@@ -207,7 +197,7 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var createChannelResponse = await SendAuthorizedPostAsync(
+        var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/channels",
             new CreateChannelRequest("bad-channel", ChannelTypeInput.Text, -1),
             owner.AccessToken);
@@ -216,35 +206,6 @@ public sealed class GuildChannelsTests : IClassFixture<WebApplicationFactory<Pro
         var error = await createChannelResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private async Task<HttpResponseMessage> SendAuthorizedPostRawAsync(

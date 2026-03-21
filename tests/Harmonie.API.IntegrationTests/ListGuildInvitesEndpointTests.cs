@@ -1,11 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
 using Harmonie.Application.Features.Guilds.InviteMember;
@@ -18,10 +15,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public ListGuildInvitesEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -31,9 +24,9 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_WithNoInvites_ShouldReturn200WithEmptyList()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"List Invites Empty Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -42,7 +35,7 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -56,9 +49,9 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_WithMultipleInvites_ShouldReturnAll()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Multi Invites Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -67,19 +60,19 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var invite1Response = await SendAuthorizedPostAsync(
+        var invite1Response = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(MaxUses: 5, ExpiresInHours: 24),
             owner.AccessToken);
         invite1Response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var invite2Response = await SendAuthorizedPostAsync(
+        var invite2Response = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
         invite2Response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -100,9 +93,9 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_ShouldIncludeIsExpiredFlag()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Expired Flag Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -112,13 +105,13 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         guild.Should().NotBeNull();
 
         // Valid invite (no limits)
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -134,10 +127,10 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_WhenNotAdmin_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Admin Only Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -146,13 +139,13 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var inviteMemberResponse = await SendAuthorizedPostAsync(
+        var inviteMemberResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/members/invite",
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteMemberResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             member.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -165,10 +158,10 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_WhenGuildNotFound_ShouldReturn404()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var nonExistentGuildId = Guid.NewGuid();
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{nonExistentGuildId}/invites",
             user.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -190,9 +183,9 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_WhenGuildIdIsInvalid_ShouldReturn400()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             "/api/guilds/not-a-guid/invites",
             user.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -205,9 +198,9 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
     [Fact]
     public async Task ListGuildInvites_ShouldReturnInvitesOrderedByCreatedAtDescending()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Ordered Invites Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -216,21 +209,21 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var first = await SendAuthorizedPostAsync(
+        var first = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(MaxUses: 1),
             owner.AccessToken);
         first.StatusCode.Should().Be(HttpStatusCode.Created);
         var firstInvite = await first.Content.ReadFromJsonAsync<CreateGuildInviteResponse>();
 
-        var second = await SendAuthorizedPostAsync(
+        var second = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             new CreateGuildInviteRequest(MaxUses: 2),
             owner.AccessToken);
         second.StatusCode.Should().Be(HttpStatusCode.Created);
         var secondInvite = await second.Content.ReadFromJsonAsync<CreateGuildInviteResponse>();
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -241,41 +234,5 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<WebApplication
         // Most recent first
         result.Invites[0].Code.Should().Be(secondInvite!.Code);
         result.Invites[1].Code.Should().Be(firstInvite!.Code);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

@@ -1,11 +1,9 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
-using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Users.SearchUsers;
 using Harmonie.Application.Interfaces;
 using Harmonie.Domain.ValueObjects;
@@ -37,7 +35,7 @@ public sealed class SearchUsersEndpointTests : IClassFixture<WebApplicationFacto
         await UpdateDisplayNameAsync(alpha.AccessToken, $"{token} Alpha");
         await UpdateDisplayNameAsync(beta.AccessToken, $"The {token} Beta");
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/users/search?q={token}",
             caller.AccessToken);
 
@@ -61,10 +59,10 @@ public sealed class SearchUsersEndpointTests : IClassFixture<WebApplicationFacto
         await UpdateDisplayNameAsync(guildMember.AccessToken, "Alex Member");
         await UpdateDisplayNameAsync(outsider.AccessToken, "Alex Outsider");
 
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "User Search Guild");
-        await InviteMemberAsync(guildId, guildMember.UserId, owner.AccessToken);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "User Search Guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, guildMember.UserId, owner.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/users/search?q=alex&guildId={guildId}",
             owner.AccessToken);
 
@@ -81,9 +79,9 @@ public sealed class SearchUsersEndpointTests : IClassFixture<WebApplicationFacto
     {
         var owner = await RegisterAsync();
         var outsider = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden User Search Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden User Search Guild");
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/users/search?q=al&guildId={guildId}",
             outsider.AccessToken);
 
@@ -106,7 +104,7 @@ public sealed class SearchUsersEndpointTests : IClassFixture<WebApplicationFacto
         await UpdateDisplayNameAsync(inactiveUser.AccessToken, $"{token} Blocked");
         await DeactivateUserAsync(inactiveUser.UserId);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/users/search?q={token}",
             caller.AccessToken);
 
@@ -148,46 +146,11 @@ public sealed class SearchUsersEndpointTests : IClassFixture<WebApplicationFacto
 
     private async Task UpdateDisplayNameAsync(string accessToken, string displayName)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/users/me")
-        {
-            Content = JsonContent.Create(new { displayName })
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { displayName },
+            accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    private async Task<string> CreateGuildAndGetIdAsync(string accessToken, string guildName)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/guilds")
-        {
-            Content = JsonContent.Create(new CreateGuildRequest(guildName))
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<CreateGuildResponse>();
-        payload.Should().NotBeNull();
-        return payload!.GuildId;
-    }
-
-    private async Task InviteMemberAsync(string guildId, string userId, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/guilds/{guildId}/members/invite")
-        {
-            Content = JsonContent.Create(new InviteMemberRequest(userId))
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private async Task DeactivateUserAsync(string userId)

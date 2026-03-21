@@ -1,11 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
 using Harmonie.Application.Features.Guilds.PreviewInvite;
@@ -17,10 +14,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public PreviewInviteEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -30,9 +23,9 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task PreviewInvite_WithValidCode_ShouldReturn200()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Preview Invite Guild"),
             owner.AccessToken);
@@ -40,7 +33,7 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
 
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
 
-        var createInviteResponse = await SendAuthorizedPostAsync(
+        var createInviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(MaxUses: 10, ExpiresInHours: 24),
             owner.AccessToken);
@@ -63,9 +56,9 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task PreviewInvite_WithUnlimitedInvite_ShouldReturnNullLimits()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Unlimited Preview Guild"),
             owner.AccessToken);
@@ -73,7 +66,7 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
 
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
 
-        var createInviteResponse = await SendAuthorizedPostAsync(
+        var createInviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
@@ -93,9 +86,9 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task PreviewInvite_WithoutAuthentication_ShouldStillWork()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Anon Preview Guild"),
             owner.AccessToken);
@@ -103,7 +96,7 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
 
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
 
-        var createInviteResponse = await SendAuthorizedPostAsync(
+        var createInviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
@@ -143,34 +136,5 @@ public sealed class PreviewInviteEndpointTests : IClassFixture<WebApplicationFac
     {
         var previewResponse = await _client.GetAsync("/api/invites/abc!@#$%");
         previewResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }
