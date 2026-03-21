@@ -56,7 +56,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         });
 
         await connection.StartAsync();
-        await ready.Task;
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var deleteGuildResponse = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",
