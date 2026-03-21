@@ -1,16 +1,12 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Features.Conversations.DeleteMessage;
 using Harmonie.Application.Features.Conversations.EditMessage;
-using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendMessage;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Xunit;
@@ -31,9 +27,9 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     [Fact]
     public async Task ConversationMessageCreated_WhenParticipantConnected_ShouldReceiveEvent()
     {
-        var sender = await RegisterAsync();
-        var receiver = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+        var receiver = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, sender.AccessToken, receiver.UserId);
 
         await using var connection = CreateHubConnection(receiver.AccessToken);
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -49,7 +45,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         await connection.StartAsync();
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        var sendResponse = await SendAuthorizedPostAsync(
+        var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest("hello realtime dm"),
             sender.AccessToken);
@@ -72,11 +68,11 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     [Fact]
     public async Task ConversationMessageUpdated_WhenParticipantConnected_ShouldReceiveEvent()
     {
-        var sender = await RegisterAsync();
-        var receiver = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+        var receiver = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, sender.AccessToken, receiver.UserId);
 
-        var sendResponse = await SendAuthorizedPostAsync(
+        var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest("original realtime dm"),
             sender.AccessToken);
@@ -99,7 +95,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         await connection.StartAsync();
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        var editResponse = await SendAuthorizedPatchAsync(
+        var editResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
             new EditMessageRequest("updated realtime dm"),
             sender.AccessToken);
@@ -119,11 +115,11 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
     [Fact]
     public async Task ConversationMessageDeleted_WhenParticipantConnected_ShouldReceiveEvent()
     {
-        var sender = await RegisterAsync();
-        var receiver = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(sender.AccessToken, receiver.UserId);
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+        var receiver = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, sender.AccessToken, receiver.UserId);
 
-        var sendResponse = await SendAuthorizedPostAsync(
+        var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest("delete realtime dm"),
             sender.AccessToken);
@@ -146,7 +142,7 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
         await connection.StartAsync();
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        var deleteResponse = await SendAuthorizedDeleteAsync(
+        var deleteResponse = await _client.SendAuthorizedDeleteAsync(
             $"/api/conversations/{conversationId}/messages/{sendPayload!.MessageId}",
             sender.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -173,69 +169,6 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<WebAppli
                 options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
             })
             .Build();
-    }
-
-    private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
-    {
-        var response = await SendAuthorizedPostAsync(
-            "/api/conversations",
-            new OpenConversationRequest(targetUserId),
-            accessToken);
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
-
-        var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>();
-        payload.Should().NotBeNull();
-        return payload!.ConversationId;
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private sealed record SignalRConversationMessageCreatedEvent(

@@ -1,9 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -23,10 +22,10 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task OpenConversation_FirstRequest_ShouldCreateConversation()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(target.UserId),
             caller.AccessToken);
@@ -43,10 +42,10 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task OpenConversation_SecondRequestForSamePair_ShouldReturnExistingConversation()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
 
-        var firstResponse = await SendAuthorizedPostAsync(
+        var firstResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(target.UserId),
             caller.AccessToken);
@@ -55,7 +54,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
         var firstPayload = await firstResponse.Content.ReadFromJsonAsync<OpenConversationResponse>();
         firstPayload.Should().NotBeNull();
 
-        var secondResponse = await SendAuthorizedPostAsync(
+        var secondResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(caller.UserId),
             target.AccessToken);
@@ -71,9 +70,9 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task OpenConversation_WhenTargetUserDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(Guid.NewGuid().ToString()),
             caller.AccessToken);
@@ -88,9 +87,9 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task OpenConversation_WhenCallerTargetsSelf_ShouldReturnBadRequest()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(caller.UserId),
             caller.AccessToken);
@@ -115,23 +114,23 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task ListConversations_WhenUserHasConversations_ShouldReturnOtherParticipants()
     {
-        var caller = await RegisterAsync();
-        var targetOne = await RegisterAsync();
-        var targetTwo = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var targetOne = await AuthTestHelper.RegisterAsync(_client);
+        var targetTwo = await AuthTestHelper.RegisterAsync(_client);
 
-        var openFirstResponse = await SendAuthorizedPostAsync(
+        var openFirstResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(targetOne.UserId),
             caller.AccessToken);
         openFirstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var openSecondResponse = await SendAuthorizedPostAsync(
+        var openSecondResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(targetTwo.UserId),
             caller.AccessToken);
         openSecondResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var response = await SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var response = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -150,9 +149,9 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task ListConversations_WhenUserHasNoConversations_ShouldReturnEmptyArray()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var response = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -167,42 +166,5 @@ public sealed class ConversationEndpointsTests : IClassFixture<WebApplicationFac
         var response = await _client.GetAsync("/api/conversations");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

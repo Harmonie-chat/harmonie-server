@@ -1,14 +1,9 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.BanMember;
-using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListBans;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -18,10 +13,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public ListBansEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -32,11 +23,11 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task ListBans_WhenAdminAndNoBans_ShouldReturnEmptyList()
     {
         var token = Guid.NewGuid().ToString("N")[..8];
-        var owner = await RegisterAsync(token);
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
 
-        var guild = await CreateGuildAsync($"LBEmpty{token}", owner.AccessToken);
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBEmpty{token}", owner.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             owner.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -51,22 +42,22 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task ListBans_WhenAdminAndBansExist_ShouldReturnBanList()
     {
         var token = Guid.NewGuid().ToString("N")[..8];
-        var owner = await RegisterAsync(token);
-        var member = await RegisterAsync(token + "m");
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
+        var member = await AuthTestHelper.RegisterAsync(_client, token + "m");
 
-        var guild = await CreateGuildAsync($"LBList{token}", owner.AccessToken);
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBList{token}", owner.AccessToken);
 
-        await InviteMemberAsync(guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
 
         // Ban the member
-        var banResponse = await SendAuthorizedPostAsync(
+        var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             new BanMemberRequest(member.UserId, "Spamming"),
             owner.AccessToken);
         banResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // List bans
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             owner.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -87,14 +78,14 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task ListBans_WhenNonAdmin_ShouldReturn403()
     {
         var token = Guid.NewGuid().ToString("N")[..8];
-        var owner = await RegisterAsync(token);
-        var member = await RegisterAsync(token + "m");
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
+        var member = await AuthTestHelper.RegisterAsync(_client, token + "m");
 
-        var guild = await CreateGuildAsync($"LBForbid{token}", owner.AccessToken);
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBForbid{token}", owner.AccessToken);
 
-        await InviteMemberAsync(guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             member.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -108,9 +99,9 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task ListBans_WhenGuildNotFound_ShouldReturn404()
     {
         var token = Guid.NewGuid().ToString("N")[..8];
-        var owner = await RegisterAsync(token);
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{Guid.NewGuid()}/bans",
             owner.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -132,28 +123,28 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task ListBans_WhenBanIsRemoved_ShouldNotAppearInList()
     {
         var token = Guid.NewGuid().ToString("N")[..8];
-        var owner = await RegisterAsync(token);
-        var member = await RegisterAsync(token + "m");
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
+        var member = await AuthTestHelper.RegisterAsync(_client, token + "m");
 
-        var guild = await CreateGuildAsync($"LBUnban{token}", owner.AccessToken);
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBUnban{token}", owner.AccessToken);
 
-        await InviteMemberAsync(guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
 
         // Ban the member
-        var banResponse = await SendAuthorizedPostAsync(
+        var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             new BanMemberRequest(member.UserId),
             owner.AccessToken);
         banResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Unban the member
-        var unbanResponse = await SendAuthorizedDeleteAsync(
+        var unbanResponse = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/bans/{member.UserId}",
             owner.AccessToken);
         unbanResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // List bans — should be empty
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/bans",
             owner.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -161,73 +152,5 @@ public sealed class ListBansEndpointTests : IClassFixture<WebApplicationFactory<
         var payload = await response.Content.ReadFromJsonAsync<ListBansResponse>();
         payload.Should().NotBeNull();
         payload!.Bans.Should().BeEmpty();
-    }
-
-    private async Task<RegisterResponse> RegisterAsync(string token)
-    {
-        var request = new RegisterRequest(
-            Email: $"test{token}{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"u{token}{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<CreateGuildResponse> CreateGuildAsync(string name, string accessToken)
-    {
-        var response = await SendAuthorizedPostAsync(
-            "/api/guilds",
-            new CreateGuildRequest(name),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var guild = await response.Content.ReadFromJsonAsync<CreateGuildResponse>();
-        guild.Should().NotBeNull();
-        return guild!;
-    }
-
-    private async Task InviteMemberAsync(string guildId, string userId, string accessToken)
-    {
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/members/invite",
-            new InviteMemberRequest(userId),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

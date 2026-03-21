@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Harmonie.Application.Features.Auth.Register;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using ConversationSendMessageRequest = Harmonie.Application.Features.Conversations.SendMessage.SendMessageRequest;
@@ -34,7 +34,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("hello.txt", "text/plain", "hello from filesystem");
 
         var response = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -48,7 +48,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         Assert.False(string.IsNullOrWhiteSpace(payload.FileId));
 
         // Verify file exists on disk by downloading through the authorized endpoint
-        var downloadResponse = await SendAuthorizedGetAsync(client, $"/api/files/{payload.FileId}", user.AccessToken);
+        var downloadResponse = await client.SendAuthorizedGetAsync($"/api/files/{payload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, downloadResponse.StatusCode);
 
         var diskContent = await downloadResponse.Content.ReadAsStringAsync();
@@ -61,7 +61,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("image.png", "image/png", "fake-png-content");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -70,7 +70,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var payload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(payload);
 
-        var fileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{payload!.FileId}", user.AccessToken);
+        var fileResponse = await client.SendAuthorizedGetAsync($"/api/files/{payload!.FileId}", user.AccessToken);
 
         Assert.Equal(HttpStatusCode.OK, fileResponse.StatusCode);
         Assert.Equal("image/png", fileResponse.Content.Headers.ContentType?.MediaType);
@@ -85,7 +85,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("secret.txt", "text/plain", "secret content");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -105,7 +105,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         var bytes = System.Text.Encoding.UTF8.GetBytes("test content");
         using var multipart = CreateMultipartContent("doc.txt", "text/plain", "test content");
 
@@ -125,7 +125,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("guild-icon.txt", "text/plain", "guild icon");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -134,8 +134,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
-            client,
+        var createGuildResponse = await client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Guild With Uploaded Icon"),
             user.AccessToken);
@@ -144,21 +143,19 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         Assert.NotNull(createGuildPayload);
 
-        var setIconResponse = await SendAuthorizedPatchAsync(
-            client,
+        var setIconResponse = await client.SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}",
             new { iconFileId = uploadPayload!.FileId, icon = new { color = "#F59E0B" } },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, setIconResponse.StatusCode);
 
-        var clearIconResponse = await SendAuthorizedPatchAsync(
-            client,
+        var clearIconResponse = await client.SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",
             new { iconFileId = (string?)null },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, clearIconResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -168,7 +165,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var initialMultipart = CreateMultipartContent("guild-icon-initial.txt", "text/plain", "initial guild icon");
         using var replacementMultipart = CreateMultipartContent("guild-icon-replacement.txt", "text/plain", "replacement guild icon");
 
@@ -183,8 +180,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         Assert.NotNull(initialUploadPayload);
         Assert.NotNull(replacementUploadPayload);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
-            client,
+        var createGuildResponse = await client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Guild Replace"),
             user.AccessToken);
@@ -193,24 +189,22 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         Assert.NotNull(guild);
 
-        var setInitialIconResponse = await SendAuthorizedPatchAsync(
-            client,
+        var setInitialIconResponse = await client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guild!.GuildId}",
             new { iconFileId = initialUploadPayload!.FileId },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, setInitialIconResponse.StatusCode);
 
-        var replaceIconResponse = await SendAuthorizedPatchAsync(
-            client,
+        var replaceIconResponse = await client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guild.GuildId}",
             new { iconFileId = replacementUploadPayload!.FileId },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, replaceIconResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{initialUploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{initialUploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
 
-        var newFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{replacementUploadPayload.FileId}", user.AccessToken);
+        var newFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{replacementUploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, newFileResponse.StatusCode);
 
         var newFileContent = await newFileResponse.Content.ReadAsStringAsync();
@@ -223,7 +217,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("guild-icon-delete.txt", "text/plain", "guild icon to delete");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -232,8 +226,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
-            client,
+        var createGuildResponse = await client.SendAuthorizedPostAsync(
             "/api/guilds",
             new
             {
@@ -246,13 +239,12 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         Assert.NotNull(createGuildPayload);
 
-        var deleteGuildResponse = await SendAuthorizedDeleteAsync(
-            client,
+        var deleteGuildResponse = await client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}",
             user.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteGuildResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -262,7 +254,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("avatar-delete.txt", "text/plain", "avatar to delete");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -271,20 +263,18 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var setAvatarResponse = await SendAuthorizedPatchAsync(
-            client,
+        var setAvatarResponse = await client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatarFileId = uploadPayload!.FileId },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, setAvatarResponse.StatusCode);
 
-        var deleteAvatarResponse = await SendAuthorizedDeleteAsync(
-            client,
+        var deleteAvatarResponse = await client.SendAuthorizedDeleteAsync(
             "/api/users/me/avatar",
             user.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteAvatarResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -294,7 +284,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         var guildId = await CreateGuildAsync(client, user.AccessToken, "Attachment Delete Guild");
         var channelId = await CreateChannelAsync(client, user.AccessToken, guildId, "attachment-delete-channel");
         using var multipart = CreateMultipartContent("attachment-delete.txt", "text/plain", "attachment to delete");
@@ -305,8 +295,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var sendMessageResponse = await SendAuthorizedPostAsync(
-            client,
+        var sendMessageResponse = await client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
             new SendMessageRequest("message with attachment", [uploadPayload!.FileId]),
             user.AccessToken);
@@ -315,13 +304,12 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var sendMessagePayload = await sendMessageResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
         Assert.NotNull(sendMessagePayload);
 
-        var deleteAttachmentResponse = await SendAuthorizedDeleteAsync(
-            client,
+        var deleteAttachmentResponse = await client.SendAuthorizedDeleteAsync(
             $"/api/channels/{channelId}/messages/{sendMessagePayload!.MessageId}/attachments/{uploadPayload.FileId}",
             user.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteAttachmentResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -331,8 +319,8 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var caller = await RegisterAsync(client);
-        var target = await RegisterAsync(client);
+        var caller = await AuthTestHelper.RegisterAsync(client);
+        var target = await AuthTestHelper.RegisterAsync(client);
         var conversationId = await OpenConversationAsync(client, caller.AccessToken, target.UserId);
         using var multipart = CreateMultipartContent("conversation-attachment-delete.txt", "text/plain", "conversation attachment to delete");
 
@@ -342,8 +330,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var sendMessageResponse = await SendAuthorizedPostAsync(
-            client,
+        var sendMessageResponse = await client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new ConversationSendMessageRequest("message with attachment", [uploadPayload!.FileId]),
             caller.AccessToken);
@@ -352,13 +339,12 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var sendMessagePayload = await sendMessageResponse.Content.ReadFromJsonAsync<ConversationSendMessageResponse>();
         Assert.NotNull(sendMessagePayload);
 
-        var deleteAttachmentResponse = await SendAuthorizedDeleteAsync(
-            client,
+        var deleteAttachmentResponse = await client.SendAuthorizedDeleteAsync(
             $"/api/conversations/{conversationId}/messages/{sendMessagePayload!.MessageId}/attachments/{uploadPayload.FileId}",
             caller.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteAttachmentResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", caller.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", caller.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -368,7 +354,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         using var factory = BuildFactory();
         using var client = factory.CreateClient();
 
-        var user = await RegisterAsync(client);
+        var user = await AuthTestHelper.RegisterAsync(client);
         using var multipart = CreateMultipartContent("guild-icon-endpoint-delete.txt", "text/plain", "guild icon endpoint delete");
 
         var uploadResponse = await SendAuthorizedMultipartAsync(client, "/api/files/uploads", multipart, user.AccessToken);
@@ -377,8 +363,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var uploadPayload = await uploadResponse.Content.ReadFromJsonAsync<UploadFileResponse>();
         Assert.NotNull(uploadPayload);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
-            client,
+        var createGuildResponse = await client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Guild Icon Endpoint Delete"),
             user.AccessToken);
@@ -387,20 +372,18 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         Assert.NotNull(guild);
 
-        var setIconResponse = await SendAuthorizedPatchAsync(
-            client,
+        var setIconResponse = await client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guild!.GuildId}",
             new { iconFileId = uploadPayload!.FileId },
             user.AccessToken);
         Assert.Equal(HttpStatusCode.OK, setIconResponse.StatusCode);
 
-        var deleteIconResponse = await SendAuthorizedDeleteAsync(
-            client,
+        var deleteIconResponse = await client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/icon",
             user.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteIconResponse.StatusCode);
 
-        var oldFileResponse = await SendAuthorizedGetAsync(client, $"/api/files/{uploadPayload.FileId}", user.AccessToken);
+        var oldFileResponse = await client.SendAuthorizedGetAsync($"/api/files/{uploadPayload.FileId}", user.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, oldFileResponse.StatusCode);
     }
 
@@ -424,28 +407,12 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
             });
         });
 
-    private static async Task<RegisterResponse> RegisterAsync(HttpClient client)
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await client.PostAsJsonAsync("/api/auth/register", request);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        Assert.NotNull(payload);
-        return payload!;
-    }
-
     private static async Task<string> OpenConversationAsync(
         HttpClient client,
         string accessToken,
         string targetUserId)
     {
-        var response = await SendAuthorizedPostAsync(
-            client,
+        var response = await client.SendAuthorizedPostAsync(
             "/api/conversations",
             new OpenConversationRequest(targetUserId),
             accessToken);
@@ -461,8 +428,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         string accessToken,
         string name)
     {
-        var response = await SendAuthorizedPostAsync(
-            client,
+        var response = await client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest(name),
             accessToken);
@@ -479,8 +445,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         string guildId,
         string name)
     {
-        var response = await SendAuthorizedPostAsync(
-            client,
+        var response = await client.SendAuthorizedPostAsync(
             $"/api/guilds/{guildId}/channels",
             new { name, type = "Text", position = 0 },
             accessToken);
@@ -510,54 +475,6 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<WebApplicatio
         string accessToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, uri) { Content = content };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await client.SendAsync(request);
-    }
-
-    private static async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        HttpClient client,
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await client.SendAsync(request);
-    }
-
-    private static async Task<HttpResponseMessage> SendAuthorizedPostAsync(
-        HttpClient client,
-        string uri,
-        object payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await client.SendAsync(request);
-    }
-
-    private static async Task<HttpResponseMessage> SendAuthorizedPatchAsync(
-        HttpClient client,
-        string uri,
-        object payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await client.SendAsync(request);
-    }
-
-    private static async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
-        HttpClient client,
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await client.SendAsync(request);
     }

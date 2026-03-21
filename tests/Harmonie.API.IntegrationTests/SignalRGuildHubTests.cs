@@ -1,8 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Harmonie.Application.Features.Auth.Register;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.InviteMember;
 using Microsoft.AspNetCore.Http.Connections;
@@ -27,10 +26,10 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task GuildDeleted_WhenMemberConnected_ShouldReceiveEventBeforeDeletion()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("SignalR Guild Delete"),
             owner.AccessToken);
@@ -39,7 +38,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
@@ -56,7 +55,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
 
         await connection.StartAsync();
 
-        var deleteGuildResponse = await SendAuthorizedDeleteAsync(
+        var deleteGuildResponse = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",
             owner.AccessToken);
         deleteGuildResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -82,43 +81,6 @@ public sealed class SignalRGuildHubTests : IClassFixture<WebApplicationFactory<P
                 options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
             })
             .Build();
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 
     private sealed record SignalRGuildDeletedEvent(string GuildId);

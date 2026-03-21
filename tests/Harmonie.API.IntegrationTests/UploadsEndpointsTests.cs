@@ -3,8 +3,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -28,7 +28,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task UploadFile_WithValidMultipartRequest_ShouldReturnCreated()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var fakeStorage = new FakeObjectStorageService();
 
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -59,7 +59,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task UploadFile_WithUnsupportedContentType_ShouldReturnBadRequest()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var fakeStorage = new FakeObjectStorageService();
 
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -87,7 +87,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task UploadFile_WithGuildIconPurpose_ShouldReturnCreated()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var fakeStorage = new FakeObjectStorageService();
 
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -116,7 +116,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task UploadFile_WithInvalidPurpose_ShouldReturnBadRequest()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var fakeStorage = new FakeObjectStorageService();
 
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -145,7 +145,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task UploadFile_WithAvatarPurpose_ShouldReturnBadRequest()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
         var fakeStorage = new FakeObjectStorageService();
 
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -179,21 +179,6 @@ public sealed class UploadsEndpointsTests : IClassFixture<WebApplicationFactory<
         var response = await _client.PostAsync("/api/files/uploads", content);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
     }
 
     private static MultipartFormDataContent CreateMultipartContent(

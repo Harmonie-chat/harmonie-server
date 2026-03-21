@@ -1,18 +1,13 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
-using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
-using Harmonie.Application.Features.Uploads.UploadFile;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -21,10 +16,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public CreateGuildTests(WebApplicationFactory<Program> factory)
     {
@@ -34,10 +25,10 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task GuildPrimaryFlow_CreateInviteSendRead_ShouldSucceed()
     {
-        var userA = await RegisterAsync();
-        var userB = await RegisterAsync();
+        var userA = await AuthTestHelper.RegisterAsync(_client);
+        var userB = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Harmonie Guild"),
             userA.AccessToken);
@@ -48,7 +39,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         createGuildPayload!.IconFileId.Should().BeNull();
         createGuildPayload.Icon.Should().BeNull();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
             new InviteMemberRequest(userB.UserId),
             userA.AccessToken);
@@ -60,7 +51,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         invitePayload!.UserId.Should().Be(userB.UserId);
         invitePayload.Role.Should().Be("Member");
 
-        var channelsResponse = await SendAuthorizedGetAsync(
+        var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",
             userB.AccessToken);
         channelsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -74,7 +65,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
 
         var textChannel = channelsPayload.Channels.First(channel => channel.Type == "Text");
 
-        var sendMessageResponse = await SendAuthorizedPostAsync(
+        var sendMessageResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{textChannel.ChannelId}/messages",
             new SendMessageRequest("Hello team"),
             userA.AccessToken);
@@ -85,7 +76,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
 
         sendMessagePayload!.Content.Should().Be("Hello team");
 
-        var getMessagesResponse = await SendAuthorizedGetAsync(
+        var getMessagesResponse = await _client.SendAuthorizedGetAsync(
             $"/api/channels/{textChannel.ChannelId}/messages",
             userB.AccessToken);
         getMessagesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -100,10 +91,10 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task ListUserGuilds_ShouldReturnOwnedAndInvitedGuilds()
     {
-        var owner = await RegisterAsync();
-        var inviter = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var inviter = await AuthTestHelper.RegisterAsync(_client);
 
-        var ownerGuildOneResponse = await SendAuthorizedPostAsync(
+        var ownerGuildOneResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Owner Guild One"),
             owner.AccessToken);
@@ -112,7 +103,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         var ownerGuildOne = await ownerGuildOneResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         ownerGuildOne.Should().NotBeNull();
 
-        var ownerGuildTwoResponse = await SendAuthorizedPostAsync(
+        var ownerGuildTwoResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Owner Guild Two"),
             owner.AccessToken);
@@ -121,7 +112,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         var ownerGuildTwo = await ownerGuildTwoResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         ownerGuildTwo.Should().NotBeNull();
 
-        var inviterGuildResponse = await SendAuthorizedPostAsync(
+        var inviterGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest("Inviter Guild"),
             inviter.AccessToken);
@@ -130,13 +121,13 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         var inviterGuild = await inviterGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         inviterGuild.Should().NotBeNull();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{inviterGuild!.GuildId}/members/invite",
             new InviteMemberRequest(owner.UserId),
             inviter.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listResponse = await SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var listPayload = await listResponse.Content.ReadFromJsonAsync<ListUserGuildsResponse>();
@@ -152,10 +143,10 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task CreateGuild_WithIconFields_ShouldPersistIconData()
     {
-        var owner = await RegisterAsync();
-        var iconFileId = await UploadFileAsync(owner.AccessToken, "guild-icon-create.png", "image/png", "guild create icon");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var iconFileId = await UploadTestHelper.UploadFileAsync(_client, owner.AccessToken, "guild-icon-create.png", "image/png", "guild create icon");
 
-        var createResponse = await SendAuthorizedPostAsync(
+        var createResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new
             {
@@ -174,7 +165,7 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         createPayload.Icon.Name.Should().Be("sword");
         createPayload.Icon.Bg.Should().Be("#1F2937");
 
-        var listResponse = await SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var listPayload = await listResponse.Content.ReadFromJsonAsync<ListUserGuildsResponse>();
@@ -191,9 +182,9 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task CreateGuild_WithPartialIconFields_ShouldPersistProvidedFields()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var createResponse = await SendAuthorizedPostAsync(
+        var createResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new
             {
@@ -210,69 +201,5 @@ public sealed class CreateGuildTests : IClassFixture<WebApplicationFactory<Progr
         createPayload.Icon!.Color.Should().Be("#F59E0B");
         createPayload.Icon.Name.Should().BeNull();
         createPayload.Icon.Bg.Should().BeNull();
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<string> UploadFileAsync(
-        string accessToken,
-        string fileName,
-        string contentType,
-        string content)
-    {
-        using var multipart = new MultipartFormDataContent();
-        using var fileContent = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(content));
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        multipart.Add(fileContent, "file", fileName);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/files/uploads")
-        {
-            Content = multipart
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
-        payload.Should().NotBeNull();
-        payload!.FileId.Should().NotBeNullOrWhiteSpace();
-        return payload.FileId;
     }
 }

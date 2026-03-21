@@ -1,13 +1,10 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Conversations.GetMessages;
-using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SendMessage;
-using Harmonie.Application.Features.Uploads.UploadFile;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -25,11 +22,11 @@ public sealed class SendConversationMessageTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task SendConversationMessage_WhenCallerIsParticipant_ShouldCreateMessage()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest("hello direct"),
             caller.AccessToken);
@@ -46,23 +43,23 @@ public sealed class SendConversationMessageTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task SendConversationMessage_WithAttachmentFileIds_ShouldCreateMessageAndExposeAttachmentsInList()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
-        var uploadedFile = await UploadAttachmentAsync(caller.AccessToken, "notes.txt", "text/plain", "attachment payload");
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
+        var uploadedFileId = await UploadTestHelper.UploadFileAsync(_client, caller.AccessToken, "notes.txt", "text/plain", "attachment payload");
 
-        var sendResponse = await SendAuthorizedPostAsync(
+        var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
-            new SendMessageRequest("hello direct", [uploadedFile.FileId]),
+            new SendMessageRequest("hello direct", [uploadedFileId]),
             caller.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
         sendPayload.Should().NotBeNull();
         sendPayload!.Attachments.Should().ContainSingle();
-        sendPayload.Attachments[0].FileId.Should().Be(uploadedFile.FileId);
+        sendPayload.Attachments[0].FileId.Should().Be(uploadedFileId);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             caller.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -71,15 +68,15 @@ public sealed class SendConversationMessageTests : IClassFixture<WebApplicationF
         listPayload.Should().NotBeNull();
         listPayload!.Items.Should().ContainSingle();
         listPayload.Items[0].Attachments.Should().ContainSingle();
-        listPayload.Items[0].Attachments[0].FileId.Should().Be(uploadedFile.FileId);
+        listPayload.Items[0].Attachments[0].FileId.Should().Be(uploadedFileId);
     }
 
     [Fact]
     public async Task SendConversationMessage_WhenConversationDoesNotExist_ShouldReturnNotFound()
     {
-        var caller = await RegisterAsync();
+        var caller = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages",
             new SendMessageRequest("hello direct"),
             caller.AccessToken);
@@ -94,12 +91,12 @@ public sealed class SendConversationMessageTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task SendConversationMessage_WhenCallerIsNotParticipant_ShouldReturnForbidden()
     {
-        var participantOne = await RegisterAsync();
-        var participantTwo = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var participantOne = await AuthTestHelper.RegisterAsync(_client);
+        var participantTwo = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, participantOne.AccessToken, participantTwo.UserId);
 
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
             new SendMessageRequest("intrusion"),
             outsider.AccessToken);
@@ -121,78 +118,4 @@ public sealed class SendConversationMessageTests : IClassFixture<WebApplicationF
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
-    {
-        var response = await SendAuthorizedPostAsync(
-            "/api/conversations",
-            new OpenConversationRequest(targetUserId),
-            accessToken);
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
-
-        var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>();
-        payload.Should().NotBeNull();
-        return payload!.ConversationId;
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<UploadFileResponse> UploadAttachmentAsync(
-        string accessToken,
-        string fileName,
-        string contentType,
-        string content)
-    {
-        using var multipart = new MultipartFormDataContent();
-        var fileContent = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(content));
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        multipart.Add(fileContent, "file", fileName);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/files/uploads")
-        {
-            Content = multipart
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
 }

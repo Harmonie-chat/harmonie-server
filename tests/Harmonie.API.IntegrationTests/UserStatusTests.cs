@@ -1,9 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateUserStatus;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -23,9 +22,9 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task UpdateUserStatus_WithValidStatus_ShouldUpdateAndReturnStatus()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await _client.SendAuthorizedPutAsync(
             "/api/users/me/status",
             new { status = "dnd" },
             user.AccessToken);
@@ -37,7 +36,7 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
         payload!.UserId.Should().Be(user.UserId);
         payload.Status.Should().Be("dnd");
 
-        var profileResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var profileResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("dnd");
@@ -46,9 +45,9 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task UpdateUserStatus_WithInvisible_ShouldPersistInvisible()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await _client.SendAuthorizedPutAsync(
             "/api/users/me/status",
             new { status = "invisible" },
             user.AccessToken);
@@ -60,7 +59,7 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
         payload!.Status.Should().Be("invisible");
 
         // Verify persistence via GET profile
-        var profileResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var profileResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("invisible");
@@ -69,9 +68,9 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task UpdateUserStatus_WithInvalidStatus_ShouldReturnValidationError()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await _client.SendAuthorizedPutAsync(
             "/api/users/me/status",
             new { status = "away" },
             user.AccessToken);
@@ -86,9 +85,9 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task UpdateUserStatus_WithEmptyStatus_ShouldReturnValidationError()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPutAsync(
+        var response = await _client.SendAuthorizedPutAsync(
             "/api/users/me/status",
             new { status = "" },
             user.AccessToken);
@@ -113,11 +112,11 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task UpdateUserStatus_AllValidStatuses_ShouldSucceed()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
         foreach (var status in new[] { "online", "idle", "dnd", "invisible" })
         {
-            var response = await SendAuthorizedPutAsync(
+            var response = await _client.SendAuthorizedPutAsync(
                 "/api/users/me/status",
                 new { status },
                 user.AccessToken);
@@ -133,49 +132,13 @@ public sealed class UserStatusTests : IClassFixture<WebApplicationFactory<Progra
     [Fact]
     public async Task GetMyProfile_ShouldReturnDefaultOnlineStatus()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var response = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var profile = await response.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("online");
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

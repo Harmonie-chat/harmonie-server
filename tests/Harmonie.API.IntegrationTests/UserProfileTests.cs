@@ -1,13 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
-using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.UpdateMyProfile;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -32,9 +30,9 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task GetMyProfile_WithValidAuthentication_ShouldReturnProfile()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var response = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -71,7 +69,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     {
         var accessToken = BuildAccessToken(Guid.NewGuid().ToString());
 
-        var response = await SendAuthorizedGetAsync("/api/users/me", accessToken);
+        var response = await _client.SendAuthorizedGetAsync("/api/users/me", accessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
@@ -83,10 +81,10 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithPartialUpdate_ShouldUpdateOnlyProvidedField()
     {
-        var user = await RegisterAsync();
-        var avatarFileId = await UploadFileAsync(user.AccessToken, "avatar-initial.png", "image/png", "initial avatar");
+        var user = await AuthTestHelper.RegisterAsync(_client);
+        var avatarFileId = await UploadTestHelper.UploadFileAsync(_client, user.AccessToken, "avatar-initial.png", "image/png", "initial avatar");
 
-        var seedResponse = await SendAuthorizedPatchAsync(
+        var seedResponse = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -97,7 +95,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { displayName = "Updated Name" },
             user.AccessToken);
@@ -112,7 +110,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
         payload.Bio.Should().Be("Initial bio");
         payload.AvatarFileId.Should().Be(avatarFileId);
 
-        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var getResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
@@ -124,10 +122,10 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithExplicitNull_ShouldResetFieldToNull()
     {
-        var user = await RegisterAsync();
-        var avatarFileId = await UploadFileAsync(user.AccessToken, "avatar-reset.png", "image/png", "reset avatar");
+        var user = await AuthTestHelper.RegisterAsync(_client);
+        var avatarFileId = await UploadTestHelper.UploadFileAsync(_client, user.AccessToken, "avatar-reset.png", "image/png", "reset avatar");
 
-        var seedResponse = await SendAuthorizedPatchAsync(
+        var seedResponse = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -138,7 +136,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new
             {
@@ -159,9 +157,9 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithOutOfRangeValues_ShouldReturnStableValidationError()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { displayName = new string('x', 101) },
             user.AccessToken);
@@ -192,9 +190,9 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithThemeAndLanguage_ShouldUpdateThemeAndLanguage()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { theme = "dark", language = "fr" },
             user.AccessToken);
@@ -206,7 +204,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
         payload!.Theme.Should().Be("dark");
         payload.Language.Should().Be("fr");
 
-        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var getResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.Theme.Should().Be("dark");
@@ -216,9 +214,9 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithAvatarAppearance_ShouldReturnNestedAvatarObject()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
             user.AccessToken);
@@ -232,7 +230,7 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
         payload.Avatar.Icon.Should().Be("star");
         payload.Avatar.Bg.Should().Be("#1F2937");
 
-        var getResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var getResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         var profile = await getResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.Avatar.Should().NotBeNull();
@@ -242,14 +240,14 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithPartialAvatarAppearance_ShouldKeepOmittedSubFields()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        await SendAuthorizedPatchAsync(
+        await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
             user.AccessToken);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatar = new { color = "#UPDATED" } },
             user.AccessToken);
@@ -267,14 +265,14 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithNullAvatar_ShouldClearAllAvatarFields()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        await SendAuthorizedPatchAsync(
+        await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
             user.AccessToken);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatar = (object?)null },
             user.AccessToken);
@@ -289,14 +287,14 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task UpdateMyProfile_WithExplicitNullLanguage_ShouldClearLanguage()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        await SendAuthorizedPatchAsync(
+        await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { language = "fr" },
             user.AccessToken);
 
-        var response = await SendAuthorizedPatchAsync(
+        var response = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { language = (string?)null },
             user.AccessToken);
@@ -311,36 +309,36 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task DeleteMyAvatar_WithExistingAvatar_ShouldReturnNoContentAndClearProfile()
     {
-        var user = await RegisterAsync();
-        var avatarFileId = await UploadFileAsync(user.AccessToken, "avatar-delete.png", "image/png", "avatar to delete");
+        var user = await AuthTestHelper.RegisterAsync(_client);
+        var avatarFileId = await UploadTestHelper.UploadFileAsync(_client, user.AccessToken, "avatar-delete.png", "image/png", "avatar to delete");
 
-        var seedResponse = await SendAuthorizedPatchAsync(
+        var seedResponse = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
             new { avatarFileId },
             user.AccessToken);
         seedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var response = await SendAuthorizedDeleteAsync("/api/users/me/avatar", user.AccessToken);
+        var response = await _client.SendAuthorizedDeleteAsync("/api/users/me/avatar", user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var profileResponse = await SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
+        var profileResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         profileResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
         profile.Should().NotBeNull();
         profile!.AvatarFileId.Should().BeNull();
 
-        var oldFileResponse = await SendAuthorizedGetAsync($"/api/files/{avatarFileId}", user.AccessToken);
+        var oldFileResponse = await _client.SendAuthorizedGetAsync($"/api/files/{avatarFileId}", user.AccessToken);
         oldFileResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
     public async Task DeleteMyAvatar_WhenNoAvatarIsSet_ShouldReturnNotFound()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedDeleteAsync("/api/users/me/avatar", user.AccessToken);
+        var response = await _client.SendAuthorizedDeleteAsync("/api/users/me/avatar", user.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
@@ -355,77 +353,6 @@ public sealed class UserProfileTests : IClassFixture<WebApplicationFactory<Progr
         var response = await _client.DeleteAsync("/api/users/me/avatar");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(
-        string uri,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<string> UploadFileAsync(
-        string accessToken,
-        string fileName,
-        string contentType,
-        string content)
-    {
-        using var multipart = new MultipartFormDataContent();
-        using var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(content));
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        multipart.Add(fileContent, "file", fileName);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/files/uploads")
-        {
-            Content = multipart
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
-        payload.Should().NotBeNull();
-        payload!.FileId.Should().NotBeNullOrWhiteSpace();
-        return payload.FileId;
     }
 
     private string BuildAccessToken(string userId)

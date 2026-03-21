@@ -1,11 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
 using Harmonie.Application.Features.Guilds.InviteMember;
@@ -19,10 +16,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public RevokeInviteEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -32,10 +25,10 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_ByAdmin_ShouldReturn204()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (guild, invite) = await CreateGuildAndInviteAsync(owner.AccessToken);
 
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/invites/{invite.Code}",
             owner.AccessToken);
 
@@ -45,14 +38,14 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_ByAdmin_ShouldMarkInviteAsRevoked()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var (guild, invite) = await CreateGuildAndInviteAsync(owner.AccessToken);
 
-        await SendAuthorizedDeleteAsync(
+        await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/invites/{invite.Code}",
             owner.AccessToken);
 
-        var listResponse = await SendAuthorizedGetAsync(
+        var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -69,10 +62,10 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     public async Task RevokeInvite_ByCreatorAdmin_CannotBeRevokedByOtherAdmin()
     {
         // Verify that a non-creator admin can also revoke (admin check is OR with creator check).
-        var owner = await RegisterAsync();
-        var secondAdmin = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var secondAdmin = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke Creator Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -81,18 +74,18 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         guild.Should().NotBeNull();
 
         // Add second user as admin
-        await SendAuthorizedPostAsync(
+        await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/members/invite",
             new InviteMemberRequest(secondAdmin.UserId),
             owner.AccessToken);
-        var promoteResponse = await SendAuthorizedPutAsync(
+        var promoteResponse = await _client.SendAuthorizedPutAsync(
             $"/api/guilds/{guild.GuildId}/members/{secondAdmin.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
             owner.AccessToken);
         promoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Owner creates an invite
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
@@ -101,7 +94,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         invite.Should().NotBeNull();
 
         // Second admin (not the creator) can also revoke because they are an admin
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/invites/{invite!.Code}",
             secondAdmin.AccessToken);
 
@@ -111,10 +104,10 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_ByNonAdminNonCreator_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke Forbidden Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -122,13 +115,13 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        await SendAuthorizedPostAsync(
+        await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/members/invite",
             new InviteMemberRequest(member.UserId),
             owner.AccessToken);
 
         // Owner creates the invite
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
@@ -137,7 +130,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         invite.Should().NotBeNull();
 
         // Member (not admin, not creator) tries to revoke
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild.GuildId}/invites/{invite!.Code}",
             member.AccessToken);
 
@@ -151,8 +144,8 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_WhenInviteNotFound_ShouldReturn404()
     {
-        var owner = await RegisterAsync();
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke NotFound Guild {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
@@ -160,7 +153,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild!.GuildId}/invites/NOTFOUND",
             owner.AccessToken);
 
@@ -181,9 +174,9 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_WhenGuildIdIsInvalid_ShouldReturn400()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             "/api/guilds/not-a-guid/invites/ABCD1234",
             user.AccessToken);
 
@@ -197,9 +190,9 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_WhenInviteCodeIsInvalid_ShouldReturn400()
     {
-        var user = await RegisterAsync();
+        var user = await AuthTestHelper.RegisterAsync(_client);
 
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{Guid.NewGuid()}/invites/bad!code",
             user.AccessToken);
 
@@ -213,23 +206,23 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task RevokeInvite_WhenInviteBelongsToOtherGuild_ShouldReturn404()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
 
-        var guild1Response = await SendAuthorizedPostAsync(
+        var guild1Response = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke Other Guild 1 {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
         guild1Response.StatusCode.Should().Be(HttpStatusCode.Created);
         var guild1 = await guild1Response.Content.ReadFromJsonAsync<CreateGuildResponse>();
 
-        var guild2Response = await SendAuthorizedPostAsync(
+        var guild2Response = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke Other Guild 2 {Guid.NewGuid():N}"[..40]),
             owner.AccessToken);
         guild2Response.StatusCode.Should().Be(HttpStatusCode.Created);
         var guild2 = await guild2Response.Content.ReadFromJsonAsync<CreateGuildResponse>();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild1!.GuildId}/invites",
             new CreateGuildInviteRequest(),
             owner.AccessToken);
@@ -238,7 +231,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         invite.Should().NotBeNull();
 
         // Try to revoke guild1's invite via guild2's route
-        var response = await SendAuthorizedDeleteAsync(
+        var response = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{guild2!.GuildId}/invites/{invite!.Code}",
             owner.AccessToken);
 
@@ -247,7 +240,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
 
     private async Task<(CreateGuildResponse Guild, CreateGuildInviteResponse Invite)> CreateGuildAndInviteAsync(string accessToken)
     {
-        var createGuildResponse = await SendAuthorizedPostAsync(
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
             new CreateGuildRequest($"Revoke Test Guild {Guid.NewGuid():N}"[..40]),
             accessToken);
@@ -255,7 +248,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var inviteResponse = await SendAuthorizedPostAsync(
+        var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/invites",
             new CreateGuildInviteRequest(),
             accessToken);
@@ -264,61 +257,5 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<WebApplicationFact
         invite.Should().NotBeNull();
 
         return (guild, invite!);
-    }
-
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedDeleteAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPutAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

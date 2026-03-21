@@ -1,15 +1,10 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Features.Guilds.CreateChannel;
-using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -18,10 +13,6 @@ namespace Harmonie.API.IntegrationTests;
 public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public UpdateChannelTests(WebApplicationFactory<Program> factory)
     {
@@ -31,10 +22,10 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenAdminRenamesChannel_ShouldReturn200()
     {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "original-name");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "original-name");
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { name = "renamed-channel" },
             owner.AccessToken);
@@ -49,10 +40,10 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenAdminUpdatesPosition_ShouldReturn200()
     {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "position-channel", position: 1);
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "position-channel", position: 1);
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { position = 10 },
             owner.AccessToken);
@@ -66,10 +57,10 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenFieldsAreExplicitlyNull_ShouldTreatThemAsNotProvided()
     {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "stable-channel", position: 3);
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "stable-channel", position: 3);
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { name = (string?)null, position = (int?)null },
             owner.AccessToken);
@@ -84,15 +75,15 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenMemberTriesToUpdate_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var member = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Forbidden Update Guild");
-        await InviteMemberAsync(guildId, member.UserId, owner.AccessToken);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden Update Guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
 
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "member-test-channel", guildId: guildId);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "member-test-channel", guildId: guildId);
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { name = "hacked-name" },
             member.AccessToken);
@@ -106,11 +97,11 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenNonMemberTriesToUpdate_ShouldReturn403()
     {
-        var owner = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "outsider-channel");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "outsider-channel");
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { name = "outsider-rename" },
             outsider.AccessToken);
@@ -124,10 +115,10 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenChannelNotFound_ShouldReturn404()
     {
-        var owner = await RegisterAsync();
+        var owner = await AuthTestHelper.RegisterAsync(_client);
         var nonExistentChannelId = Guid.NewGuid();
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{nonExistentChannelId}",
             new { name = "ghost-channel" },
             owner.AccessToken);
@@ -141,21 +132,22 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenNameAlreadyExists_ShouldReturn409()
     {
-        var owner = await RegisterAsync();
-        var guildId = await CreateGuildAndGetIdAsync(owner.AccessToken, "Name Conflict Guild");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Name Conflict Guild");
 
         await CreateChannelInGuildAsync(
             guildId,
             new CreateChannelRequest("taken-name", ChannelTypeInput.Text, 1),
             owner.AccessToken);
 
-        var channelToRenameId = await CreateChannelAndGetIdAsync(
+        var channelToRenameId = await ChannelTestHelper.CreateChannelAndGetIdAsync(
+            _client,
             owner.AccessToken,
             "original-channel",
             guildId: guildId,
             position: 2);
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelToRenameId}",
             new { name = "taken-name" },
             owner.AccessToken);
@@ -180,10 +172,10 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
     [Fact]
     public async Task UpdateChannel_WhenNameIsEmpty_ShouldReturn400()
     {
-        var owner = await RegisterAsync();
-        var channelId = await CreateChannelAndGetIdAsync(owner.AccessToken, "valid-name");
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "valid-name");
 
-        var updateResponse = await SendAuthorizedPatchAsync(
+        var updateResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/channels/{channelId}",
             new { name = "" },
             owner.AccessToken);
@@ -196,103 +188,15 @@ public sealed class UpdateChannelTests : IClassFixture<WebApplicationFactory<Pro
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
-
-    private async Task<string> CreateGuildAndGetIdAsync(string accessToken, string guildName)
-    {
-        var response = await SendAuthorizedPostAsync(
-            "/api/guilds",
-            new CreateGuildRequest(guildName),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<CreateGuildResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!.GuildId;
-    }
-
-    private async Task InviteMemberAsync(string guildId, string userId, string accessToken)
-    {
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/members/invite",
-            new InviteMemberRequest(userId),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    private async Task<string> CreateChannelAndGetIdAsync(
-        string accessToken,
-        string name,
-        string? guildId = null,
-        int position = 0)
-    {
-        if (guildId is null)
-        {
-            guildId = await CreateGuildAndGetIdAsync(accessToken, $"Guild for {name}");
-        }
-
-        var response = await SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/channels",
-            new CreateChannelRequest(name, ChannelTypeInput.Text, position),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<CreateChannelResponse>();
-        payload.Should().NotBeNull();
-
-        return payload!.ChannelId;
-    }
-
     private async Task CreateChannelInGuildAsync(
         string guildId,
         CreateChannelRequest request,
         string accessToken)
     {
-        var response = await SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guildId}/channels",
             request,
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPostAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedPatchAsync<TRequest>(
-        string uri,
-        TRequest payload,
-        string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
-        {
-            Content = JsonContent.Create(payload, options: _jsonOptions)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }

@@ -2,9 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Harmonie.Application.Features.Auth.Register;
-using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Features.Conversations.SendMessage;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -24,9 +23,9 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
     [Fact]
     public async Task SearchConversationMessages_WhenCallerIsParticipant_ShouldReturnMatchesWithAuthorContext()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
 
         await SendConversationMessageAsync(conversationId, "deploy alpha", caller.AccessToken);
         await Task.Delay(20);
@@ -34,7 +33,7 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
         await Task.Delay(20);
         await SendConversationMessageAsync(conversationId, "deploy beta", target.AccessToken);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages/search?q=deploy",
             caller.AccessToken);
 
@@ -51,9 +50,9 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
     [Fact]
     public async Task SearchConversationMessages_WithCursorAndDateRange_ShouldReturnNextPage()
     {
-        var caller = await RegisterAsync();
-        var target = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(caller.AccessToken, target.UserId);
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
 
         await SendConversationMessageAsync(conversationId, "incident one", caller.AccessToken);
         await Task.Delay(20);
@@ -61,7 +60,7 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
         await Task.Delay(20);
         await SendConversationMessageAsync(conversationId, "incident three", caller.AccessToken);
 
-        var firstResponse = await SendAuthorizedGetAsync(
+        var firstResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages/search?q=incident&limit=2",
             caller.AccessToken);
 
@@ -72,7 +71,7 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
         firstPayload!.Items.Select(item => item.Content).Should().Equal("incident two", "incident three");
         firstPayload.NextCursor.Should().NotBeNullOrWhiteSpace();
 
-        var secondResponse = await SendAuthorizedGetAsync(
+        var secondResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages/search?q=incident&limit=2&cursor={Uri.EscapeDataString(firstPayload.NextCursor!)}",
             caller.AccessToken);
 
@@ -87,12 +86,12 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
     [Fact]
     public async Task SearchConversationMessages_WhenCallerIsNotParticipant_ShouldReturnForbidden()
     {
-        var participantOne = await RegisterAsync();
-        var participantTwo = await RegisterAsync();
-        var outsider = await RegisterAsync();
-        var conversationId = await OpenConversationAsync(participantOne.AccessToken, participantTwo.UserId);
+        var participantOne = await AuthTestHelper.RegisterAsync(_client);
+        var participantTwo = await AuthTestHelper.RegisterAsync(_client);
+        var outsider = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, participantOne.AccessToken, participantTwo.UserId);
 
-        var response = await SendAuthorizedGetAsync(
+        var response = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages/search?q=incident",
             outsider.AccessToken);
 
@@ -112,51 +111,12 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<WebA
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    private async Task<RegisterResponse> RegisterAsync()
-    {
-        var request = new RegisterRequest(
-            Email: $"test{Guid.NewGuid():N}@harmonie.chat",
-            Username: $"user{Guid.NewGuid():N}"[..20],
-            Password: "Test123!@#");
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        payload.Should().NotBeNull();
-        return payload!;
-    }
-
-    private async Task<string> OpenConversationAsync(string accessToken, string targetUserId)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/conversations")
-        {
-            Content = JsonContent.Create(new OpenConversationRequest(targetUserId))
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>();
-        payload.Should().NotBeNull();
-        return payload!.ConversationId;
-    }
-
     private async Task SendConversationMessageAsync(string conversationId, string content, string accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/conversations/{conversationId}/messages")
-        {
-            Content = JsonContent.Create(new SendMessageRequest(content))
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/messages",
+            new SendMessageRequest(content),
+            accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
-    private async Task<HttpResponseMessage> SendAuthorizedGetAsync(string uri, string accessToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
     }
 }
