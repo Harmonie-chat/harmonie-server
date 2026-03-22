@@ -32,7 +32,7 @@ public static class TransferOwnershipEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] TransferOwnershipRequest request,
-        [FromServices] TransferOwnershipHandler handler,
+        [FromServices] IAuthenticatedHandler<TransferOwnershipInput, bool> handler,
         [FromServices] IValidator<TransferOwnershipRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ public static class TransferOwnershipEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, callerId, parsedNewOwnerId, cancellationToken);
+        var response = await handler.HandleAsync(new TransferOwnershipInput(guildId, parsedNewOwnerId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

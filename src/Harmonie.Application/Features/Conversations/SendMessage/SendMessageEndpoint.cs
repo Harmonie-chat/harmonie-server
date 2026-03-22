@@ -34,7 +34,7 @@ public static class SendMessageEndpoint
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
         [FromBody] SendMessageRequest request,
-        [FromServices] SendMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse> handler,
         [FromServices] IValidator<SendMessageRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public static class SendMessageEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new SendConversationMessageInput(conversationId, request), currentUserId, cancellationToken);
         return response.ToCreatedHttpResult(
             data => $"/api/conversations/{data.ConversationId}/messages/{data.MessageId}");
     }

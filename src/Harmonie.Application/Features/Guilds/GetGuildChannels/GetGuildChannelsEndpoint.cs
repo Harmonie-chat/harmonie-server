@@ -27,7 +27,7 @@ public static class GetGuildChannelsEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
-        [FromServices] GetGuildChannelsHandler handler,
+        [FromServices] IAuthenticatedHandler<GuildId, GetGuildChannelsResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

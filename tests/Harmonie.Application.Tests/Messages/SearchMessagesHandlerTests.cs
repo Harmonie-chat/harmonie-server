@@ -35,8 +35,7 @@ public sealed class SearchMessagesHandlerTests
         _handler = new SearchMessagesHandler(
             _guildRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
-            _channelMessageRepositoryMock.Object,
-            NullLogger<SearchMessagesHandler>.Instance);
+            _channelMessageRepositoryMock.Object);
     }
 
     [Fact]
@@ -50,12 +49,11 @@ public sealed class SearchMessagesHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         var response = await _handler.HandleAsync(
-            guild.Id,
-            new SearchMessagesRequest
+            new SearchMessagesInput(guild.Id, new SearchMessagesRequest
             {
                 Q = "deploy",
                 Cursor = "invalid-cursor"
-            },
+            }),
             ownerId);
 
         response.Success.Should().BeFalse();
@@ -74,8 +72,7 @@ public sealed class SearchMessagesHandlerTests
             .ReturnsAsync((GuildAccessContext?)null);
 
         var response = await _handler.HandleAsync(
-            guildId,
-            new SearchMessagesRequest { Q = "deploy" },
+            new SearchMessagesInput(guildId, new SearchMessagesRequest { Q = "deploy" }),
             currentUserId);
 
         response.Success.Should().BeFalse();
@@ -95,8 +92,7 @@ public sealed class SearchMessagesHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, CallerRole: null));
 
         var response = await _handler.HandleAsync(
-            guild.Id,
-            new SearchMessagesRequest { Q = "deploy" },
+            new SearchMessagesInput(guild.Id, new SearchMessagesRequest { Q = "deploy" }),
             currentUserId);
 
         response.Success.Should().BeFalse();
@@ -120,12 +116,11 @@ public sealed class SearchMessagesHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
 
         var response = await _handler.HandleAsync(
-            guild.Id,
-            new SearchMessagesRequest
+            new SearchMessagesInput(guild.Id, new SearchMessagesRequest
             {
                 Q = "deploy",
                 ChannelId = channel.Id.ToString()
-            },
+            }),
             ownerId);
 
         response.Success.Should().BeFalse();
@@ -172,8 +167,7 @@ public sealed class SearchMessagesHandlerTests
             .ReturnsAsync(new SearchGuildMessagesPage([item], nextCursor));
 
         var response = await _handler.HandleAsync(
-            guild.Id,
-            new SearchMessagesRequest
+            new SearchMessagesInput(guild.Id, new SearchMessagesRequest
             {
                 Q = " deploy ",
                 ChannelId = channel.Id.ToString(),
@@ -181,7 +175,7 @@ public sealed class SearchMessagesHandlerTests
                 Before = before.ToString("O"),
                 After = after.ToString("O"),
                 Limit = 10
-            },
+            }),
             ownerId);
 
         response.Success.Should().BeTrue();

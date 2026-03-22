@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices.JavaScript;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
@@ -6,56 +5,41 @@ using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.GetMessages;
 
-public sealed class GetMessagesHandler
+public sealed record GetChannelMessagesInput(GuildChannelId ChannelId, GetMessagesRequest Request);
+
+public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessagesInput, GetMessagesResponse>
 {
     private const int DefaultLimit = 50;
 
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessagePaginationRepository _channelMessageRepository;
-    private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessagePaginationRepository channelMessageRepository,
-        ILogger<GetMessagesHandler> logger)
+        IMessagePaginationRepository channelMessageRepository)
     {
         _guildChannelRepository = guildChannelRepository;
         _channelMessageRepository = channelMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<GetMessagesResponse>> HandleAsync(
-        GuildChannelId channelId,
-        GetMessagesRequest request,
+        GetChannelMessagesInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "GetMessages started. ChannelId={ChannelId}, UserId={UserId}, Limit={Limit}, HasBefore={HasBefore}",
-            channelId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.Before is not null);
-
         MessageCursor? beforeCursor = null;
-        if (request.Before is not null)
+        if (request.Request.Before is not null)
         {
-            if (!MessageCursorCodec.TryParse(request.Before, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Request.Before, out var parsedCursor) || parsedCursor is null)
             {
-                _logger.LogWarning(
-                    "GetMessages invalid cursor. ChannelId={ChannelId}, UserId={UserId}",
-                    channelId,
-                    currentUserId);
-
                 return ApplicationResponse<GetMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.Before),
+                        nameof(request.Request.Before),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Before cursor is invalid"));
             }
@@ -63,16 +47,11 @@ public sealed class GetMessagesHandler
             beforeCursor = parsedCursor;
         }
 
-        var limit = request.Limit ?? DefaultLimit;
+        var limit = request.Request.Limit ?? DefaultLimit;
 
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, currentUserId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "GetMessages failed because channel was not found. ChannelId={ChannelId}, UserId={UserId}",
-                channelId,
-                currentUserId);
-
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -80,12 +59,6 @@ public sealed class GetMessagesHandler
 
         if (ctx.Channel.Type != GuildChannelType.Text)
         {
-            _logger.LogWarning(
-                "GetMessages failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
-                channelId,
-                ctx.Channel.Type,
-                currentUserId);
-
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Messages can only be read from text channels");
@@ -93,30 +66,17 @@ public sealed class GetMessagesHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "GetMessages access denied. ChannelId={ChannelId}, GuildId={GuildId}, UserId={UserId}",
-                channelId,
-                ctx.Channel.GuildId,
-                currentUserId);
-
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
         }
 
         var page = await _channelMessageRepository.GetChannelPageAsync(
-            channelId,
+            request.ChannelId,
             beforeCursor,
             limit,
             currentUserId,
             cancellationToken);
-
-        _logger.LogInformation(
-            "GetMessages fetched page. ChannelId={ChannelId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            channelId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
 
         var items = page.Items
             .OrderBy(x => x.CreatedAtUtc)
@@ -137,7 +97,7 @@ public sealed class GetMessagesHandler
             .ToArray();
 
         var payload = new GetMessagesResponse(
-            ChannelId: channelId.ToString(),
+            ChannelId: request.ChannelId.ToString(),
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null

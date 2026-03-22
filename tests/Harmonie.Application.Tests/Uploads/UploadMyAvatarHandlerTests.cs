@@ -57,12 +57,9 @@ public sealed class UploadMyAvatarHandlerTests
             .ReturnsAsync((User?)null);
 
         using var stream = CreateTestImageStream();
+        var input = new UploadMyAvatarInput("avatar.png", "image/png", stream);
 
-        var response = await _handler.HandleAsync(
-            "avatar.png",
-            "image/png",
-            stream,
-            userId);
+        var response = await _handler.HandleAsync(input, userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -86,12 +83,9 @@ public sealed class UploadMyAvatarHandlerTests
             .ReturnsAsync(ObjectStorageUploadResult.Failed("Object storage upload failed."));
 
         using var stream = CreateTestImageStream();
+        var input = new UploadMyAvatarInput("avatar.png", "image/png", stream);
 
-        var response = await _handler.HandleAsync(
-            "avatar.png",
-            "image/png",
-            stream,
-            user.Id);
+        var response = await _handler.HandleAsync(input, user.Id);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -114,12 +108,9 @@ public sealed class UploadMyAvatarHandlerTests
             .ReturnsAsync(ObjectStorageUploadResult.Succeeded());
 
         using var stream = CreateTestImageStream(512, 512);
+        var input = new UploadMyAvatarInput("avatar.png", "image/png", stream);
 
-        var response = await _handler.HandleAsync(
-            "avatar.png",
-            "image/png",
-            stream,
-            user.Id);
+        var response = await _handler.HandleAsync(input, user.Id);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
@@ -164,12 +155,9 @@ public sealed class UploadMyAvatarHandlerTests
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 
         using var stream = CreateTestImageStream();
+        var input = new UploadMyAvatarInput("avatar.png", "image/png", stream);
 
-        var action = async () => await _handler.HandleAsync(
-            "avatar.png",
-            "image/png",
-            stream,
-            user.Id);
+        var action = async () => await _handler.HandleAsync(input, user.Id);
 
         await action.Should().ThrowAsync<InvalidOperationException>();
 

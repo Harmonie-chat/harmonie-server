@@ -26,7 +26,7 @@ public static class CreateGuildEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] CreateGuildRequest request,
-        [FromServices] CreateGuildHandler handler,
+        [FromServices] IAuthenticatedHandler<CreateGuildRequest, CreateGuildResponse> handler,
         [FromServices] IValidator<CreateGuildRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

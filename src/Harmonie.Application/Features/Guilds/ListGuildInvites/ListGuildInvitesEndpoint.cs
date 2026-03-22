@@ -27,7 +27,7 @@ public static class ListGuildInvitesEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
-        [FromServices] ListGuildInvitesHandler handler,
+        [FromServices] IAuthenticatedHandler<GuildId, ListGuildInvitesResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

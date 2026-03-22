@@ -11,7 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SendMessage;
 
-public sealed class SendMessageHandler
+public sealed record SendConversationMessageInput(ConversationId ConversationId, SendMessageRequest Request);
+
+public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -39,39 +41,22 @@ public sealed class SendMessageHandler
     }
 
     public async Task<ApplicationResponse<SendMessageResponse>> HandleAsync(
-        ConversationId conversationId,
-        SendMessageRequest request,
+        SendConversationMessageInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SendConversationMessage started. ConversationId={ConversationId}, UserId={UserId}",
-            conversationId,
-            currentUserId);
-
-        var contentResult = MessageContent.Create(request.Content);
+        var contentResult = MessageContent.Create(request.Request.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
         {
-            _logger.LogWarning(
-                "SendConversationMessage validation failed. ConversationId={ConversationId}, UserId={UserId}, Error={Error}",
-                conversationId,
-                currentUserId,
-                contentResult.Error);
-
-            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Request.Content);
             return ApplicationResponse<SendMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "SendConversationMessage failed because conversation was not found. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
@@ -79,18 +64,13 @@ public sealed class SendMessageHandler
 
         if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "SendConversationMessage access denied. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
         var attachmentResolution = await _messageAttachmentResolver.ResolveAsync(
-            request.AttachmentFileIds,
+            request.Request.AttachmentFileIds,
             currentUserId,
             cancellationToken);
         if (!attachmentResolution.Success)
@@ -99,24 +79,18 @@ public sealed class SendMessageHandler
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
                 EndpointExtensions.SingleValidationError(
-                    nameof(request.AttachmentFileIds),
+                    nameof(request.Request.AttachmentFileIds),
                     ApplicationErrorCodes.Validation.Invalid,
                     attachmentResolution.Error ?? "Attachments are invalid"));
         }
 
         var messageResult = Message.CreateForConversation(
-            conversationId,
+            request.ConversationId,
             currentUserId,
             contentResult.Value,
             attachmentResolution.Attachments);
         if (messageResult.IsFailure || messageResult.Value is null)
         {
-            _logger.LogWarning(
-                "SendConversationMessage domain creation failed. ConversationId={ConversationId}, UserId={UserId}, Error={Error}",
-                conversationId,
-                currentUserId,
-                messageResult.Error);
-
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 messageResult.Error ?? "Unable to create conversation message");
@@ -142,12 +116,6 @@ public sealed class SendMessageHandler
                 messageResult.Value.Content.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
-
-        _logger.LogInformation(
-            "SendConversationMessage succeeded. MessageId={MessageId}, ConversationId={ConversationId}, UserId={UserId}",
-            messageResult.Value.Id,
-            messageConversationId,
-            messageResult.Value.AuthorUserId);
 
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
             MessageId: messageResult.Value.Id.ToString(),

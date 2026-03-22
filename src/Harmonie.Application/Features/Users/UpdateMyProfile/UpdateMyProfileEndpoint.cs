@@ -60,7 +60,7 @@ public static class UpdateMyProfileEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] UpdateMyProfileRequest request,
-        [FromServices] UpdateMyProfileHandler handler,
+        [FromServices] IAuthenticatedHandler<UpdateMyProfileRequest, UpdateMyProfileResponse> handler,
         [FromServices] IValidator<UpdateMyProfileRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

@@ -10,7 +10,7 @@ namespace Harmonie.Application.Features.Auth.Register;
 /// <summary>
 /// Handler for user registration business logic
 /// </summary>
-public sealed class RegisterHandler
+public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;

@@ -62,7 +62,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channelId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChannelAccessContext?)null);
 
-        var response = await _handler.HandleAsync(channelId, MessageId.New(), "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channelId, MessageId.New(), "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
@@ -79,7 +79,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, MessageId.New(), "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotText);
@@ -96,7 +96,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
-        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, MessageId.New(), "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
@@ -118,7 +118,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Message?)null);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
@@ -141,7 +141,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(messageFromOtherChannel);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
@@ -164,7 +164,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -186,7 +186,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        await _handler.HandleAsync(channel.Id, messageId, "👍", callerId);
+        await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId);
 
         _reactionRepositoryMock.Verify(
             x => x.AddAsync(messageId, callerId, "👍", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
@@ -225,7 +225,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, "❤", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "❤"), callerId);
 
         response.Success.Should().BeTrue();
     }
@@ -250,7 +250,7 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.NotifyReactionAddedToChannelAsync(It.IsAny<ChannelReactionAddedNotification>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, "👍", callerId);
+        var response = await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId);
 
         response.Success.Should().BeTrue();
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

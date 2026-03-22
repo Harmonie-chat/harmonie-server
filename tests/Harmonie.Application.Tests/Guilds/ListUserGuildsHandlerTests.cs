@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.Entities.Guilds;
@@ -21,8 +22,7 @@ public sealed class ListUserGuildsHandlerTests
     {
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _handler = new ListUserGuildsHandler(
-            _guildMemberRepositoryMock.Object,
-            NullLogger<ListUserGuildsHandler>.Instance);
+            _guildMemberRepositoryMock.Object);
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed class ListUserGuildsHandlerTests
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var response = await _handler.HandleAsync(userId);
+        var response = await _handler.HandleAsync(Unit.Value, userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -60,7 +60,7 @@ public sealed class ListUserGuildsHandlerTests
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([guildOne, guildTwo]);
 
-        var response = await _handler.HandleAsync(userId);
+        var response = await _handler.HandleAsync(Unit.Value, userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();

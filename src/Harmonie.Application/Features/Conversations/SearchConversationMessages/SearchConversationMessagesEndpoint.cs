@@ -29,7 +29,7 @@ public static class SearchConversationMessagesEndpoint
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
         [AsParameters] SearchConversationMessagesRequest request,
-        [FromServices] SearchConversationMessagesHandler handler,
+        [FromServices] IAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse> handler,
         [FromServices] IValidator<SearchConversationMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -40,7 +40,7 @@ public static class SearchConversationMessagesEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new SearchConversationMessagesInput(conversationId, request), currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

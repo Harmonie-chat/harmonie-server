@@ -29,7 +29,7 @@ public static class RevokeInviteEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [AsParameters] RevokeInviteRouteRequest routeRequest,
-        [FromServices] RevokeInviteHandler handler,
+        [FromServices] IAuthenticatedHandler<RevokeInviteInput, bool> handler,
         [FromServices] IValidator<RevokeInviteRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ public static class RevokeInviteEndpoint
         }
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
-        var response = await handler.HandleAsync(guildId, inviteCode, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new RevokeInviteInput(guildId, inviteCode), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

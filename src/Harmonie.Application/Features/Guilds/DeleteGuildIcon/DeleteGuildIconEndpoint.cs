@@ -28,12 +28,12 @@ public static class DeleteGuildIconEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
-        [FromServices] DeleteGuildIconHandler handler,
+        [FromServices] IAuthenticatedHandler<DeleteGuildIconInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
-        var response = await handler.HandleAsync(guildId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new DeleteGuildIconInput(guildId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

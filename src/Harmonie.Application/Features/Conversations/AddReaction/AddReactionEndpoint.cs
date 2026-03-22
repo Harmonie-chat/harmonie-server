@@ -32,7 +32,7 @@ public static class AddReactionEndpoint
         ConversationId conversationId,
         MessageId messageId,
         [AsParameters] AddReactionRouteRequest routeRequest,
-        [FromServices] AddReactionHandler handler,
+        [FromServices] IAuthenticatedHandler<ConversationAddReactionInput, bool> handler,
         [FromServices] IValidator<AddReactionRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public static class AddReactionEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, messageId, emoji, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new ConversationAddReactionInput(conversationId, messageId, emoji), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

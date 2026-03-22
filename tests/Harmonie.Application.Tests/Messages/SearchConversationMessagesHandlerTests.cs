@@ -10,7 +10,6 @@ using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -30,8 +29,7 @@ public sealed class SearchConversationMessagesHandlerTests
 
         _handler = new SearchConversationMessagesHandler(
             _conversationRepositoryMock.Object,
-            _directMessageRepositoryMock.Object,
-            NullLogger<SearchConversationMessagesHandler>.Instance);
+            _directMessageRepositoryMock.Object);
     }
 
     [Fact]
@@ -45,8 +43,7 @@ public sealed class SearchConversationMessagesHandlerTests
             .ReturnsAsync((Conversation?)null);
 
         var response = await _handler.HandleAsync(
-            conversationId,
-            new SearchConversationMessagesRequest { Q = "deploy" },
+            new SearchConversationMessagesInput(conversationId, new SearchConversationMessagesRequest { Q = "deploy" }),
             currentUserId);
 
         response.Success.Should().BeFalse();
@@ -67,8 +64,7 @@ public sealed class SearchConversationMessagesHandlerTests
             .ReturnsAsync(conversation);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SearchConversationMessagesRequest { Q = "deploy" },
+            new SearchConversationMessagesInput(conversation.Id, new SearchConversationMessagesRequest { Q = "deploy" }),
             outsider);
 
         response.Success.Should().BeFalse();
@@ -106,14 +102,13 @@ public sealed class SearchConversationMessagesHandlerTests
             .ReturnsAsync(new SearchConversationMessagesPage([item], nextCursor));
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SearchConversationMessagesRequest
+            new SearchConversationMessagesInput(conversation.Id, new SearchConversationMessagesRequest
             {
                 Q = " deploy ",
                 Before = before.ToString("O"),
                 After = after.ToString("O"),
                 Limit = 10
-            },
+            }),
             user1);
 
         response.Success.Should().BeTrue();

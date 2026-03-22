@@ -48,7 +48,7 @@ public static class UpdateChannelEndpoint
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
         [FromBody] UpdateChannelRequest request,
-        [FromServices] UpdateChannelHandler handler,
+        [FromServices] IAuthenticatedHandler<UpdateChannelInput, UpdateChannelResponse> handler,
         [FromServices] IValidator<UpdateChannelRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -59,7 +59,7 @@ public static class UpdateChannelEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(new UpdateChannelInput(channelId, request), callerId, cancellationToken);
         return response.ToHttpResult();
     }
 }

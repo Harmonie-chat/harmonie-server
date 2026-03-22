@@ -5,48 +5,37 @@ using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.CreateGuildInvite;
 
-public sealed class CreateGuildInviteHandler
+public sealed record CreateGuildInviteInput(GuildId GuildId, CreateGuildInviteRequest Request);
+
+public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuildInviteInput, CreateGuildInviteResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<CreateGuildInviteHandler> _logger;
 
     public CreateGuildInviteHandler(
         IGuildRepository guildRepository,
         IGuildInviteRepository guildInviteRepository,
-        IUnitOfWork unitOfWork,
-        ILogger<CreateGuildInviteHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _guildRepository = guildRepository;
         _guildInviteRepository = guildInviteRepository;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<CreateGuildInviteResponse>> HandleAsync(
-        GuildId guildId,
-        CreateGuildInviteRequest request,
-        UserId callerId,
+        CreateGuildInviteInput input,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "CreateGuildInvite started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
+        var (guildId, request) = input;
 
-        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (guildAccess is null)
         {
-            _logger.LogWarning(
-                "CreateGuildInvite failed because guild was not found. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<CreateGuildInviteResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -54,26 +43,14 @@ public sealed class CreateGuildInviteHandler
 
         if (guildAccess.CallerRole is null || guildAccess.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "CreateGuildInvite forbidden. GuildId={GuildId}, CallerId={CallerId}, CallerRole={CallerRole}",
-                guildId,
-                callerId,
-                guildAccess.CallerRole);
-
             return ApplicationResponse<CreateGuildInviteResponse>.Fail(
                 ApplicationErrorCodes.Guild.InviteForbidden,
                 "Only guild administrators can create invite links");
         }
 
-        var inviteResult = GuildInvite.Create(guildId, callerId, request.MaxUses, request.ExpiresInHours);
+        var inviteResult = GuildInvite.Create(guildId, currentUserId, request.MaxUses, request.ExpiresInHours);
         if (inviteResult.IsFailure || inviteResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuildInvite domain validation failed. GuildId={GuildId}, CallerId={CallerId}, Error={Error}",
-                guildId,
-                callerId,
-                inviteResult.Error);
-
             return ApplicationResponse<CreateGuildInviteResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 inviteResult.Error ?? "Unable to create guild invite");
@@ -85,18 +62,11 @@ public sealed class CreateGuildInviteHandler
         await _guildInviteRepository.AddAsync(invite, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "CreateGuildInvite succeeded. GuildId={GuildId}, CallerId={CallerId}, InviteId={InviteId}, Code={Code}",
-            guildId,
-            callerId,
-            invite.Id,
-            invite.Code);
-
         var payload = new CreateGuildInviteResponse(
             InviteId: invite.Id.ToString(),
             Code: invite.Code,
             GuildId: guildId.ToString(),
-            CreatorId: callerId.ToString(),
+            CreatorId: currentUserId.ToString(),
             MaxUses: invite.MaxUses,
             UsesCount: invite.UsesCount,
             ExpiresAtUtc: invite.ExpiresAtUtc,

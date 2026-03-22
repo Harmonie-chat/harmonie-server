@@ -6,42 +6,32 @@ using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SearchConversationMessages;
 
-public sealed class SearchConversationMessagesHandler
+public sealed record SearchConversationMessagesInput(ConversationId ConversationId, SearchConversationMessagesRequest Request);
+
+public sealed class SearchConversationMessagesHandler : IAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse>
 {
     private const int DefaultLimit = 25;
 
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageSearchRepository _directMessageRepository;
-    private readonly ILogger<SearchConversationMessagesHandler> _logger;
 
     public SearchConversationMessagesHandler(
         IConversationRepository conversationRepository,
-        IMessageSearchRepository directMessageRepository,
-        ILogger<SearchConversationMessagesHandler> logger)
+        IMessageSearchRepository directMessageRepository)
     {
         _conversationRepository = conversationRepository;
         _directMessageRepository = directMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SearchConversationMessagesResponse>> HandleAsync(
-        ConversationId conversationId,
-        SearchConversationMessagesRequest request,
+        SearchConversationMessagesInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SearchConversationMessages started. ConversationId={ConversationId}, UserId={UserId}, Limit={Limit}, HasCursor={HasCursor}",
-            conversationId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.Cursor is not null);
-
-        if (request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
+        if (request.Request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
         {
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
@@ -49,15 +39,15 @@ public sealed class SearchConversationMessagesHandler
         }
 
         MessageCursor? cursor = null;
-        if (request.Cursor is not null)
+        if (request.Request.Cursor is not null)
         {
-            if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(request.Request.Cursor, out var parsedCursor) || parsedCursor is null)
             {
                 return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.Cursor),
+                        nameof(request.Request.Cursor),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Cursor is invalid"));
             }
@@ -66,15 +56,15 @@ public sealed class SearchConversationMessagesHandler
         }
 
         DateTime? beforeCreatedAtUtc = null;
-        if (request.Before is not null)
+        if (request.Request.Before is not null)
         {
-            if (!TryParseUtcDateTime(request.Before, out var parsedBefore))
+            if (!TryParseUtcDateTime(request.Request.Before, out var parsedBefore))
             {
                 return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.Before),
+                        nameof(request.Request.Before),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Before must be a valid ISO 8601 date/time"));
             }
@@ -83,15 +73,15 @@ public sealed class SearchConversationMessagesHandler
         }
 
         DateTime? afterCreatedAtUtc = null;
-        if (request.After is not null)
+        if (request.Request.After is not null)
         {
-            if (!TryParseUtcDateTime(request.After, out var parsedAfter))
+            if (!TryParseUtcDateTime(request.Request.After, out var parsedAfter))
             {
                 return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.After),
+                        nameof(request.Request.After),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "After must be a valid ISO 8601 date/time"));
             }
@@ -107,19 +97,14 @@ public sealed class SearchConversationMessagesHandler
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
                 EndpointExtensions.SingleValidationError(
-                    nameof(request.After),
+                    nameof(request.Request.After),
                     ApplicationErrorCodes.Validation.OutOfRange,
                     "After must be earlier than or equal to before"));
         }
 
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "SearchConversationMessages failed because conversation was not found. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
@@ -127,20 +112,15 @@ public sealed class SearchConversationMessagesHandler
 
         if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "SearchConversationMessages access denied. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var limit = request.Limit ?? DefaultLimit;
+        var limit = request.Request.Limit ?? DefaultLimit;
         var page = await _directMessageRepository.SearchConversationMessagesAsync(
             new SearchConversationMessagesQuery(
-                ConversationId: conversationId,
+                ConversationId: request.ConversationId,
                 SearchText: rawQuery.Trim(),
                 BeforeCreatedAtUtc: beforeCreatedAtUtc,
                 AfterCreatedAtUtc: afterCreatedAtUtc,
@@ -148,15 +128,8 @@ public sealed class SearchConversationMessagesHandler
             limit,
             cancellationToken);
 
-        _logger.LogInformation(
-            "SearchConversationMessages succeeded. ConversationId={ConversationId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            conversationId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
-
         var payload = new SearchConversationMessagesResponse(
-            ConversationId: conversationId.ToString(),
+            ConversationId: request.ConversationId.ToString(),
             Items: page.Items
                 .Select(item =>
                 {

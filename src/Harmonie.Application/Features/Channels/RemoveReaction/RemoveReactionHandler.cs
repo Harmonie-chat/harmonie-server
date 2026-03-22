@@ -10,7 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.RemoveReaction;
 
-public sealed class RemoveReactionHandler
+public sealed record ChannelRemoveReactionInput(GuildChannelId ChannelId, MessageId MessageId, string Emoji);
+
+public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveReactionInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -38,26 +40,13 @@ public sealed class RemoveReactionHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildChannelId channelId,
-        MessageId messageId,
-        string emoji,
-        UserId callerId,
+        ChannelRemoveReactionInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "RemoveChannelReaction started. ChannelId={ChannelId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            emoji,
-            callerId);
-
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "RemoveChannelReaction failed because channel was not found. ChannelId={ChannelId}",
-                channelId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -65,11 +54,6 @@ public sealed class RemoveReactionHandler
 
         if (ctx.Channel.Type != GuildChannelType.Text)
         {
-            _logger.LogWarning(
-                "RemoveChannelReaction failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}",
-                channelId,
-                ctx.Channel.Type);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Reactions can only be removed from text channels");
@@ -77,44 +61,26 @@ public sealed class RemoveReactionHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "RemoveChannelReaction access denied because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
         }
 
-        var message = await _messageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != channelId)
+        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
         {
-            _logger.LogWarning(
-                "RemoveChannelReaction failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",
-                channelId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Reaction.MessageNotFound,
                 "Message was not found");
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _reactionRepository.RemoveAsync(messageId, callerId, emoji, cancellationToken);
+        await _reactionRepository.RemoveAsync(request.MessageId, currentUserId, request.Emoji, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "RemoveChannelReaction succeeded. ChannelId={ChannelId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            emoji,
-            callerId);
-
         await NotifyReactionRemovedSafelyAsync(
-            new ChannelReactionRemovedNotification(messageId, channelId, ctx.Channel.GuildId, callerId, emoji));
+            new ChannelReactionRemovedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

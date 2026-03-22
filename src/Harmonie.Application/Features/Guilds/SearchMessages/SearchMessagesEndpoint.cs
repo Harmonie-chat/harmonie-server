@@ -32,7 +32,7 @@ public static class SearchMessagesEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [AsParameters] SearchMessagesRequest request,
-        [FromServices] SearchMessagesHandler handler,
+        [FromServices] IAuthenticatedHandler<SearchMessagesInput, SearchMessagesResponse> handler,
         [FromServices] IValidator<SearchMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -43,7 +43,7 @@ public static class SearchMessagesEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new SearchMessagesInput(guildId, request), currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

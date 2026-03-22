@@ -4,44 +4,32 @@ using Harmonie.Application.Interfaces.Common;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.UpdateChannel;
 
-public sealed class UpdateChannelHandler
+public sealed record UpdateChannelInput(GuildChannelId ChannelId, UpdateChannelRequest Request);
+
+public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelInput, UpdateChannelResponse>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<UpdateChannelHandler> _logger;
 
     public UpdateChannelHandler(
         IGuildChannelRepository guildChannelRepository,
-        IUnitOfWork unitOfWork,
-        ILogger<UpdateChannelHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _guildChannelRepository = guildChannelRepository;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateChannelResponse>> HandleAsync(
-        GuildChannelId channelId,
-        UserId callerId,
-        UpdateChannelRequest request,
+        UpdateChannelInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UpdateChannel started. ChannelId={ChannelId}, CallerId={CallerId}",
-            channelId,
-            callerId);
-
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "UpdateChannel failed because channel was not found. ChannelId={ChannelId}",
-                channelId);
-
             return ApplicationResponse<UpdateChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -49,12 +37,6 @@ public sealed class UpdateChannelHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "UpdateChannel failed because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId);
-
             return ApplicationResponse<UpdateChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
@@ -62,13 +44,6 @@ public sealed class UpdateChannelHandler
 
         if (ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "UpdateChannel failed because caller is not an admin. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId,
-                ctx.CallerRole);
-
             return ApplicationResponse<UpdateChannelResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only guild admins can update channels");
@@ -76,28 +51,22 @@ public sealed class UpdateChannelHandler
 
         var channel = ctx.Channel;
 
-        if (request.Name is not null)
+        if (request.Request.Name is not null)
         {
             var nameConflict = await _guildChannelRepository.ExistsByNameInGuildAsync(
                 channel.GuildId,
-                request.Name.Trim(),
-                channelId,
+                request.Request.Name.Trim(),
+                request.ChannelId,
                 cancellationToken);
 
             if (nameConflict)
             {
-                _logger.LogWarning(
-                    "UpdateChannel failed because a channel with the same name already exists. ChannelId={ChannelId}, GuildId={GuildId}, Name={Name}",
-                    channelId,
-                    channel.GuildId,
-                    request.Name);
-
                 return ApplicationResponse<UpdateChannelResponse>.Fail(
                     ApplicationErrorCodes.Channel.NameConflict,
                     "A channel with this name already exists in this guild");
             }
 
-            var nameResult = channel.UpdateName(request.Name);
+            var nameResult = channel.UpdateName(request.Request.Name);
             if (nameResult.IsFailure)
             {
                 return ApplicationResponse<UpdateChannelResponse>.Fail(
@@ -106,9 +75,9 @@ public sealed class UpdateChannelHandler
             }
         }
 
-        if (request.Position is not null)
+        if (request.Request.Position is not null)
         {
-            var positionResult = channel.UpdatePosition(request.Position.Value);
+            var positionResult = channel.UpdatePosition(request.Request.Position.Value);
             if (positionResult.IsFailure)
             {
                 return ApplicationResponse<UpdateChannelResponse>.Fail(
@@ -117,17 +86,12 @@ public sealed class UpdateChannelHandler
             }
         }
 
-        if (request.Name is not null || request.Position is not null)
+        if (request.Request.Name is not null || request.Request.Position is not null)
         {
             await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
             await _guildChannelRepository.UpdateAsync(channel, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
-
-        _logger.LogInformation(
-            "UpdateChannel succeeded. ChannelId={ChannelId}, CallerId={CallerId}",
-            channelId,
-            callerId);
 
         return ApplicationResponse<UpdateChannelResponse>.Ok(new UpdateChannelResponse(
             ChannelId: channel.Id.ToString(),

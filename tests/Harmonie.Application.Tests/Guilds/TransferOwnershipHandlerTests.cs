@@ -35,8 +35,7 @@ public sealed class TransferOwnershipHandlerTests
         _handler = new TransferOwnershipHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<TransferOwnershipHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -45,7 +44,7 @@ public sealed class TransferOwnershipHandlerTests
         var ownerId = UserId.New();
         var guild = ApplicationTestBuilders.CreateGuild(ownerId);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, ownerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, ownerId), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.OwnerTransferToSelf);
@@ -63,7 +62,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, newOwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guildId, newOwnerId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.NotFound);
@@ -81,7 +80,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
@@ -98,7 +97,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, null));
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberNotFound);
@@ -124,7 +123,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.UpdateRoleAsync(guild.Id, newOwnerId, GuildRole.Admin, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), ownerId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -162,7 +161,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.UpdateRoleAsync(guild.Id, newOwnerId, GuildRole.Admin, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), ownerId);
 
         response.Success.Should().BeTrue();
     }
@@ -187,7 +186,7 @@ public sealed class TransferOwnershipHandlerTests
             .Setup(x => x.UpdateRoleAsync(guild.Id, newOwnerId, GuildRole.Admin, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, newOwnerId);
+        var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberNotFound);

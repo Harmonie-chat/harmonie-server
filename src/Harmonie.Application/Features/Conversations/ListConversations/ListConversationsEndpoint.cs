@@ -22,13 +22,13 @@ public static class ListConversationsEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [FromServices] ListConversationsHandler handler,
+        [FromServices] IAuthenticatedHandler<Unit, ListConversationsResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(Unit.Value, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

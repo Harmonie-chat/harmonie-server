@@ -26,7 +26,7 @@ public static class PreviewInviteEndpoint
 
     private static async Task<IResult> HandleAsync(
         [AsParameters] PreviewInviteRouteRequest routeRequest,
-        [FromServices] PreviewInviteHandler handler,
+        [FromServices] IHandler<string, PreviewInviteResponse> handler,
         [FromServices] IValidator<PreviewInviteRouteRequest> routeValidator,
         CancellationToken cancellationToken)
     {

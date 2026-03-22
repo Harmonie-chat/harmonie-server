@@ -9,64 +9,48 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
-
 
 namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 
+public sealed record UpdateGuildInput(GuildId GuildId, UpdateGuildRequest Request);
+
 public sealed class UpdateGuildHandler
+    : IAuthenticatedHandler<UpdateGuildInput, UpdateGuildResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<UpdateGuildHandler> _logger;
 
     public UpdateGuildHandler(
         IGuildRepository guildRepository,
         UploadedFileCleanupService uploadedFileCleanupService,
-        IUnitOfWork unitOfWork,
-        ILogger<UpdateGuildHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _guildRepository = guildRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateGuildResponse>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        UpdateGuildRequest request,
+        UpdateGuildInput input,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UpdateGuild started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
+        var request = input.Request;
 
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(input.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "UpdateGuild failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<UpdateGuildResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
         }
 
-        var isCallerOwner = ctx.Guild.OwnerUserId == callerId;
+        var isCallerOwner = ctx.Guild.OwnerUserId == currentUserId;
         var isCallerAdmin = ctx.CallerRole == GuildRole.Admin;
 
         if (!isCallerOwner && !isCallerAdmin)
         {
-            _logger.LogWarning(
-                "UpdateGuild failed because caller lacks permissions. GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
-                guildId,
-                callerId,
-                ctx.CallerRole);
-
             return ApplicationResponse<UpdateGuildResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only the guild owner or an admin can update guild settings");
@@ -143,11 +127,6 @@ public sealed class UpdateGuildHandler
 
         if (shouldDeletePreviousIconFile)
             await _uploadedFileCleanupService.DeleteIfExistsAsync(previousIconFileId, cancellationToken);
-
-        _logger.LogInformation(
-            "UpdateGuild succeeded. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
 
         return ApplicationResponse<UpdateGuildResponse>.Ok(
             new UpdateGuildResponse(

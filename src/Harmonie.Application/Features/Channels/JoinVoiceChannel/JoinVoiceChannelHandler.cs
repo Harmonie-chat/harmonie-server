@@ -6,50 +6,36 @@ using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.JoinVoiceChannel;
 
-public sealed class JoinVoiceChannelHandler
+public sealed class JoinVoiceChannelHandler : IAuthenticatedHandler<GuildChannelId, JoinVoiceChannelResponse>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IUserRepository _userRepository;
     private readonly ILiveKitTokenService _liveKitTokenService;
-    private readonly ILogger<JoinVoiceChannelHandler> _logger;
 
     public JoinVoiceChannelHandler(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
         IUserRepository userRepository,
-        ILiveKitTokenService liveKitTokenService,
-        ILogger<JoinVoiceChannelHandler> logger)
+        ILiveKitTokenService liveKitTokenService)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _userRepository = userRepository;
         _liveKitTokenService = liveKitTokenService;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<JoinVoiceChannelResponse>> HandleAsync(
-        GuildChannelId channelId,
+        GuildChannelId request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "JoinVoiceChannel started. ChannelId={ChannelId}, UserId={UserId}",
-            channelId,
-            currentUserId);
-
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
+        var channel = await _guildChannelRepository.GetByIdAsync(request, cancellationToken);
         if (channel is null)
         {
-            _logger.LogWarning(
-                "JoinVoiceChannel failed because channel was not found. ChannelId={ChannelId}, UserId={UserId}",
-                channelId,
-                currentUserId);
-
             return ApplicationResponse<JoinVoiceChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -57,12 +43,6 @@ public sealed class JoinVoiceChannelHandler
 
         if (channel.Type != GuildChannelType.Voice)
         {
-            _logger.LogWarning(
-                "JoinVoiceChannel failed because channel is not voice. ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
-                channelId,
-                channel.Type,
-                currentUserId);
-
             return ApplicationResponse<JoinVoiceChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotVoice,
                 "Live voice can only be joined for voice channels");
@@ -74,12 +54,6 @@ public sealed class JoinVoiceChannelHandler
             cancellationToken);
         if (!isMember)
         {
-            _logger.LogWarning(
-                "JoinVoiceChannel access denied. ChannelId={ChannelId}, GuildId={GuildId}, UserId={UserId}",
-                channelId,
-                channel.GuildId,
-                currentUserId);
-
             return ApplicationResponse<JoinVoiceChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
@@ -88,27 +62,16 @@ public sealed class JoinVoiceChannelHandler
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "JoinVoiceChannel failed because user was not found. ChannelId={ChannelId}, UserId={UserId}",
-                channelId,
-                currentUserId);
-
             return ApplicationResponse<JoinVoiceChannelResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "User profile was not found");
         }
 
         var roomToken = await _liveKitTokenService.GenerateRoomTokenAsync(
-            channelId,
+            request,
             currentUserId,
             user.Username.Value,
             cancellationToken);
-
-        _logger.LogInformation(
-            "JoinVoiceChannel succeeded. ChannelId={ChannelId}, UserId={UserId}, RoomName={RoomName}",
-            channelId,
-            currentUserId,
-            roomToken.RoomName);
 
         var payload = new JoinVoiceChannelResponse(
             Token: roomToken.Token,

@@ -35,15 +35,13 @@ public static class DeleteMessageAttachmentEndpoint
         GuildChannelId channelId,
         MessageId messageId,
         UploadedFileId attachmentId,
-        [FromServices] DeleteMessageAttachmentHandler handler,
+        [FromServices] IAuthenticatedHandler<DeleteChannelMessageAttachmentInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
         var response = await handler.HandleAsync(
-            channelId,
-            messageId,
-            attachmentId,
+            new DeleteChannelMessageAttachmentInput(channelId, messageId, attachmentId),
             callerId,
             cancellationToken);
 

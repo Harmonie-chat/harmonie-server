@@ -1,33 +1,25 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds;
 using Harmonie.Application.Interfaces.Guilds;
-using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.ListUserGuilds;
 
-public sealed class ListUserGuildsHandler
+public sealed class ListUserGuildsHandler : IAuthenticatedHandler<Unit, ListUserGuildsResponse>
 {
     private readonly IGuildMemberRepository _guildMemberRepository;
-    private readonly ILogger<ListUserGuildsHandler> _logger;
 
     public ListUserGuildsHandler(
-        IGuildMemberRepository guildMemberRepository,
-        ILogger<ListUserGuildsHandler> logger)
+        IGuildMemberRepository guildMemberRepository)
     {
         _guildMemberRepository = guildMemberRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<ListUserGuildsResponse>> HandleAsync(
+        Unit request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "ListUserGuilds started for user {UserId}",
-            currentUserId);
-
         var memberships = await _guildMemberRepository.GetUserGuildMembershipsAsync(
             currentUserId,
             cancellationToken);
@@ -49,11 +41,6 @@ public sealed class ListUserGuildsHandler
                     Role: membership.Role.ToString(),
                     JoinedAtUtc: membership.JoinedAtUtc))
                 .ToArray());
-
-        _logger.LogInformation(
-            "ListUserGuilds succeeded for user {UserId}. GuildCount={GuildCount}",
-            currentUserId,
-            payload.Guilds.Count);
 
         return ApplicationResponse<ListUserGuildsResponse>.Ok(payload);
     }

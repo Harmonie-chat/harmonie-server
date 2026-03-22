@@ -8,10 +8,11 @@ using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
 
-
 namespace Harmonie.Application.Features.Channels.AddReaction;
 
-public sealed class AddReactionHandler
+public sealed record ChannelAddReactionInput(GuildChannelId ChannelId, MessageId MessageId, string Emoji);
+
+public sealed class AddReactionHandler : IAuthenticatedHandler<ChannelAddReactionInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -39,26 +40,13 @@ public sealed class AddReactionHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildChannelId channelId,
-        MessageId messageId,
-        string emoji,
-        UserId callerId,
+        ChannelAddReactionInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "AddChannelReaction started. ChannelId={ChannelId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            emoji,
-            callerId);
-
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "AddChannelReaction failed because channel was not found. ChannelId={ChannelId}",
-                channelId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -66,11 +54,6 @@ public sealed class AddReactionHandler
 
         if (ctx.Channel.Type != GuildChannelType.Text)
         {
-            _logger.LogWarning(
-                "AddChannelReaction failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}",
-                channelId,
-                ctx.Channel.Type);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Reactions can only be added in text channels");
@@ -78,44 +61,26 @@ public sealed class AddReactionHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "AddChannelReaction access denied because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
         }
 
-        var message = await _messageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != channelId)
+        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
         {
-            _logger.LogWarning(
-                "AddChannelReaction failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",
-                channelId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Reaction.MessageNotFound,
                 "Message was not found");
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _reactionRepository.AddAsync(messageId, callerId, emoji, DateTime.UtcNow, cancellationToken);
+        await _reactionRepository.AddAsync(request.MessageId, currentUserId, request.Emoji, DateTime.UtcNow, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "AddChannelReaction succeeded. ChannelId={ChannelId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            emoji,
-            callerId);
-
         await NotifyReactionAddedSafelyAsync(
-            new ChannelReactionAddedNotification(messageId, channelId, ctx.Channel.GuildId, callerId, emoji));
+            new ChannelReactionAddedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

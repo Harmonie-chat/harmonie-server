@@ -29,7 +29,7 @@ public static class DeleteChannelEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
-        [FromServices] DeleteChannelHandler handler,
+        [FromServices] IAuthenticatedHandler<GuildChannelId, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

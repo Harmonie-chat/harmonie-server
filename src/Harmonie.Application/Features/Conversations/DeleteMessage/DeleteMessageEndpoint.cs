@@ -31,13 +31,13 @@ public static class DeleteMessageEndpoint
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
         MessageId messageId,
-        [FromServices] DeleteMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<DeleteConversationMessageInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, messageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new DeleteConversationMessageInput(conversationId, messageId), callerId, cancellationToken);
         if (response.Success)
             return Results.NoContent();
 

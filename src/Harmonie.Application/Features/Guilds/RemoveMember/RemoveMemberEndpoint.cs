@@ -31,13 +31,13 @@ public static class RemoveMemberEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         UserId userId,
-        [FromServices] RemoveMemberHandler handler,
+        [FromServices] IAuthenticatedHandler<RemoveMemberInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, callerId, userId, cancellationToken);
+        var response = await handler.HandleAsync(new RemoveMemberInput(guildId, userId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

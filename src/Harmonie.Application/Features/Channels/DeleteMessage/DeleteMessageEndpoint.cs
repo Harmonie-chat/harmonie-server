@@ -33,13 +33,13 @@ public static class DeleteMessageEndpoint
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
         MessageId messageId,
-        [FromServices] DeleteMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<DeleteChannelMessageInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, messageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new DeleteChannelMessageInput(channelId, messageId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

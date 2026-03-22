@@ -9,45 +9,35 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.SearchMessages;
 
-public sealed class SearchMessagesHandler
+public sealed record SearchMessagesInput(GuildId GuildId, SearchMessagesRequest Request);
+
+public sealed class SearchMessagesHandler : IAuthenticatedHandler<SearchMessagesInput, SearchMessagesResponse>
 {
     private const int DefaultLimit = 25;
 
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessageSearchRepository _channelMessageRepository;
-    private readonly ILogger<SearchMessagesHandler> _logger;
 
     public SearchMessagesHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IMessageSearchRepository channelMessageRepository,
-        ILogger<SearchMessagesHandler> logger)
+        IMessageSearchRepository channelMessageRepository)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _channelMessageRepository = channelMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SearchMessagesResponse>> HandleAsync(
-        GuildId guildId,
-        SearchMessagesRequest request,
+        SearchMessagesInput input,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SearchMessages started. GuildId={GuildId}, UserId={UserId}, Limit={Limit}, HasChannelFilter={HasChannelFilter}, HasAuthorFilter={HasAuthorFilter}, HasCursor={HasCursor}",
-            guildId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.ChannelId is not null,
-            request.AuthorId is not null,
-            request.Cursor is not null);
+        var (guildId, request) = input;
 
         if (request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
         {
@@ -157,11 +147,6 @@ public sealed class SearchMessagesHandler
         var guildContext = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (guildContext is null)
         {
-            _logger.LogWarning(
-                "SearchMessages failed because guild was not found. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                currentUserId);
-
             return ApplicationResponse<SearchMessagesResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -169,11 +154,6 @@ public sealed class SearchMessagesHandler
 
         if (guildContext.CallerRole is null)
         {
-            _logger.LogWarning(
-                "SearchMessages access denied. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                currentUserId);
-
             return ApplicationResponse<SearchMessagesResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You do not have access to this guild");
@@ -184,12 +164,6 @@ public sealed class SearchMessagesHandler
             var channelContext = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, currentUserId, cancellationToken);
             if (channelContext is null || channelContext.Channel.GuildId != guildId)
             {
-                _logger.LogWarning(
-                    "SearchMessages failed because channel filter was not found in guild. GuildId={GuildId}, ChannelId={ChannelId}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.NotFound,
                     "Channel was not found");
@@ -197,13 +171,6 @@ public sealed class SearchMessagesHandler
 
             if (channelContext.Channel.Type != GuildChannelType.Text)
             {
-                _logger.LogWarning(
-                    "SearchMessages failed because channel filter is not text. GuildId={GuildId}, ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    channelContext.Channel.Type,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.NotText,
                     "Messages can only be searched in text channels");
@@ -211,12 +178,6 @@ public sealed class SearchMessagesHandler
 
             if (channelContext.CallerRole is null)
             {
-                _logger.LogWarning(
-                    "SearchMessages access denied for channel filter. GuildId={GuildId}, ChannelId={ChannelId}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.AccessDenied,
                     "You do not have access to this channel");
@@ -235,13 +196,6 @@ public sealed class SearchMessagesHandler
                 Cursor: cursor),
             limit,
             cancellationToken);
-
-        _logger.LogInformation(
-            "SearchMessages succeeded. GuildId={GuildId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            guildId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
 
         var payload = new SearchMessagesResponse(
             GuildId: guildId.ToString(),

@@ -34,15 +34,13 @@ public static class DeleteMessageAttachmentEndpoint
         ConversationId conversationId,
         MessageId messageId,
         UploadedFileId attachmentId,
-        [FromServices] DeleteMessageAttachmentHandler handler,
+        [FromServices] IAuthenticatedHandler<DeleteConversationMessageAttachmentInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
         var response = await handler.HandleAsync(
-            conversationId,
-            messageId,
-            attachmentId,
+            new DeleteConversationMessageAttachmentInput(conversationId, messageId, attachmentId),
             callerId,
             cancellationToken);
 

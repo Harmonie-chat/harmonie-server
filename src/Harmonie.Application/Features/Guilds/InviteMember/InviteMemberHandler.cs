@@ -4,46 +4,33 @@ using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.InviteMember;
 
-public sealed class InviteMemberHandler
+public sealed record InviteMemberInput(GuildId GuildId, InviteMemberRequest Request);
+
+public sealed class InviteMemberHandler : IAuthenticatedHandler<InviteMemberInput, InviteMemberResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
-    private readonly ILogger<InviteMemberHandler> _logger;
 
     public InviteMemberHandler(
         IGuildRepository guildRepository,
-        IGuildMemberRepository guildMemberRepository,
-        ILogger<InviteMemberHandler> logger)
+        IGuildMemberRepository guildMemberRepository)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<InviteMemberResponse>> HandleAsync(
-        GuildId guildId,
-        InviteMemberRequest request,
-        UserId inviterUserId,
+        InviteMemberInput input,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "InviteMember started. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserIdRaw={TargetUserIdRaw}",
-            guildId,
-            inviterUserId,
-            request.UserId);
+        var (guildId, request) = input;
 
         if (!UserId.TryParse(request.UserId, out var invitedUserId) || invitedUserId is null)
         {
-            _logger.LogWarning(
-                "InviteMember validation failed. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserIdRaw={TargetUserIdRaw}",
-                guildId,
-                inviterUserId,
-                request.UserId);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
@@ -55,15 +42,10 @@ public sealed class InviteMemberHandler
 
         var guildAccess = await _guildRepository.GetWithCallerRoleAsync(
             guildId,
-            inviterUserId,
+            currentUserId,
             cancellationToken);
         if (guildAccess is null)
         {
-            _logger.LogWarning(
-                "InviteMember failed because guild was not found. GuildId={GuildId}, InviterUserId={InviterUserId}",
-                guildId,
-                inviterUserId);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -71,12 +53,6 @@ public sealed class InviteMemberHandler
 
         if (guildAccess.CallerRole is null || guildAccess.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "InviteMember forbidden. GuildId={GuildId}, InviterUserId={InviterUserId}, InviterRole={InviterRole}",
-                guildId,
-                inviterUserId,
-                guildAccess.CallerRole);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.InviteForbidden,
                 "Only guild administrators can invite members");
@@ -88,12 +64,6 @@ public sealed class InviteMemberHandler
             cancellationToken);
         if (!targetLookup.UserExists)
         {
-            _logger.LogWarning(
-                "InviteMember target user not found. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserId={TargetUserId}",
-                guildId,
-                inviterUserId,
-                invitedUserId);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.InviteTargetNotFound,
                 "Invite target user was not found");
@@ -101,11 +71,6 @@ public sealed class InviteMemberHandler
 
         if (targetLookup.IsMember)
         {
-            _logger.LogWarning(
-                "InviteMember target already member. GuildId={GuildId}, TargetUserId={TargetUserId}",
-                guildId,
-                invitedUserId);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.MemberAlreadyExists,
                 "Target user is already a guild member");
@@ -115,15 +80,9 @@ public sealed class InviteMemberHandler
             guildId,
             invitedUserId,
             GuildRole.Member,
-            invitedByUserId: inviterUserId);
+            invitedByUserId: currentUserId);
         if (memberResult.IsFailure || memberResult.Value is null)
         {
-            _logger.LogWarning(
-                "InviteMember member creation failed. GuildId={GuildId}, TargetUserId={TargetUserId}, Error={Error}",
-                guildId,
-                invitedUserId,
-                memberResult.Error);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 memberResult.Error ?? "Unable to create guild membership");
@@ -132,21 +91,10 @@ public sealed class InviteMemberHandler
         var added = await _guildMemberRepository.TryAddAsync(memberResult.Value, cancellationToken);
         if (!added)
         {
-            _logger.LogWarning(
-                "InviteMember member insert conflict. GuildId={GuildId}, TargetUserId={TargetUserId}",
-                guildId,
-                invitedUserId);
-
             return ApplicationResponse<InviteMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.MemberAlreadyExists,
                 "Target user is already a guild member");
         }
-
-        _logger.LogInformation(
-            "InviteMember succeeded. GuildId={GuildId}, InviterUserId={InviterUserId}, TargetUserId={TargetUserId}",
-            guildId,
-            inviterUserId,
-            invitedUserId);
 
         var payload = new InviteMemberResponse(
             GuildId: guildId.ToString(),

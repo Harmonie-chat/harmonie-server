@@ -32,7 +32,7 @@ public static class AcknowledgeReadEndpoint
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
         [FromBody] AcknowledgeReadRequest request,
-        [FromServices] AcknowledgeReadHandler handler,
+        [FromServices] IAuthenticatedHandler<AcknowledgeChannelReadInput, bool> handler,
         [FromServices] IValidator<AcknowledgeReadRequest> bodyValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -56,7 +56,7 @@ public static class AcknowledgeReadEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, parsedMessageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new AcknowledgeChannelReadInput(channelId, parsedMessageId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

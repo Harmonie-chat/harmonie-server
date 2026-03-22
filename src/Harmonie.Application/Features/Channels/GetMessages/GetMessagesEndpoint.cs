@@ -31,7 +31,7 @@ public static class GetMessagesEndpoint
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
         [AsParameters] GetMessagesRequest request,
-        [FromServices] GetMessagesHandler handler,
+        [FromServices] IAuthenticatedHandler<GetChannelMessagesInput, GetMessagesResponse> handler,
         [FromServices] IValidator<GetMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public static class GetMessagesEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new GetChannelMessagesInput(channelId, request), currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

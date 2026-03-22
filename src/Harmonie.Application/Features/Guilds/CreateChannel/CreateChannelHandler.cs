@@ -10,7 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.CreateChannel;
 
-public sealed class CreateChannelHandler
+public sealed record CreateChannelInput(GuildId GuildId, string Name, GuildChannelType ChannelType, int Position);
+
+public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelInput, CreateChannelResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
@@ -33,27 +35,13 @@ public sealed class CreateChannelHandler
     }
 
     public async Task<ApplicationResponse<CreateChannelResponse>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        string name,
-        GuildChannelType channelType,
-        int position,
+        CreateChannelInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "CreateChannel started. GuildId={GuildId}, CallerId={CallerId}, Name={Name}, Type={Type}",
-            guildId,
-            callerId,
-            name,
-            channelType);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(request.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "CreateChannel failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<CreateChannelResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -61,24 +49,14 @@ public sealed class CreateChannelHandler
 
         if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "CreateChannel failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<CreateChannelResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only guild admins can create channels");
         }
 
-        var channelResult = GuildChannel.Create(guildId, name, channelType, isDefault: false, position);
+        var channelResult = GuildChannel.Create(request.GuildId, request.Name, request.ChannelType, isDefault: false, request.Position);
         if (channelResult.IsFailure || channelResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateChannel domain creation failed. GuildId={GuildId}, Reason={Reason}",
-                guildId,
-                channelResult.Error);
-
             return ApplicationResponse<CreateChannelResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 channelResult.Error ?? "Channel creation failed");
@@ -87,17 +65,12 @@ public sealed class CreateChannelHandler
         var channel = channelResult.Value;
 
         var nameConflict = await _guildChannelRepository.ExistsByNameInGuildAsync(
-            guildId,
+            request.GuildId,
             channel.Name,
             channel.Id,
             cancellationToken);
         if (nameConflict)
         {
-            _logger.LogWarning(
-                "CreateChannel failed because a channel with the same name already exists. GuildId={GuildId}, Name={Name}",
-                guildId,
-                channel.Name);
-
             return ApplicationResponse<CreateChannelResponse>.Fail(
                 ApplicationErrorCodes.Channel.NameConflict,
                 "A channel with this name already exists in this guild");
@@ -107,26 +80,20 @@ public sealed class CreateChannelHandler
         await _guildChannelRepository.AddAsync(channel, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "CreateChannel succeeded. GuildId={GuildId}, ChannelId={ChannelId}, CallerId={CallerId}",
-            guildId,
-            channel.Id,
-            callerId);
-
         if (channel.Type == GuildChannelType.Text)
         {
             await BestEffortNotificationHelper.TryNotifyAsync(
-                ct => _realtimeGroupManager.AddAllGuildMembersToChannelGroupAsync(guildId, channel.Id, ct),
+                ct => _realtimeGroupManager.AddAllGuildMembersToChannelGroupAsync(request.GuildId, channel.Id, ct),
                 TimeSpan.FromSeconds(5),
                 _logger,
                 "Failed to subscribe guild {GuildId} members to channel {ChannelId} SignalR group",
-                guildId,
+                request.GuildId,
                 channel.Id);
         }
 
         return ApplicationResponse<CreateChannelResponse>.Ok(new CreateChannelResponse(
             ChannelId: channel.Id.ToString(),
-            GuildId: guildId.ToString(),
+            GuildId: request.GuildId.ToString(),
             Name: channel.Name,
             Type: channel.Type.ToString(),
             IsDefault: channel.IsDefault,

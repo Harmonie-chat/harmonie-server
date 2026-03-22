@@ -9,7 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.DeleteMessage;
 
-public sealed class DeleteMessageHandler
+public sealed record DeleteConversationMessageInput(ConversationId ConversationId, MessageId MessageId);
+
+public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteConversationMessageInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -34,63 +36,36 @@ public sealed class DeleteMessageHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        ConversationId conversationId,
-        MessageId messageId,
-        UserId callerId,
+        DeleteConversationMessageInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "DeleteConversationMessage started. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            callerId);
-
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessage failed because conversation was not found. ConversationId={ConversationId}",
-                conversationId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != callerId && conversation.User2Id != callerId)
+        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessage access denied because caller is not a participant. ConversationId={ConversationId}, CallerId={CallerId}",
-                conversationId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var message = await _conversationMessageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != conversationId)
+        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessage failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",
-                conversationId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
                 "Message was not found");
         }
 
-        if (message.AuthorUserId != callerId)
+        if (message.AuthorUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessage forbidden because caller is not the author. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-                conversationId,
-                messageId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.DeleteForbidden,
                 "You can only delete your own messages");
@@ -108,14 +83,8 @@ public sealed class DeleteMessageHandler
         await _conversationMessageRepository.SoftDeleteAsync(message, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "DeleteConversationMessage succeeded. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            callerId);
-
         await NotifyMessageDeletedSafelyAsync(
-            new ConversationMessageDeletedNotification(messageId, conversationId));
+            new ConversationMessageDeletedNotification(request.MessageId, request.ConversationId));
 
         return ApplicationResponse<bool>.Ok(true);
     }

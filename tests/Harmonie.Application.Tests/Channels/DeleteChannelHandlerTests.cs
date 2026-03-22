@@ -9,7 +9,6 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -32,8 +31,7 @@ public sealed class DeleteChannelHandlerTests
 
         _handler = new DeleteChannelHandler(
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<DeleteChannelHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]

@@ -64,7 +64,7 @@ public sealed class DeleteGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guildId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -82,7 +82,7 @@ public sealed class DeleteGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guild.Id), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -100,7 +100,7 @@ public sealed class DeleteGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guild.Id), ownerId);
 
         response.Success.Should().BeTrue();
         _guildRepositoryMock.Verify(
@@ -144,7 +144,7 @@ public sealed class DeleteGuildHandlerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guild.Id), ownerId);
 
         response.Success.Should().BeTrue();
     }
@@ -165,7 +165,7 @@ public sealed class DeleteGuildHandlerTests
             .Setup(x => x.GetByIdAsync(iconFileId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(uploadedFile);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guild.Id), ownerId);
 
         response.Success.Should().BeTrue();
         _uploadedFileRepositoryMock.Verify(
@@ -190,7 +190,7 @@ public sealed class DeleteGuildHandlerTests
             .Setup(x => x.NotifyGuildDeletedAsync(It.IsAny<GuildDeletedNotification>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId);
+        var response = await _handler.HandleAsync(new DeleteGuildInput(guild.Id), ownerId);
 
         response.Success.Should().BeTrue();
         _guildRepositoryMock.Verify(

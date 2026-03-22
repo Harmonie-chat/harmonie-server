@@ -3,44 +3,30 @@ using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.GetGuildMembers;
 
-public sealed class GetGuildMembersHandler
+public sealed class GetGuildMembersHandler : IAuthenticatedHandler<GuildId, GetGuildMembersResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
-    private readonly ILogger<GetGuildMembersHandler> _logger;
 
     public GetGuildMembersHandler(
         IGuildRepository guildRepository,
-        IGuildMemberRepository guildMemberRepository,
-        ILogger<GetGuildMembersHandler> logger)
+        IGuildMemberRepository guildMemberRepository)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<GetGuildMembersResponse>> HandleAsync(
         GuildId guildId,
-        UserId requesterUserId,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "GetGuildMembers started. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-            guildId,
-            requesterUserId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, requesterUserId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "GetGuildMembers guild not found. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-                guildId,
-                requesterUserId);
-
             return ApplicationResponse<GetGuildMembersResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -48,23 +34,12 @@ public sealed class GetGuildMembersHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "GetGuildMembers access denied. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-                guildId,
-                requesterUserId);
-
             return ApplicationResponse<GetGuildMembersResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You do not have access to this guild");
         }
 
         var members = await _guildMemberRepository.GetGuildMembersAsync(guildId, cancellationToken);
-
-        _logger.LogInformation(
-            "GetGuildMembers succeeded. GuildId={GuildId}, RequesterUserId={RequesterUserId}, MemberCount={MemberCount}",
-            guildId,
-            requesterUserId,
-            members.Count);
 
         var payload = new GetGuildMembersResponse(
             GuildId: guildId.ToString(),

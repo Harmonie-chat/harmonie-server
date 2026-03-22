@@ -11,7 +11,6 @@ using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -30,16 +29,14 @@ public sealed class GetMessagesHandlerTests
 
         _handler = new GetMessagesHandler(
             _guildChannelRepositoryMock.Object,
-            _channelMessageRepositoryMock.Object,
-            NullLogger<GetMessagesHandler>.Instance);
+            _channelMessageRepositoryMock.Object);
     }
 
     [Fact]
     public async Task HandleAsync_WhenCursorIsInvalid_ShouldReturnValidationFailure()
     {
         var response = await _handler.HandleAsync(
-            GuildChannelId.New(),
-            new GetMessagesRequest { Before = "invalid-cursor", Limit = 50 },
+            new GetChannelMessagesInput(GuildChannelId.New(), new GetMessagesRequest { Before = "invalid-cursor", Limit = 50 }),
             UserId.New());
 
         response.Success.Should().BeFalse();
@@ -58,8 +55,7 @@ public sealed class GetMessagesHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         var response = await _handler.HandleAsync(
-            channel.Id,
-            new GetMessagesRequest { Limit = 50 },
+            new GetChannelMessagesInput(channel.Id, new GetMessagesRequest { Limit = 50 }),
             userId);
 
         response.Success.Should().BeFalse();
@@ -78,8 +74,7 @@ public sealed class GetMessagesHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
         var response = await _handler.HandleAsync(
-            channel.Id,
-            new GetMessagesRequest { Limit = 50 },
+            new GetChannelMessagesInput(channel.Id, new GetMessagesRequest { Limit = 50 }),
             userId);
 
         response.Success.Should().BeFalse();
@@ -114,8 +109,7 @@ public sealed class GetMessagesHandlerTests
                 new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>()));
 
         var response = await _handler.HandleAsync(
-            channel.Id,
-            new GetMessagesRequest { Limit = 50 },
+            new GetChannelMessagesInput(channel.Id, new GetMessagesRequest { Limit = 50 }),
             userId);
 
         response.Success.Should().BeTrue();

@@ -43,7 +43,7 @@ public sealed class LeaveGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, userId);
+        var response = await _handler.HandleAsync(new LeaveGuildInput(guildId), userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -60,7 +60,7 @@ public sealed class LeaveGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, null));
 
-        var response = await _handler.HandleAsync(guild.Id, userId);
+        var response = await _handler.HandleAsync(new LeaveGuildInput(guild.Id), userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -77,7 +77,7 @@ public sealed class LeaveGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId);
+        var response = await _handler.HandleAsync(new LeaveGuildInput(guild.Id), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -98,7 +98,7 @@ public sealed class LeaveGuildHandlerTests
             .Setup(x => x.RemoveAsync(guild.Id, memberId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(guild.Id, memberId);
+        var response = await _handler.HandleAsync(new LeaveGuildInput(guild.Id), memberId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -123,7 +123,7 @@ public sealed class LeaveGuildHandlerTests
             .Setup(x => x.RemoveAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(guild.Id, adminId);
+        var response = await _handler.HandleAsync(new LeaveGuildInput(guild.Id), adminId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();

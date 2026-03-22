@@ -36,8 +36,7 @@ public sealed class ReorderChannelsHandlerTests
         _handler = new ReorderChannelsHandler(
             _guildRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<ReorderChannelsHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -51,7 +50,7 @@ public sealed class ReorderChannelsHandlerTests
             .ReturnsAsync((GuildAccessContext?)null);
 
         var request = new ReorderChannelsRequest([new ReorderChannelsItemRequest(GuildChannelId.New().ToString(), 0)]);
-        var response = await _handler.HandleAsync(guildId, callerId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guildId, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -69,7 +68,7 @@ public sealed class ReorderChannelsHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, CallerRole: null));
 
         var request = new ReorderChannelsRequest([new ReorderChannelsItemRequest(GuildChannelId.New().ToString(), 0)]);
-        var response = await _handler.HandleAsync(guild.Id, callerId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -87,7 +86,7 @@ public sealed class ReorderChannelsHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         var request = new ReorderChannelsRequest([new ReorderChannelsItemRequest(GuildChannelId.New().ToString(), 0)]);
-        var response = await _handler.HandleAsync(guild.Id, callerId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -110,7 +109,7 @@ public sealed class ReorderChannelsHandlerTests
 
         var unknownChannelId = GuildChannelId.New().ToString();
         var request = new ReorderChannelsRequest([new ReorderChannelsItemRequest(unknownChannelId, 0)]);
-        var response = await _handler.HandleAsync(guild.Id, adminId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), adminId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -137,7 +136,7 @@ public sealed class ReorderChannelsHandlerTests
             new ReorderChannelsItemRequest(channelIdStr, 0),
             new ReorderChannelsItemRequest(channelIdStr, 1)
         ]);
-        var response = await _handler.HandleAsync(guild.Id, adminId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), adminId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -164,7 +163,7 @@ public sealed class ReorderChannelsHandlerTests
             new ReorderChannelsItemRequest(ch1.Id.ToString(), 5),
             new ReorderChannelsItemRequest(ch2.Id.ToString(), 3)
         ]);
-        var response = await _handler.HandleAsync(guild.Id, adminId, request);
+        var response = await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), adminId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -197,7 +196,7 @@ public sealed class ReorderChannelsHandlerTests
             new ReorderChannelsItemRequest(ch1.Id.ToString(), 5),
             new ReorderChannelsItemRequest(ch2.Id.ToString(), 3)
         ]);
-        await _handler.HandleAsync(guild.Id, adminId, request);
+        await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), adminId);
 
         _guildChannelRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
@@ -227,7 +226,7 @@ public sealed class ReorderChannelsHandlerTests
         var request = new ReorderChannelsRequest([
             new ReorderChannelsItemRequest(ch1.Id.ToString(), 10)
         ]);
-        await _handler.HandleAsync(guild.Id, adminId, request);
+        await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request), adminId);
 
         _guildChannelRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),

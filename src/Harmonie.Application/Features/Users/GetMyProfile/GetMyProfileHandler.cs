@@ -2,38 +2,27 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Users.GetMyProfile;
 
-public sealed class GetMyProfileHandler
+public sealed class GetMyProfileHandler : IAuthenticatedHandler<Unit, GetMyProfileResponse>
 {
     private readonly IUserRepository _userRepository;
-    private readonly ILogger<GetMyProfileHandler> _logger;
 
     public GetMyProfileHandler(
-        IUserRepository userRepository,
-        ILogger<GetMyProfileHandler> logger)
+        IUserRepository userRepository)
     {
         _userRepository = userRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<GetMyProfileResponse>> HandleAsync(
+        Unit request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "GetMyProfile started for user {UserId}",
-            currentUserId);
-
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "GetMyProfile user not found. UserId={UserId}",
-                currentUserId);
-
             return ApplicationResponse<GetMyProfileResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "User profile was not found");
@@ -53,10 +42,6 @@ public sealed class GetMyProfileHandler
             Theme: user.Theme,
             Language: user.Language,
             Status: user.Status);
-
-        _logger.LogInformation(
-            "GetMyProfile succeeded for user {UserId}",
-            currentUserId);
 
         return ApplicationResponse<GetMyProfileResponse>.Ok(payload);
     }

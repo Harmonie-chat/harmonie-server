@@ -3,26 +3,23 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Users.SearchUsers;
 
 public sealed class SearchUsersHandler
+    : IAuthenticatedHandler<SearchUsersRequest, SearchUsersResponse>
 {
     private const int DefaultLimit = 20;
 
     private readonly IUserRepository _userRepository;
     private readonly IGuildRepository _guildRepository;
-    private readonly ILogger<SearchUsersHandler> _logger;
 
     public SearchUsersHandler(
         IUserRepository userRepository,
-        IGuildRepository guildRepository,
-        ILogger<SearchUsersHandler> logger)
+        IGuildRepository guildRepository)
     {
         _userRepository = userRepository;
         _guildRepository = guildRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SearchUsersResponse>> HandleAsync(
@@ -30,12 +27,6 @@ public sealed class SearchUsersHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SearchUsers started. UserId={UserId}, HasGuildScope={HasGuildScope}, Limit={Limit}",
-            currentUserId,
-            request.GuildId is not null,
-            request.Limit ?? DefaultLimit);
-
         if (request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
         {
             return ApplicationResponse<SearchUsersResponse>.Fail(
@@ -65,11 +56,6 @@ public sealed class SearchUsersHandler
             var guildContext = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
             if (guildContext is null)
             {
-                _logger.LogWarning(
-                    "SearchUsers failed because guild was not found. GuildId={GuildId}, UserId={UserId}",
-                    guildId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchUsersResponse>.Fail(
                     ApplicationErrorCodes.Guild.NotFound,
                     "Guild was not found");
@@ -77,11 +63,6 @@ public sealed class SearchUsersHandler
 
             if (guildContext.CallerRole is null)
             {
-                _logger.LogWarning(
-                    "SearchUsers access denied for guild scope. GuildId={GuildId}, UserId={UserId}",
-                    guildId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchUsersResponse>.Fail(
                     ApplicationErrorCodes.Guild.AccessDenied,
                     "You do not have access to this guild");
@@ -95,12 +76,6 @@ public sealed class SearchUsersHandler
                 GuildId: guildId,
                 Limit: limit),
             cancellationToken);
-
-        _logger.LogInformation(
-            "SearchUsers succeeded. UserId={UserId}, HasGuildScope={HasGuildScope}, ResultCount={ResultCount}",
-            currentUserId,
-            guildId is not null,
-            users.Count);
 
         var payload = new SearchUsersResponse(
             users.Select(user => new SearchUsersItemResponse(

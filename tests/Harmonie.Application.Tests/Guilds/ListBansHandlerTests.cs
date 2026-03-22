@@ -26,8 +26,7 @@ public sealed class ListBansHandlerTests
 
         _handler = new ListBansHandler(
             _guildRepositoryMock.Object,
-            _guildBanRepositoryMock.Object,
-            NullLogger<ListBansHandler>.Instance);
+            _guildBanRepositoryMock.Object);
     }
 
     [Fact]

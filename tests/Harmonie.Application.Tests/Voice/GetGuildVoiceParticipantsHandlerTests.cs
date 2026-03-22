@@ -31,8 +31,7 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
         _handler = new GetGuildVoiceParticipantsHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _liveKitRoomServiceMock.Object,
-            NullLogger<GetGuildVoiceParticipantsHandler>.Instance);
+            _liveKitRoomServiceMock.Object);
     }
 
     [Fact]

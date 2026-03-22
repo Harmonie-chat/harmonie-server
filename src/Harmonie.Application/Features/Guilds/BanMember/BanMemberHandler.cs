@@ -10,7 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.BanMember;
 
-public sealed class BanMemberHandler
+public sealed record BanMemberInput(GuildId GuildId, UserId TargetId, string? Reason, int PurgeMessagesDays);
+
+public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, BanMemberResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
@@ -39,26 +41,13 @@ public sealed class BanMemberHandler
     }
 
     public async Task<ApplicationResponse<BanMemberResponse>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        UserId targetId,
-        string? reason,
-        int purgeMessagesDays,
+        BanMemberInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "BanMember started. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}",
-            guildId,
-            callerId,
-            targetId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(request.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "BanMember failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -66,64 +55,38 @@ public sealed class BanMemberHandler
 
         if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "BanMember failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You must be an admin to ban members from this guild");
         }
 
-        if (callerId == targetId)
+        if (currentUserId == request.TargetId)
         {
-            _logger.LogWarning(
-                "BanMember failed because caller tried to ban themselves. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.CannotBanSelf,
                 "You cannot ban yourself");
         }
 
-        if (ctx.Guild.OwnerUserId == targetId)
+        if (ctx.Guild.OwnerUserId == request.TargetId)
         {
-            _logger.LogWarning(
-                "BanMember failed because target is the guild owner. GuildId={GuildId}, TargetId={TargetId}",
-                guildId,
-                targetId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.OwnerCannotBeBanned,
                 "The guild owner cannot be banned");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(guildId, targetId, cancellationToken);
+        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
         var isMember = targetRole is not null;
 
-        if (targetRole == GuildRole.Admin && ctx.Guild.OwnerUserId != callerId)
+        if (targetRole == GuildRole.Admin && ctx.Guild.OwnerUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "BanMember failed because non-owner admin tried to ban another admin. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}",
-                guildId,
-                callerId,
-                targetId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only the guild owner can ban an admin");
         }
 
-        var banResult = GuildBan.Create(guildId, targetId, reason, callerId);
+        var banResult = GuildBan.Create(request.GuildId, request.TargetId, request.Reason, currentUserId);
         if (banResult.IsFailure || banResult.Value is null)
         {
-            _logger.LogWarning(
-                "BanMember ban creation failed. GuildId={GuildId}, Error={Error}",
-                guildId,
-                banResult.Error);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 banResult.Error ?? "Unable to create guild ban");
@@ -134,42 +97,29 @@ public sealed class BanMemberHandler
         var added = await _guildBanRepository.TryAddAsync(banResult.Value, cancellationToken);
         if (!added)
         {
-            _logger.LogWarning(
-                "BanMember failed because user is already banned. GuildId={GuildId}, TargetId={TargetId}",
-                guildId,
-                targetId);
-
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.AlreadyBanned,
                 "User is already banned from this guild");
         }
 
         if (isMember)
-            await _guildMemberRepository.RemoveAsync(guildId, targetId, cancellationToken);
+            await _guildMemberRepository.RemoveAsync(request.GuildId, request.TargetId, cancellationToken);
 
-        if (purgeMessagesDays > 0)
-            await _messageRepository.SoftDeleteByAuthorInGuildAsync(guildId, targetId, purgeMessagesDays, cancellationToken);
+        if (request.PurgeMessagesDays > 0)
+            await _messageRepository.SoftDeleteByAuthorInGuildAsync(request.GuildId, request.TargetId, request.PurgeMessagesDays, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
         if (isMember)
         {
             await BestEffortNotificationHelper.TryNotifyAsync(
-                ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(targetId, guildId, ct),
+                ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(request.TargetId, request.GuildId, ct),
                 TimeSpan.FromSeconds(5),
                 _logger,
                 "Failed to unsubscribe banned user {UserId} from guild {GuildId} SignalR groups",
-                targetId,
-                guildId);
+                request.TargetId,
+                request.GuildId);
         }
-
-        _logger.LogInformation(
-            "BanMember succeeded. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}, IsMember={IsMember}, PurgeDays={PurgeDays}",
-            guildId,
-            callerId,
-            targetId,
-            isMember,
-            purgeMessagesDays);
 
         var ban = banResult.Value;
         var payload = new BanMemberResponse(

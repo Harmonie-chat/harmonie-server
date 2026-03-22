@@ -9,7 +9,6 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -32,8 +31,7 @@ public sealed class UpdateChannelHandlerTests
 
         _handler = new UpdateChannelHandler(
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<UpdateChannelHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -47,7 +45,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync((ChannelAccessContext?)null);
 
         var request = new UpdateChannelRequest(Name: "new-name");
-        var response = await _handler.HandleAsync(channelId, callerId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channelId, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -65,7 +63,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
         var request = new UpdateChannelRequest(Name: "new-name");
-        var response = await _handler.HandleAsync(channel.Id, callerId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -83,7 +81,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
         var request = new UpdateChannelRequest(Name: "new-name");
-        var response = await _handler.HandleAsync(channel.Id, callerId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -109,7 +107,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(true);
 
         var request = new UpdateChannelRequest(Name: "existing-channel");
-        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -135,7 +133,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(false);
 
         var request = new UpdateChannelRequest(Name: "new-name");
-        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -155,7 +153,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
 
         var request = new UpdateChannelRequest(Position: 5);
-        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -182,7 +180,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(false);
 
         var request = new UpdateChannelRequest(Name: "new-name");
-        await _handler.HandleAsync(channel.Id, adminId, request);
+        await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         _guildChannelRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
@@ -204,7 +202,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
 
         var request = new UpdateChannelRequest();
-        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         response.Success.Should().BeTrue();
         response.Data!.Name.Should().Be("unchanged");
@@ -237,7 +235,7 @@ public sealed class UpdateChannelHandlerTests
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
 
         var request = new UpdateChannelRequest(Name: null, Position: null);
-        var response = await _handler.HandleAsync(channel.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request), adminId);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();

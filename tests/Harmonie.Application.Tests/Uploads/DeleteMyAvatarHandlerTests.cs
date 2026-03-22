@@ -48,8 +48,7 @@ public sealed class DeleteMyAvatarHandlerTests
                 _uploadedFileRepositoryMock.Object,
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
-            _unitOfWorkMock.Object,
-            NullLogger<DeleteMyAvatarHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -61,7 +60,7 @@ public sealed class DeleteMyAvatarHandlerTests
             .Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
-        var response = await _handler.HandleAsync(userId);
+        var response = await _handler.HandleAsync(Unit.Value, userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -81,7 +80,7 @@ public sealed class DeleteMyAvatarHandlerTests
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        var response = await _handler.HandleAsync(user.Id);
+        var response = await _handler.HandleAsync(Unit.Value, user.Id);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -143,7 +142,7 @@ public sealed class DeleteMyAvatarHandlerTests
             .Setup(x => x.DeleteAsync(avatarFileId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(user.Id);
+        var response = await _handler.HandleAsync(Unit.Value, user.Id);
 
         response.Success.Should().BeTrue();
         user.AvatarFileId.Should().BeNull();

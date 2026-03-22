@@ -29,7 +29,7 @@ public static class GetMessagesEndpoint
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
         [AsParameters] GetMessagesRequest request,
-        [FromServices] GetMessagesHandler handler,
+        [FromServices] IAuthenticatedHandler<GetConversationMessagesInput, GetMessagesResponse> handler,
         [FromServices] IValidator<GetMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -40,7 +40,7 @@ public static class GetMessagesEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new GetConversationMessagesInput(conversationId, request), currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

@@ -28,7 +28,7 @@ public static class OpenConversationEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] OpenConversationRequest request,
-        [FromServices] OpenConversationHandler handler,
+        [FromServices] IAuthenticatedHandler<OpenConversationRequest, OpenConversationResponse> handler,
         [FromServices] IValidator<OpenConversationRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

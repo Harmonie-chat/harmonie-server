@@ -30,7 +30,7 @@ public static class AcceptInviteEndpoint
 
     private static async Task<IResult> HandleAsync(
         [AsParameters] AcceptInviteRouteRequest routeRequest,
-        [FromServices] AcceptInviteHandler handler,
+        [FromServices] IAuthenticatedHandler<string, AcceptInviteResponse> handler,
         [FromServices] IValidator<AcceptInviteRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

@@ -28,13 +28,13 @@ public static class LeaveGuildEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
-        [FromServices] LeaveGuildHandler handler,
+        [FromServices] IAuthenticatedHandler<LeaveGuildInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new LeaveGuildInput(guildId), currentUserId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

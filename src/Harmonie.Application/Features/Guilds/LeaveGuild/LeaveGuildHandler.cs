@@ -7,7 +7,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.LeaveGuild;
 
-public sealed class LeaveGuildHandler
+public sealed record LeaveGuildInput(GuildId GuildId);
+
+public sealed class LeaveGuildHandler : IAuthenticatedHandler<LeaveGuildInput, bool>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
@@ -27,23 +29,13 @@ public sealed class LeaveGuildHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildId guildId,
-        UserId userId,
+        LeaveGuildInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "LeaveGuild started. GuildId={GuildId}, UserId={UserId}",
-            guildId,
-            userId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, userId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(request.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "LeaveGuild failed because guild was not found. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                userId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -51,42 +43,27 @@ public sealed class LeaveGuildHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "LeaveGuild failed because user is not a member. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                userId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You are not a member of this guild");
         }
 
-        if (ctx.Guild.OwnerUserId == userId)
+        if (ctx.Guild.OwnerUserId == currentUserId)
         {
-            _logger.LogWarning(
-                "LeaveGuild failed because user is the guild owner. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                userId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.OwnerCannotLeave,
                 "The guild owner cannot leave the guild");
         }
 
-        await _guildMemberRepository.RemoveAsync(guildId, userId, cancellationToken);
+        await _guildMemberRepository.RemoveAsync(request.GuildId, currentUserId, cancellationToken);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
-            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(userId, guildId, ct),
+            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(currentUserId, request.GuildId, ct),
             TimeSpan.FromSeconds(5),
             _logger,
             "Failed to unsubscribe user {UserId} from guild {GuildId} SignalR groups",
-            userId,
-            guildId);
-
-        _logger.LogInformation(
-            "LeaveGuild succeeded. GuildId={GuildId}, UserId={UserId}",
-            guildId,
-            userId);
+            currentUserId,
+            request.GuildId);
 
         return ApplicationResponse<bool>.Ok(true);
     }

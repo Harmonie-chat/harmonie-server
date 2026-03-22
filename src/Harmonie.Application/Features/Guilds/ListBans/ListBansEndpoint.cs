@@ -27,7 +27,7 @@ public static class ListBansEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
-        [FromServices] ListBansHandler handler,
+        [FromServices] IAuthenticatedHandler<GuildId, ListBansResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

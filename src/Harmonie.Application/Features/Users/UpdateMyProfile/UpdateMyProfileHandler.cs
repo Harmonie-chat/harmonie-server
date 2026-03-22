@@ -5,24 +5,21 @@ using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Common;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Users.UpdateMyProfile;
 
 public sealed class UpdateMyProfileHandler
+    : IAuthenticatedHandler<UpdateMyProfileRequest, UpdateMyProfileResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
-    private readonly ILogger<UpdateMyProfileHandler> _logger;
 
     public UpdateMyProfileHandler(
         IUserRepository userRepository,
-        UploadedFileCleanupService uploadedFileCleanupService,
-        ILogger<UpdateMyProfileHandler> logger)
+        UploadedFileCleanupService uploadedFileCleanupService)
     {
         _userRepository = userRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateMyProfileResponse>> HandleAsync(
@@ -30,17 +27,9 @@ public sealed class UpdateMyProfileHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UpdateMyProfile started for user {UserId}",
-            currentUserId);
-
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "UpdateMyProfile failed because user was not found. UserId={UserId}",
-                currentUserId);
-
             return ApplicationResponse<UpdateMyProfileResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "User profile was not found");
@@ -166,10 +155,6 @@ public sealed class UpdateMyProfileHandler
             Avatar: avatar,
             Theme: user.Theme,
             Language: user.Language);
-
-        _logger.LogInformation(
-            "UpdateMyProfile succeeded for user {UserId}",
-            currentUserId);
 
         return ApplicationResponse<UpdateMyProfileResponse>.Ok(payload);
     }

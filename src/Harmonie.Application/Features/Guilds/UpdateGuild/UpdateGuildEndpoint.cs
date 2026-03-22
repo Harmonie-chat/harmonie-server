@@ -55,7 +55,7 @@ public static class UpdateGuildEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] UpdateGuildRequest request,
-        [FromServices] UpdateGuildHandler handler,
+        [FromServices] IAuthenticatedHandler<UpdateGuildInput, UpdateGuildResponse> handler,
         [FromServices] IValidator<UpdateGuildRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -66,7 +66,7 @@ public static class UpdateGuildEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(new UpdateGuildInput(guildId, request), callerId, cancellationToken);
         return response.ToHttpResult();
     }
 

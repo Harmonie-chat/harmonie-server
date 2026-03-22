@@ -26,8 +26,7 @@ public sealed class UpdateMemberRoleHandlerTests
 
         _handler = new UpdateMemberRoleHandler(
             _guildRepositoryMock.Object,
-            _guildMemberRepositoryMock.Object,
-            NullLogger<UpdateMemberRoleHandler>.Instance);
+            _guildMemberRepositoryMock.Object);
     }
 
     [Fact]
@@ -41,7 +40,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId, targetId, GuildRole.Admin);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guildId, targetId, GuildRole.Admin), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -59,7 +58,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, null));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Admin);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Admin), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -77,7 +76,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Admin);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Admin), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -99,7 +98,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildRole?)null);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Admin);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Admin), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -121,7 +120,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.GetRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Admin);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, ownerId, GuildRole.Member);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, ownerId, GuildRole.Member), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -147,7 +146,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Admin, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Admin);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Admin), callerId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -177,7 +176,7 @@ public sealed class UpdateMemberRoleHandlerTests
             .Setup(x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Member, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId, GuildRole.Member);
+        var response = await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Member), callerId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();

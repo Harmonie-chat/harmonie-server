@@ -8,7 +8,7 @@ namespace Harmonie.Application.Features.Auth.RefreshToken;
 /// <summary>
 /// Handler for refresh token flow with token rotation.
 /// </summary>
-public sealed class RefreshTokenHandler
+public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshTokenResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;

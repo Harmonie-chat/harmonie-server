@@ -65,7 +65,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conversation?)null);
 
-        var response = await _handler.HandleAsync(conversationId, messageId, attachmentId, callerId);
+        var response = await _handler.HandleAsync(new DeleteConversationMessageAttachmentInput(conversationId, messageId, attachmentId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -85,9 +85,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .ReturnsAsync(conversation);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            MessageId.New(),
-            UploadedFileId.New(),
+            new DeleteConversationMessageAttachmentInput(conversation.Id, MessageId.New(), UploadedFileId.New()),
             outsider);
 
         response.Success.Should().BeFalse();
@@ -112,7 +110,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .Setup(x => x.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(conversation.Id, message.Id, attachmentId, participantOne);
+        var response = await _handler.HandleAsync(new DeleteConversationMessageAttachmentInput(conversation.Id, message.Id, attachmentId), participantOne);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -138,9 +136,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .ReturnsAsync(message);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            message.Id,
-            missingAttachmentId,
+            new DeleteConversationMessageAttachmentInput(conversation.Id, message.Id, missingAttachmentId),
             participantOne);
 
         response.Success.Should().BeFalse();
@@ -208,7 +204,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .Setup(x => x.DeleteAsync(attachmentId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(conversation.Id, message.Id, attachmentId, participantOne);
+        var response = await _handler.HandleAsync(new DeleteConversationMessageAttachmentInput(conversation.Id, message.Id, attachmentId), participantOne);
 
         response.Success.Should().BeTrue();
         message.Attachments.Should().BeEmpty();

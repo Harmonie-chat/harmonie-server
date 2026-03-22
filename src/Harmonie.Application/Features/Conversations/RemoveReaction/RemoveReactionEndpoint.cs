@@ -32,7 +32,7 @@ public static class RemoveReactionEndpoint
         ConversationId conversationId,
         MessageId messageId,
         [AsParameters] RemoveReactionRouteRequest routeRequest,
-        [FromServices] RemoveReactionHandler handler,
+        [FromServices] IAuthenticatedHandler<ConversationRemoveReactionInput, bool> handler,
         [FromServices] IValidator<RemoveReactionRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public static class RemoveReactionEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, messageId, emoji, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new ConversationRemoveReactionInput(conversationId, messageId, emoji), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

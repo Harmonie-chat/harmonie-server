@@ -27,8 +27,7 @@ public sealed class SearchUsersHandlerTests
 
         _handler = new SearchUsersHandler(
             _userRepositoryMock.Object,
-            _guildRepositoryMock.Object,
-            NullLogger<SearchUsersHandler>.Instance);
+            _guildRepositoryMock.Object);
     }
 
     [Fact]

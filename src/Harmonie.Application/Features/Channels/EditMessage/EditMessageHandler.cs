@@ -11,7 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.EditMessage;
 
-public sealed class EditMessageHandler
+public sealed record EditChannelMessageInput(GuildChannelId ChannelId, MessageId MessageId, EditMessageRequest Request);
+
+public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessageInput, EditMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -36,41 +38,22 @@ public sealed class EditMessageHandler
     }
 
     public async Task<ApplicationResponse<EditMessageResponse>> HandleAsync(
-        GuildChannelId channelId,
-        MessageId messageId,
-        EditMessageRequest request,
-        UserId callerId,
+        EditChannelMessageInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "EditMessage started. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            callerId);
-
-        var contentResult = MessageContent.Create(request.Content);
+        var contentResult = MessageContent.Create(request.Request.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
         {
-            _logger.LogWarning(
-                "EditMessage validation failed. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}, Error={Error}",
-                channelId,
-                messageId,
-                callerId,
-                contentResult.Error);
-
-            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Request.Content);
             return ApplicationResponse<EditMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "EditMessage failed because channel was not found. ChannelId={ChannelId}",
-                channelId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -78,11 +61,6 @@ public sealed class EditMessageHandler
 
         if (ctx.Channel.Type != GuildChannelType.Text)
         {
-            _logger.LogWarning(
-                "EditMessage failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}",
-                channelId,
-                ctx.Channel.Type);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Messages can only be edited in text channels");
@@ -90,39 +68,22 @@ public sealed class EditMessageHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "EditMessage access denied because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
         }
 
-        var message = await _channelMessageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _channelMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != channelId)
+        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
         {
-            _logger.LogWarning(
-                "EditMessage failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",
-                channelId,
-                messageId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
                 "Message was not found");
         }
 
-        if (message.AuthorUserId != callerId)
+        if (message.AuthorUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "EditMessage forbidden because caller is not the author. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-                channelId,
-                messageId,
-                callerId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Message.EditForbidden,
                 "You can only edit your own messages");
@@ -139,12 +100,6 @@ public sealed class EditMessageHandler
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
         await _channelMessageRepository.UpdateAsync(message, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "EditMessage succeeded. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            callerId);
 
         var updatedAtUtc = message.UpdatedAtUtc;
         if (updatedAtUtc is null)

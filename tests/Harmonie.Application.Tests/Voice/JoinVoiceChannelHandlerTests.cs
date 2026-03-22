@@ -12,7 +12,6 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -37,8 +36,7 @@ public sealed class JoinVoiceChannelHandlerTests
             _guildChannelRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _userRepositoryMock.Object,
-            _liveKitTokenServiceMock.Object,
-            NullLogger<JoinVoiceChannelHandler>.Instance);
+            _liveKitTokenServiceMock.Object);
     }
 
     [Fact]

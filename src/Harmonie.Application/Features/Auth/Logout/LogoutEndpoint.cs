@@ -29,7 +29,7 @@ public static class LogoutEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] LogoutRequest request,
-        [FromServices] LogoutHandler handler,
+        [FromServices] IAuthenticatedHandler<LogoutRequest, LogoutResponse> handler,
         [FromServices] IValidator<LogoutRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

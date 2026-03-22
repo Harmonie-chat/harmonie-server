@@ -8,10 +8,11 @@ using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
 
-
 namespace Harmonie.Application.Features.Conversations.EditMessage;
 
-public sealed class EditMessageHandler
+public sealed record EditConversationMessageInput(ConversationId ConversationId, MessageId MessageId, EditMessageRequest Request);
+
+public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationMessageInput, EditMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -36,80 +37,45 @@ public sealed class EditMessageHandler
     }
 
     public async Task<ApplicationResponse<EditMessageResponse>> HandleAsync(
-        ConversationId conversationId,
-        MessageId messageId,
-        EditMessageRequest request,
-        UserId callerId,
+        EditConversationMessageInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "EditConversationMessage started. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            callerId);
-
-        var contentResult = MessageContent.Create(request.Content);
+        var contentResult = MessageContent.Create(request.Request.Content);
         if (contentResult.IsFailure || contentResult.Value is null)
         {
-            _logger.LogWarning(
-                "EditConversationMessage validation failed. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}, Error={Error}",
-                conversationId,
-                messageId,
-                callerId,
-                contentResult.Error);
-
-            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
+            var code = MessageContentErrorCodeResolver.Resolve(request.Request.Content);
             return ApplicationResponse<EditMessageResponse>.Fail(
                 code,
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "EditConversationMessage failed because conversation was not found. ConversationId={ConversationId}",
-                conversationId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != callerId && conversation.User2Id != callerId)
+        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "EditConversationMessage access denied because caller is not a participant. ConversationId={ConversationId}, CallerId={CallerId}",
-                conversationId,
-                callerId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var message = await _conversationMessageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != conversationId)
+        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
         {
-            _logger.LogWarning(
-                "EditConversationMessage failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",
-                conversationId,
-                messageId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
                 "Message was not found");
         }
 
-        if (message.AuthorUserId != callerId)
+        if (message.AuthorUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "EditConversationMessage forbidden because caller is not the author. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-                conversationId,
-                messageId,
-                callerId);
-
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Message.EditForbidden,
                 "You can only edit your own messages");
@@ -134,12 +100,6 @@ public sealed class EditMessageHandler
                 ApplicationErrorCodes.Common.InvalidState,
                 "Message edit succeeded but updated timestamp is missing");
         }
-
-        _logger.LogInformation(
-            "EditConversationMessage succeeded. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            callerId);
 
         await NotifyMessageUpdatedSafelyAsync(
             new ConversationMessageUpdatedNotification(

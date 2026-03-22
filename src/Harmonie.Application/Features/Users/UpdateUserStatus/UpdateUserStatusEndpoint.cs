@@ -36,7 +36,7 @@ public static class UpdateUserStatusEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] UpdateUserStatusRequest request,
-        [FromServices] UpdateUserStatusHandler handler,
+        [FromServices] IAuthenticatedHandler<UpdateUserStatusRequest, UpdateUserStatusResponse> handler,
         [FromServices] IValidator<UpdateUserStatusRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
