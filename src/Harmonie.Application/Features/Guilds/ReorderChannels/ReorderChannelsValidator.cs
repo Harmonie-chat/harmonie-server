@@ -2,18 +2,6 @@ using FluentValidation;
 
 namespace Harmonie.Application.Features.Guilds.ReorderChannels;
 
-public sealed class ReorderChannelsRouteValidator : AbstractValidator<ReorderChannelsRouteRequest>
-{
-    public ReorderChannelsRouteValidator()
-    {
-        RuleFor(x => x.GuildId)
-            .NotEmpty()
-            .WithMessage("Guild ID is required")
-            .Must(id => Guid.TryParse(id, out var parsed) && parsed != Guid.Empty)
-            .WithMessage("Guild ID must be a valid non-empty GUID");
-    }
-}
-
 public sealed class ReorderChannelsValidator : AbstractValidator<ReorderChannelsRequest>
 {
     public ReorderChannelsValidator()

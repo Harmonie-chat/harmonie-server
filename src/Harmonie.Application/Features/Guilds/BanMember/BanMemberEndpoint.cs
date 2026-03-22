@@ -32,30 +32,16 @@ public static class BanMemberEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] BanMemberRouteRequest routeRequest,
+        GuildId guildId,
         [FromBody] BanMemberRequest request,
         [FromServices] BanMemberHandler handler,
-        [FromServices] IValidator<BanMemberRouteRequest> routeValidator,
         [FromServices] IValidator<BanMemberRequest> bodyValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<BanMemberResponse>.Fail(routeValidationError).ToHttpResult();
-
         var bodyValidationError = await request.ValidateAsync(bodyValidator, cancellationToken);
         if (bodyValidationError is not null)
             return ApplicationResponse<BanMemberResponse>.Fail(bodyValidationError).ToHttpResult();
-
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<BanMemberResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
 
         if (!UserId.TryParse(request.UserId, out var parsedTargetId)
             || parsedTargetId is null)
@@ -68,7 +54,7 @@ public static class BanMemberEndpoint
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            parsedGuildId,
+            guildId,
             callerId,
             parsedTargetId,
             request.Reason,

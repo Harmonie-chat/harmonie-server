@@ -30,30 +30,16 @@ public static class TransferOwnershipEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] TransferOwnershipRouteRequest routeRequest,
+        GuildId guildId,
         [FromBody] TransferOwnershipRequest request,
         [FromServices] TransferOwnershipHandler handler,
-        [FromServices] IValidator<TransferOwnershipRouteRequest> routeValidator,
         [FromServices] IValidator<TransferOwnershipRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<bool>.Fail(validationError).ToHttpResult();
-
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
 
         if (request.NewOwnerId is not string newOwnerIdStr
             || !UserId.TryParse(newOwnerIdStr, out var parsedNewOwnerId)
@@ -66,7 +52,7 @@ public static class TransferOwnershipEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, callerId, parsedNewOwnerId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, callerId, parsedNewOwnerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Microsoft.AspNetCore.Builder;
@@ -28,28 +27,14 @@ public static class LeaveGuildEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] LeaveGuildRouteRequest routeRequest,
+        GuildId guildId,
         [FromServices] LeaveGuildHandler handler,
-        [FromServices] IValidator<LeaveGuildRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.GuildId is not string guildId
-            || !GuildId.TryParse(guildId, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, currentUserId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

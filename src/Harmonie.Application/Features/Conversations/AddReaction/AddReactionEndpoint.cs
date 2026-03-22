@@ -29,6 +29,8 @@ public static class AddReactionEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
+        ConversationId conversationId,
+        MessageId messageId,
         [AsParameters] AddReactionRouteRequest routeRequest,
         [FromServices] AddReactionHandler handler,
         [FromServices] IValidator<AddReactionRouteRequest> routeValidator,
@@ -39,28 +41,14 @@ public static class AddReactionEndpoint
         if (routeValidationError is not null)
             return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
 
-        if (routeRequest.ConversationId is not string conversationIdStr
-            || !ConversationId.TryParse(conversationIdStr, out var parsedConversationId)
-            || parsedConversationId is null)
-        {
+        if (routeRequest.Emoji is not string emoji)
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but conversation ID parsing failed.").ToHttpResult();
-        }
+                "Route validation succeeded but emoji was null.").ToHttpResult();
 
-        if (routeRequest.MessageId is not string messageIdStr
-            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
-            || parsedMessageId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but message ID parsing failed.").ToHttpResult();
-        }
-
-        var emoji = routeRequest.Emoji!;
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedConversationId, parsedMessageId, emoji, callerId, cancellationToken);
+        var response = await handler.HandleAsync(conversationId, messageId, emoji, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

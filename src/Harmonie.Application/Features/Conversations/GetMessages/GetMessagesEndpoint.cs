@@ -27,34 +27,20 @@ public static class GetMessagesEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] GetMessagesRouteRequest routeRequest,
+        ConversationId conversationId,
         [AsParameters] GetMessagesRequest request,
         [FromServices] GetMessagesHandler handler,
-        [FromServices] IValidator<GetMessagesRouteRequest> routeValidator,
         [FromServices] IValidator<GetMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<GetMessagesResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<GetMessagesResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.ConversationId is not string conversationId
-            || !ConversationId.TryParse(conversationId, out var parsedConversationId)
-            || parsedConversationId is null)
-        {
-            return ApplicationResponse<GetMessagesResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but conversation ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedConversationId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(conversationId, request, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

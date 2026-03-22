@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Microsoft.AspNetCore.Builder;
@@ -27,28 +26,14 @@ public static class GetGuildMembersEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] GetGuildMembersRequest request,
+        GuildId guildId,
         [FromServices] GetGuildMembersHandler handler,
-        [FromServices] IValidator<GetGuildMembersRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var validationError = await request.ValidateAsync(validator, cancellationToken);
-        if (validationError is not null)
-            return ApplicationResponse<GetGuildMembersResponse>.Fail(validationError).ToHttpResult();
-
-        if (request.GuildId is not string guildId
-            || !GuildId.TryParse(guildId, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<GetGuildMembersResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

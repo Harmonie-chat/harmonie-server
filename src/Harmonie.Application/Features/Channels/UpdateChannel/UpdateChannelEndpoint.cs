@@ -46,34 +46,20 @@ public static class UpdateChannelEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] UpdateChannelRouteRequest routeRequest,
+        GuildChannelId channelId,
         [FromBody] UpdateChannelRequest request,
         [FromServices] UpdateChannelHandler handler,
-        [FromServices] IValidator<UpdateChannelRouteRequest> routeValidator,
         [FromServices] IValidator<UpdateChannelRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<UpdateChannelResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<UpdateChannelResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.ChannelId is not string channelIdStr
-            || !GuildChannelId.TryParse(channelIdStr, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<UpdateChannelResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(channelId, callerId, request, cancellationToken);
         return response.ToHttpResult();
     }
 }

@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -32,37 +31,15 @@ public static class DeleteMessageEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] DeleteMessageRouteRequest routeRequest,
+        GuildChannelId channelId,
+        MessageId messageId,
         [FromServices] DeleteMessageHandler handler,
-        [FromServices] IValidator<DeleteMessageRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.ChannelId is not string channelIdStr
-            || !GuildChannelId.TryParse(channelIdStr, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
-        if (routeRequest.MessageId is not string messageIdStr
-            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
-            || parsedMessageId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but message ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, parsedMessageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(channelId, messageId, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

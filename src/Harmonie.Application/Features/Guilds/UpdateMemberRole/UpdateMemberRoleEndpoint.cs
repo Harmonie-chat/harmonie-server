@@ -30,43 +30,21 @@ public static class UpdateMemberRoleEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] UpdateMemberRoleRouteRequest routeRequest,
+        GuildId guildId,
+        UserId userId,
         [FromBody] UpdateMemberRoleRequest request,
         [FromServices] UpdateMemberRoleHandler handler,
-        [FromServices] IValidator<UpdateMemberRoleRouteRequest> routeValidator,
         [FromServices] IValidator<UpdateMemberRoleRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<bool>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
-        if (routeRequest.UserId is not string userIdStr
-            || !UserId.TryParse(userIdStr, out var parsedTargetId)
-            || parsedTargetId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but user ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, callerId, parsedTargetId, request.Role.ToDomain(), cancellationToken);
+        var response = await handler.HandleAsync(guildId, callerId, userId, request.Role.ToDomain(), cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

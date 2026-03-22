@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Channels;
 using Microsoft.AspNetCore.Builder;
@@ -29,28 +28,14 @@ public static class JoinVoiceChannelEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] JoinVoiceChannelRouteRequest routeRequest,
+        GuildChannelId channelId,
         [FromServices] JoinVoiceChannelHandler handler,
-        [FromServices] IValidator<JoinVoiceChannelRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<JoinVoiceChannelResponse>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.ChannelId is not string channelId
-            || !GuildChannelId.TryParse(channelId, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<JoinVoiceChannelResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(channelId, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

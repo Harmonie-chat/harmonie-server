@@ -27,6 +27,7 @@ public static class RevokeInviteEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
+        GuildId guildId,
         [AsParameters] RevokeInviteRouteRequest routeRequest,
         [FromServices] RevokeInviteHandler handler,
         [FromServices] IValidator<RevokeInviteRouteRequest> routeValidator,
@@ -37,17 +38,15 @@ public static class RevokeInviteEndpoint
         if (routeValidationError is not null)
             return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
+        if (routeRequest.InviteCode is not string inviteCode)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
+                "Route validation succeeded but invite code was null.").ToHttpResult();
         }
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
-        var response = await handler.HandleAsync(parsedGuildId, routeRequest.InviteCode!, callerId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, inviteCode, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

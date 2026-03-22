@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Channels;
 using Microsoft.AspNetCore.Builder;
@@ -29,28 +28,14 @@ public static class DeleteChannelEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] DeleteChannelRouteRequest routeRequest,
+        GuildChannelId channelId,
         [FromServices] DeleteChannelHandler handler,
-        [FromServices] IValidator<DeleteChannelRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.ChannelId is not string channelIdStr
-            || !GuildChannelId.TryParse(channelIdStr, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(channelId, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

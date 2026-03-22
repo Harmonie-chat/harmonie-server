@@ -29,35 +29,21 @@ public static class CreateChannelEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] CreateChannelRouteRequest routeRequest,
+        GuildId guildId,
         [FromBody] CreateChannelRequest request,
         [FromServices] CreateChannelHandler handler,
-        [FromServices] IValidator<CreateChannelRouteRequest> routeValidator,
         [FromServices] IValidator<CreateChannelRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<CreateChannelResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<CreateChannelResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<CreateChannelResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            parsedGuildId,
+            guildId,
             callerId,
             request.Name,
             request.Type.ToDomain(),
