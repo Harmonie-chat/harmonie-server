@@ -30,34 +30,20 @@ public static class SearchMessagesEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] SearchMessagesRouteRequest routeRequest,
+        GuildId guildId,
         [AsParameters] SearchMessagesRequest request,
         [FromServices] SearchMessagesHandler handler,
-        [FromServices] IValidator<SearchMessagesRouteRequest> routeValidator,
         [FromServices] IValidator<SearchMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<SearchMessagesResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<SearchMessagesResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildId
-            || !GuildId.TryParse(guildId, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<SearchMessagesResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, request, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

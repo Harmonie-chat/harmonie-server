@@ -53,34 +53,20 @@ public static class UpdateGuildEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] UpdateGuildRouteRequest routeRequest,
+        GuildId guildId,
         [FromBody] UpdateGuildRequest request,
         [FromServices] UpdateGuildHandler handler,
-        [FromServices] IValidator<UpdateGuildRouteRequest> routeValidator,
         [FromServices] IValidator<UpdateGuildRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<UpdateGuildResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<UpdateGuildResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildId
-            || !GuildId.TryParse(guildId, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<UpdateGuildResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(guildId, callerId, request, cancellationToken);
         return response.ToHttpResult();
     }
 

@@ -1,7 +1,6 @@
 using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Conversations;
-using Harmonie.Domain.ValueObjects.Messages;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -33,34 +32,20 @@ public static class SendMessageEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] SendMessageRouteRequest routeRequest,
+        ConversationId conversationId,
         [FromBody] SendMessageRequest request,
         [FromServices] SendMessageHandler handler,
-        [FromServices] IValidator<SendMessageRouteRequest> routeValidator,
         [FromServices] IValidator<SendMessageRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<SendMessageResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<SendMessageResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.ConversationId is not string conversationId
-            || !ConversationId.TryParse(conversationId, out var parsedConversationId)
-            || parsedConversationId is null)
-        {
-            return ApplicationResponse<SendMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but conversation ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedConversationId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(conversationId, request, currentUserId, cancellationToken);
         return response.ToCreatedHttpResult(
             data => $"/api/conversations/{data.ConversationId}/messages/{data.MessageId}");
     }

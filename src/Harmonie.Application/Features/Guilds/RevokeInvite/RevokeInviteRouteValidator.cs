@@ -6,12 +6,6 @@ public sealed class RevokeInviteRouteValidator : AbstractValidator<RevokeInviteR
 {
     public RevokeInviteRouteValidator()
     {
-        RuleFor(x => x.GuildId)
-            .NotEmpty()
-            .WithMessage("Guild ID is required")
-            .Must(id => Guid.TryParse(id, out _))
-            .WithMessage("Guild ID must be a valid GUID");
-
         RuleFor(x => x.InviteCode)
             .NotEmpty()
             .WithMessage("Invite code is required")

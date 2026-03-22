@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Harmonie.Domain.ValueObjects.Uploads;
 
-public sealed record UploadedFileId
+public sealed record UploadedFileId : IParsable<UploadedFileId>
 {
     public Guid Value { get; }
 
@@ -23,6 +25,23 @@ public sealed record UploadedFileId
             return false;
 
         uploadedFileId = new UploadedFileId(guid);
+        return true;
+    }
+
+    public static UploadedFileId Parse(string s, IFormatProvider? provider)
+    {
+        if (!TryParse(s, provider, out var result))
+            throw new FormatException($"'{s}' is not a valid UploadedFileId.");
+        return result;
+    }
+
+    public static bool TryParse(string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out UploadedFileId result)
+    {
+        result = null!; // Required by IParsable contract; guarded by [MaybeNullWhen(false)]
+        if (string.IsNullOrWhiteSpace(s) || !Guid.TryParse(s, out var guid) || guid == Guid.Empty)
+            return false;
+
+        result = new UploadedFileId(guid);
         return true;
     }
 

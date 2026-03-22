@@ -29,30 +29,16 @@ public static class AcknowledgeReadEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] AcknowledgeReadRouteRequest routeRequest,
+        ConversationId conversationId,
         [FromBody] AcknowledgeReadRequest request,
         [FromServices] AcknowledgeReadHandler handler,
-        [FromServices] IValidator<AcknowledgeReadRouteRequest> routeValidator,
         [FromServices] IValidator<AcknowledgeReadRequest> bodyValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
         var bodyValidationError = await request.ValidateAsync(bodyValidator, cancellationToken);
         if (bodyValidationError is not null)
             return ApplicationResponse<bool>.Fail(bodyValidationError).ToHttpResult();
-
-        if (routeRequest.ConversationId is not string conversationIdStr
-            || !ConversationId.TryParse(conversationIdStr, out var parsedConversationId)
-            || parsedConversationId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but conversation ID parsing failed.").ToHttpResult();
-        }
 
         MessageId? parsedMessageId = null;
         if (request.MessageId is string messageIdStr)
@@ -69,7 +55,7 @@ public static class AcknowledgeReadEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedConversationId, parsedMessageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(conversationId, parsedMessageId, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

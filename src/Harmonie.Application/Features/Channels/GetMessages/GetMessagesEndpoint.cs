@@ -29,34 +29,20 @@ public static class GetMessagesEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] GetMessagesRouteRequest routeRequest,
+        GuildChannelId channelId,
         [AsParameters] GetMessagesRequest request,
         [FromServices] GetMessagesHandler handler,
-        [FromServices] IValidator<GetMessagesRouteRequest> routeValidator,
         [FromServices] IValidator<GetMessagesRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<GetMessagesResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<GetMessagesResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.ChannelId is not string channelId
-            || !GuildChannelId.TryParse(channelId, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<GetMessagesResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(channelId, request, currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

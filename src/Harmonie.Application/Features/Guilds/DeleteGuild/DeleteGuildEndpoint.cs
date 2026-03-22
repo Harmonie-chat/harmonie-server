@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Microsoft.AspNetCore.Builder;
@@ -27,27 +26,13 @@ public static class DeleteGuildEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] DeleteGuildRouteRequest routeRequest,
+        GuildId guildId,
         [FromServices] DeleteGuildHandler handler,
-        [FromServices] IValidator<DeleteGuildRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
-        var response = await handler.HandleAsync(parsedGuildId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(guildId, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

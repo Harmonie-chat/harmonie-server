@@ -27,23 +27,15 @@ public static class DownloadFileEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [FromRoute] string fileId,
+        UploadedFileId fileId,
         [FromServices] DownloadFileHandler handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        if (!UploadedFileId.TryParse(fileId, out var parsedFileId) || parsedFileId is null)
-        {
-            return ApplicationResponse<DownloadFileResult>.Fail(
-                ApplicationErrorCodes.Upload.NotFound,
-                "File was not found")
-                .ToHttpResult();
-        }
-
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            parsedFileId,
+            fileId,
             currentUserId,
             cancellationToken);
 

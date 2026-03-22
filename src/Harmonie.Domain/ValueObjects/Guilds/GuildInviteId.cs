@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Harmonie.Domain.ValueObjects.Guilds;
 
 /// <summary>
 /// Strongly-typed identifier for guild invite entities.
 /// </summary>
-public sealed record GuildInviteId
+public sealed record GuildInviteId : IParsable<GuildInviteId>
 {
     public Guid Value { get; }
 
@@ -30,6 +32,23 @@ public sealed record GuildInviteId
             return false;
 
         guildInviteId = new GuildInviteId(guid);
+        return true;
+    }
+
+    public static GuildInviteId Parse(string s, IFormatProvider? provider)
+    {
+        if (!TryParse(s, provider, out var result))
+            throw new FormatException($"'{s}' is not a valid GuildInviteId.");
+        return result;
+    }
+
+    public static bool TryParse(string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out GuildInviteId result)
+    {
+        result = null!; // Required by IParsable contract; guarded by [MaybeNullWhen(false)]
+        if (string.IsNullOrWhiteSpace(s) || !Guid.TryParse(s, out var guid) || guid == Guid.Empty)
+            return false;
+
+        result = new GuildInviteId(guid);
         return true;
     }
 

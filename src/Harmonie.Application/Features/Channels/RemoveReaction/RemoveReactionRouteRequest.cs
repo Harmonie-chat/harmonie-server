@@ -2,7 +2,5 @@ namespace Harmonie.Application.Features.Channels.RemoveReaction;
 
 public sealed class RemoveReactionRouteRequest
 {
-    public string? ChannelId { get; init; }
-    public string? MessageId { get; init; }
     public string? Emoji { get; init; }
 }

@@ -1,4 +1,3 @@
-using FluentValidation;
 using Harmonie.Application.Common;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -33,48 +32,18 @@ public static class DeleteMessageAttachmentEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] DeleteMessageAttachmentRouteRequest routeRequest,
+        GuildChannelId channelId,
+        MessageId messageId,
+        UploadedFileId attachmentId,
         [FromServices] DeleteMessageAttachmentHandler handler,
-        [FromServices] IValidator<DeleteMessageAttachmentRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
-
-        if (routeRequest.ChannelId is not string channelIdStr
-            || !GuildChannelId.TryParse(channelIdStr, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
-
-        if (routeRequest.MessageId is not string messageIdStr
-            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
-            || parsedMessageId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but message ID parsing failed.").ToHttpResult();
-        }
-
-        if (routeRequest.AttachmentId is not string attachmentIdStr
-            || !UploadedFileId.TryParse(attachmentIdStr, out var parsedAttachmentId)
-            || parsedAttachmentId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but attachment ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
         var response = await handler.HandleAsync(
-            parsedChannelId,
-            parsedMessageId,
-            parsedAttachmentId,
+            channelId,
+            messageId,
+            attachmentId,
             callerId,
             cancellationToken);
 

@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Harmonie.Domain.ValueObjects.Conversations;
 
-public sealed record ConversationId
+public sealed record ConversationId : IParsable<ConversationId>
 {
     public Guid Value { get; }
 
@@ -27,6 +29,23 @@ public sealed record ConversationId
             return false;
 
         conversationId = new ConversationId(parsed);
+        return true;
+    }
+
+    public static ConversationId Parse(string s, IFormatProvider? provider)
+    {
+        if (!TryParse(s, provider, out var result))
+            throw new FormatException($"'{s}' is not a valid ConversationId.");
+        return result;
+    }
+
+    public static bool TryParse(string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out ConversationId result)
+    {
+        result = null!; // Required by IParsable contract; guarded by [MaybeNullWhen(false)]
+        if (string.IsNullOrWhiteSpace(s) || !Guid.TryParse(s, out var parsed) || parsed == Guid.Empty)
+            return false;
+
+        result = new ConversationId(parsed);
         return true;
     }
 

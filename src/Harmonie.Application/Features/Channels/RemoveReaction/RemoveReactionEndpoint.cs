@@ -30,6 +30,8 @@ public static class RemoveReactionEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
+        GuildChannelId channelId,
+        MessageId messageId,
         [AsParameters] RemoveReactionRouteRequest routeRequest,
         [FromServices] RemoveReactionHandler handler,
         [FromServices] IValidator<RemoveReactionRouteRequest> routeValidator,
@@ -40,28 +42,14 @@ public static class RemoveReactionEndpoint
         if (routeValidationError is not null)
             return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
 
-        if (routeRequest.ChannelId is not string channelIdStr
-            || !GuildChannelId.TryParse(channelIdStr, out var parsedChannelId)
-            || parsedChannelId is null)
-        {
+        if (routeRequest.Emoji is not string emoji)
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but channel ID parsing failed.").ToHttpResult();
-        }
+                "Route validation succeeded but emoji was null.").ToHttpResult();
 
-        if (routeRequest.MessageId is not string messageIdStr
-            || !MessageId.TryParse(messageIdStr, out var parsedMessageId)
-            || parsedMessageId is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but message ID parsing failed.").ToHttpResult();
-        }
-
-        var emoji = routeRequest.Emoji!;
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedChannelId, parsedMessageId, emoji, callerId, cancellationToken);
+        var response = await handler.HandleAsync(channelId, messageId, emoji, callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

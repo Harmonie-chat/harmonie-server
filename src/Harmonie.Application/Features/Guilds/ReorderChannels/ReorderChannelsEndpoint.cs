@@ -29,34 +29,20 @@ public static class ReorderChannelsEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [AsParameters] ReorderChannelsRouteRequest routeRequest,
+        GuildId guildId,
         [FromBody] ReorderChannelsRequest request,
         [FromServices] ReorderChannelsHandler handler,
-        [FromServices] IValidator<ReorderChannelsRouteRequest> routeValidator,
         [FromServices] IValidator<ReorderChannelsRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
-        if (routeValidationError is not null)
-            return ApplicationResponse<ReorderChannelsResponse>.Fail(routeValidationError).ToHttpResult();
-
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<ReorderChannelsResponse>.Fail(validationError).ToHttpResult();
 
-        if (routeRequest.GuildId is not string guildIdStr
-            || !GuildId.TryParse(guildIdStr, out var parsedGuildId)
-            || parsedGuildId is null)
-        {
-            return ApplicationResponse<ReorderChannelsResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but guild ID parsing failed.").ToHttpResult();
-        }
-
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(parsedGuildId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(guildId, callerId, request, cancellationToken);
         return response.ToHttpResult();
     }
 }
