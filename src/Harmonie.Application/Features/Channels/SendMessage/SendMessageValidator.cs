@@ -1,5 +1,4 @@
 using FluentValidation;
-using Harmonie.Domain.ValueObjects.Messages;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
 
@@ -7,12 +6,6 @@ public sealed class SendMessageValidator : AbstractValidator<SendMessageRequest>
 {
     public SendMessageValidator()
     {
-        RuleFor(x => x.Content)
-            .NotNull()
-            .WithMessage("Message content is required")
-            .MaximumLength(MessageContent.MaxLength)
-            .WithMessage($"Message content cannot exceed {MessageContent.MaxLength} characters");
-
         RuleForEach(x => x.AttachmentFileIds)
             .Must(id => Guid.TryParse(id, out var parsedId) && parsedId != Guid.Empty)
             .WithMessage("Attachment file IDs must be valid non-empty GUIDs")
