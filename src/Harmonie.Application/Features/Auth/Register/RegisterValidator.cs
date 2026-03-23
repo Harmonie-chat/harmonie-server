@@ -11,21 +11,11 @@ public sealed class RegisterValidator : AbstractValidator<RegisterRequest>
     {
         RuleFor(x => x.Email)
             .NotEmpty()
-            .WithMessage("Email is required")
-            .EmailAddress()
-            .WithMessage("Email format is invalid")
-            .MaximumLength(320)
-            .WithMessage("Email is too long");
+            .WithMessage("Email is required");
 
         RuleFor(x => x.Username)
             .NotEmpty()
-            .WithMessage("Username is required")
-            .MinimumLength(3)
-            .WithMessage("Username must be at least 3 characters")
-            .MaximumLength(32)
-            .WithMessage("Username cannot exceed 32 characters")
-            .Matches(@"^[a-zA-Z0-9_-]+$")
-            .WithMessage("Username can only contain letters, numbers, underscores, and hyphens");
+            .WithMessage("Username is required");
 
         RuleFor(x => x.Password)
             .NotEmpty()
