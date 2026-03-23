@@ -25,8 +25,7 @@ public sealed class GetGuildMembersHandlerTests
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _handler = new GetGuildMembersHandler(
             _guildRepositoryMock.Object,
-            _guildMemberRepositoryMock.Object,
-            NullLogger<GetGuildMembersHandler>.Instance);
+            _guildMemberRepositoryMock.Object);
     }
 
     [Fact]

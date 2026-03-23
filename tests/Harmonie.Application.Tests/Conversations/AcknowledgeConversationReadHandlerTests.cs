@@ -10,7 +10,6 @@ using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -39,8 +38,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             _conversationRepositoryMock.Object,
             _messageRepositoryMock.Object,
             _conversationReadStateRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<AcknowledgeReadHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -53,7 +51,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conversation?)null);
 
-        var response = await _handler.HandleAsync(conversationId, null, callerId);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversationId, null), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
@@ -72,7 +70,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
-        var response = await _handler.HandleAsync(conversation.Id, null, outsider);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, null), outsider);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
@@ -95,7 +93,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Message?)null);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, participantOne);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, messageId), participantOne);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
@@ -119,7 +117,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(messageFromOther);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, participantOne);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, messageId), participantOne);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
@@ -143,7 +141,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, participantOne);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, messageId), participantOne);
 
         response.Success.Should().BeTrue();
 
@@ -172,7 +170,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetLatestConversationMessageIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(latestMessageId);
 
-        var response = await _handler.HandleAsync(conversation.Id, null, participantOne);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, null), participantOne);
 
         response.Success.Should().BeTrue();
 
@@ -200,7 +198,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
             .Setup(x => x.GetLatestConversationMessageIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((MessageId?)null);
 
-        var response = await _handler.HandleAsync(conversation.Id, null, participantOne);
+        var response = await _handler.HandleAsync(new AcknowledgeConversationReadInput(conversation.Id, null), participantOne);
 
         response.Success.Should().BeTrue();
 

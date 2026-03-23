@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.RemoveMember;
 
-public sealed class RemoveMemberHandler
+public sealed record RemoveMemberInput(GuildId GuildId, UserId TargetId);
+
+public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInput, bool>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
@@ -28,24 +30,13 @@ public sealed class RemoveMemberHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        UserId targetId,
+        RemoveMemberInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "RemoveMember started. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}",
-            guildId,
-            callerId,
-            targetId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(request.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "RemoveMember failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -53,56 +44,35 @@ public sealed class RemoveMemberHandler
 
         if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "RemoveMember failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You must be an admin to remove members from this guild");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(guildId, targetId, cancellationToken);
+        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
         if (targetRole is null)
         {
-            _logger.LogWarning(
-                "RemoveMember failed because target is not a member. GuildId={GuildId}, TargetId={TargetId}",
-                guildId,
-                targetId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.MemberNotFound,
                 "The specified user is not a member of this guild");
         }
 
-        if (ctx.Guild.OwnerUserId == targetId)
+        if (ctx.Guild.OwnerUserId == request.TargetId)
         {
-            _logger.LogWarning(
-                "RemoveMember failed because target is the guild owner. GuildId={GuildId}, TargetId={TargetId}",
-                guildId,
-                targetId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.OwnerCannotBeRemoved,
                 "The guild owner cannot be removed from the guild");
         }
 
-        await _guildMemberRepository.RemoveAsync(guildId, targetId, cancellationToken);
+        await _guildMemberRepository.RemoveAsync(request.GuildId, request.TargetId, cancellationToken);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
-            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(targetId, guildId, ct),
+            ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(request.TargetId, request.GuildId, ct),
             TimeSpan.FromSeconds(5),
             _logger,
             "Failed to unsubscribe user {UserId} from guild {GuildId} SignalR groups",
-            targetId,
-            guildId);
-
-        _logger.LogInformation(
-            "RemoveMember succeeded. GuildId={GuildId}, CallerId={CallerId}, TargetId={TargetId}",
-            guildId,
-            callerId,
-            targetId);
+            request.TargetId,
+            request.GuildId);
 
         return ApplicationResponse<bool>.Ok(true);
     }

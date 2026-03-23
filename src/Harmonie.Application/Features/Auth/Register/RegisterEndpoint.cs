@@ -30,7 +30,7 @@ public static class RegisterEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] RegisterRequest request,
-        [FromServices] RegisterHandler handler,
+        [FromServices] IHandler<RegisterRequest, RegisterResponse> handler,
         [FromServices] IValidator<RegisterRequest> validator,
         CancellationToken cancellationToken)
     {

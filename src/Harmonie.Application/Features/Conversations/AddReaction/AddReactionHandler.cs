@@ -9,7 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.AddReaction;
 
-public sealed class AddReactionHandler
+public sealed record ConversationAddReactionInput(ConversationId ConversationId, MessageId MessageId, string Emoji);
+
+public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddReactionInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -37,70 +39,40 @@ public sealed class AddReactionHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        ConversationId conversationId,
-        MessageId messageId,
-        string emoji,
-        UserId callerId,
+        ConversationAddReactionInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "AddConversationReaction started. ConversationId={ConversationId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            emoji,
-            callerId);
-
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "AddConversationReaction failed because conversation was not found. ConversationId={ConversationId}",
-                conversationId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != callerId && conversation.User2Id != callerId)
+        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "AddConversationReaction access denied because caller is not a participant. ConversationId={ConversationId}, CallerId={CallerId}",
-                conversationId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var message = await _messageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != conversationId)
+        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
         {
-            _logger.LogWarning(
-                "AddConversationReaction failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",
-                conversationId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Reaction.MessageNotFound,
                 "Message was not found");
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _reactionRepository.AddAsync(messageId, callerId, emoji, DateTime.UtcNow, cancellationToken);
+        await _reactionRepository.AddAsync(request.MessageId, currentUserId, request.Emoji, DateTime.UtcNow, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "AddConversationReaction succeeded. ConversationId={ConversationId}, MessageId={MessageId}, Emoji={Emoji}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            emoji,
-            callerId);
-
         await NotifyReactionAddedSafelyAsync(
-            new ConversationReactionAddedNotification(messageId, conversationId, callerId, emoji));
+            new ConversationReactionAddedNotification(request.MessageId, request.ConversationId, currentUserId, request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

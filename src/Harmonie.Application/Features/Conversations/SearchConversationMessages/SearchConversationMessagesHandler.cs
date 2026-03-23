@@ -6,41 +6,31 @@ using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SearchConversationMessages;
 
-public sealed class SearchConversationMessagesHandler
+public sealed record SearchConversationMessagesInput(ConversationId ConversationId, string? Q = null, string? Before = null, string? After = null, string? Cursor = null, int? Limit = null);
+
+public sealed class SearchConversationMessagesHandler : IAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse>
 {
     private const int DefaultLimit = 25;
 
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageSearchRepository _directMessageRepository;
-    private readonly ILogger<SearchConversationMessagesHandler> _logger;
 
     public SearchConversationMessagesHandler(
         IConversationRepository conversationRepository,
-        IMessageSearchRepository directMessageRepository,
-        ILogger<SearchConversationMessagesHandler> logger)
+        IMessageSearchRepository directMessageRepository)
     {
         _conversationRepository = conversationRepository;
         _directMessageRepository = directMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SearchConversationMessagesResponse>> HandleAsync(
-        ConversationId conversationId,
-        SearchConversationMessagesRequest request,
+        SearchConversationMessagesInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SearchConversationMessages started. ConversationId={ConversationId}, UserId={UserId}, Limit={Limit}, HasCursor={HasCursor}",
-            conversationId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.Cursor is not null);
-
         if (request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
         {
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
@@ -112,14 +102,9 @@ public sealed class SearchConversationMessagesHandler
                     "After must be earlier than or equal to before"));
         }
 
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "SearchConversationMessages failed because conversation was not found. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
@@ -127,11 +112,6 @@ public sealed class SearchConversationMessagesHandler
 
         if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "SearchConversationMessages access denied. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
@@ -140,7 +120,7 @@ public sealed class SearchConversationMessagesHandler
         var limit = request.Limit ?? DefaultLimit;
         var page = await _directMessageRepository.SearchConversationMessagesAsync(
             new SearchConversationMessagesQuery(
-                ConversationId: conversationId,
+                ConversationId: request.ConversationId,
                 SearchText: rawQuery.Trim(),
                 BeforeCreatedAtUtc: beforeCreatedAtUtc,
                 AfterCreatedAtUtc: afterCreatedAtUtc,
@@ -148,15 +128,8 @@ public sealed class SearchConversationMessagesHandler
             limit,
             cancellationToken);
 
-        _logger.LogInformation(
-            "SearchConversationMessages succeeded. ConversationId={ConversationId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            conversationId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
-
         var payload = new SearchConversationMessagesResponse(
-            ConversationId: conversationId.ToString(),
+            ConversationId: request.ConversationId.ToString(),
             Items: page.Items
                 .Select(item =>
                 {

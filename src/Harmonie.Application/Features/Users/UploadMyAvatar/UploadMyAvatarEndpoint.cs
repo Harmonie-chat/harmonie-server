@@ -29,7 +29,7 @@ public static class UploadMyAvatarEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromForm] UploadMyAvatarRequest request,
-        [FromServices] UploadMyAvatarHandler handler,
+        [FromServices] IAuthenticatedHandler<UploadMyAvatarInput, UploadMyAvatarResponse> handler,
         [FromServices] IValidator<UploadMyAvatarRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -59,10 +59,9 @@ public static class UploadMyAvatarEndpoint
         }
 
         await using var stream = file.OpenReadStream();
+        var input = new UploadMyAvatarInput(fileName, contentType, stream);
         var response = await handler.HandleAsync(
-            fileName,
-            contentType,
-            stream,
+            input,
             currentUserId,
             cancellationToken);
 

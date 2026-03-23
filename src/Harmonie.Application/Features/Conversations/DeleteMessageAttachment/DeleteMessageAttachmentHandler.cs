@@ -9,10 +9,11 @@ using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
 
-
 namespace Harmonie.Application.Features.Conversations.DeleteMessageAttachment;
 
-public sealed class DeleteMessageAttachmentHandler
+public sealed record DeleteConversationMessageAttachmentInput(ConversationId ConversationId, MessageId MessageId, UploadedFileId AttachmentId);
+
+public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<DeleteConversationMessageAttachmentInput, bool>
 {
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _conversationMessageRepository;
@@ -35,79 +36,44 @@ public sealed class DeleteMessageAttachmentHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        ConversationId conversationId,
-        MessageId messageId,
-        UploadedFileId attachmentId,
-        UserId callerId,
+        DeleteConversationMessageAttachmentInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "DeleteConversationMessageAttachment started. ConversationId={ConversationId}, MessageId={MessageId}, AttachmentId={AttachmentId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            attachmentId,
-            callerId);
-
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessageAttachment failed because conversation was not found. ConversationId={ConversationId}",
-                conversationId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != callerId && conversation.User2Id != callerId)
+        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessageAttachment access denied because caller is not a participant. ConversationId={ConversationId}, CallerId={CallerId}",
-                conversationId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var message = await _conversationMessageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != conversationId)
+        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessageAttachment failed because message was not found. ConversationId={ConversationId}, MessageId={MessageId}",
-                conversationId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
                 "Message was not found");
         }
 
-        if (message.AuthorUserId != callerId)
+        if (message.AuthorUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessageAttachment forbidden because caller is not the author. ConversationId={ConversationId}, MessageId={MessageId}, CallerId={CallerId}",
-                conversationId,
-                messageId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.DeleteForbidden,
                 "You can only delete attachments from your own messages");
         }
 
-        var removeAttachmentResult = message.RemoveAttachment(attachmentId);
+        var removeAttachmentResult = message.RemoveAttachment(request.AttachmentId);
         if (removeAttachmentResult.IsFailure)
         {
-            _logger.LogWarning(
-                "DeleteConversationMessageAttachment failed because attachment was not found on message. ConversationId={ConversationId}, MessageId={MessageId}, AttachmentId={AttachmentId}",
-                conversationId,
-                messageId,
-                attachmentId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.AttachmentNotFound,
                 removeAttachmentResult.Error ?? "Attachment was not found on message");
@@ -116,18 +82,11 @@ public sealed class DeleteMessageAttachmentHandler
         await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
         {
             await _conversationMessageRepository.UpdateAsync(message, cancellationToken);
-            await _conversationMessageRepository.RemoveAttachmentAsync(message.Id, attachmentId, cancellationToken);
+            await _conversationMessageRepository.RemoveAttachmentAsync(message.Id, request.AttachmentId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
 
-        await _uploadedFileCleanupService.DeleteIfExistsAsync(attachmentId, cancellationToken);
-
-        _logger.LogInformation(
-            "DeleteConversationMessageAttachment succeeded. ConversationId={ConversationId}, MessageId={MessageId}, AttachmentId={AttachmentId}, CallerId={CallerId}",
-            conversationId,
-            messageId,
-            attachmentId,
-            callerId);
+        await _uploadedFileCleanupService.DeleteIfExistsAsync(request.AttachmentId, cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);
     }

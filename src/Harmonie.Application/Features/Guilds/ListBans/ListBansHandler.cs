@@ -4,44 +4,30 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.ListBans;
 
-public sealed class ListBansHandler
+public sealed class ListBansHandler : IAuthenticatedHandler<GuildId, ListBansResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildBanRepository _guildBanRepository;
-    private readonly ILogger<ListBansHandler> _logger;
 
     public ListBansHandler(
         IGuildRepository guildRepository,
-        IGuildBanRepository guildBanRepository,
-        ILogger<ListBansHandler> logger)
+        IGuildBanRepository guildBanRepository)
     {
         _guildRepository = guildRepository;
         _guildBanRepository = guildBanRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<ListBansResponse>> HandleAsync(
         GuildId guildId,
-        UserId callerId,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "ListBans started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "ListBans failed because guild was not found. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<ListBansResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -49,12 +35,6 @@ public sealed class ListBansHandler
 
         if (ctx.CallerRole is null || ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "ListBans forbidden. GuildId={GuildId}, CallerId={CallerId}, CallerRole={CallerRole}",
-                guildId,
-                callerId,
-                ctx.CallerRole);
-
             return ApplicationResponse<ListBansResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You must be an admin to list bans in this guild");
@@ -78,12 +58,6 @@ public sealed class ListBansHandler
                 BannedBy: b.BannedBy.ToString(),
                 CreatedAtUtc: b.CreatedAtUtc);
         }).ToArray();
-
-        _logger.LogInformation(
-            "ListBans succeeded. GuildId={GuildId}, CallerId={CallerId}, BanCount={BanCount}",
-            guildId,
-            callerId,
-            items.Length);
 
         return ApplicationResponse<ListBansResponse>.Ok(
             new ListBansResponse(GuildId: guildId.ToString(), Bans: items));

@@ -30,7 +30,7 @@ public static class CreateGuildInviteEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] CreateGuildInviteRequest request,
-        [FromServices] CreateGuildInviteHandler handler,
+        [FromServices] IAuthenticatedHandler<CreateGuildInviteInput, CreateGuildInviteResponse> handler,
         [FromServices] IValidator<CreateGuildInviteRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public static class CreateGuildInviteEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new CreateGuildInviteInput(guildId, request.MaxUses, request.ExpiresInHours), currentUserId, cancellationToken);
         return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/invites/{data.InviteId}");
     }
 }

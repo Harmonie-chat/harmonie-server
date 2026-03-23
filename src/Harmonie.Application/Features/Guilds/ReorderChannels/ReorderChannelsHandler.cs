@@ -6,48 +6,35 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.ReorderChannels;
 
-public sealed class ReorderChannelsHandler
+public sealed record ReorderChannelsInput(GuildId GuildId, IReadOnlyList<ReorderChannelsItemRequest> Channels);
+
+public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChannelsInput, ReorderChannelsResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<ReorderChannelsHandler> _logger;
 
     public ReorderChannelsHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IUnitOfWork unitOfWork,
-        ILogger<ReorderChannelsHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<ReorderChannelsResponse>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        ReorderChannelsRequest request,
+        ReorderChannelsInput input,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "ReorderChannels started. GuildId={GuildId}, CallerId={CallerId}, ChannelCount={ChannelCount}",
-            guildId,
-            callerId,
-            request.Channels.Count);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(input.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "ReorderChannels failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<ReorderChannelsResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -55,11 +42,6 @@ public sealed class ReorderChannelsHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "ReorderChannels failed because caller is not a member. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<ReorderChannelsResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You do not have access to this guild");
@@ -67,25 +49,19 @@ public sealed class ReorderChannelsHandler
 
         if (ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "ReorderChannels failed because caller is not an admin. GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
-                guildId,
-                callerId,
-                ctx.CallerRole);
-
             return ApplicationResponse<ReorderChannelsResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only guild admins can reorder channels");
         }
 
-        var channels = await _guildChannelRepository.GetByGuildIdAsync(guildId, cancellationToken);
+        var channels = await _guildChannelRepository.GetByGuildIdAsync(input.GuildId, cancellationToken);
 
         var channelMap = channels.ToDictionary(c => c.Id);
 
-        var parsedItems = new List<(GuildChannelId Id, int Position)>(request.Channels.Count);
+        var parsedItems = new List<(GuildChannelId Id, int Position)>(input.Channels.Count);
         var seenIds = new HashSet<GuildChannelId>();
 
-        foreach (var item in request.Channels)
+        foreach (var item in input.Channels)
         {
             if (!GuildChannelId.TryParse(item.ChannelId, out var parsedId) || parsedId is null)
             {
@@ -96,11 +72,6 @@ public sealed class ReorderChannelsHandler
 
             if (!channelMap.ContainsKey(parsedId))
             {
-                _logger.LogWarning(
-                    "ReorderChannels failed because channel was not found. GuildId={GuildId}, ChannelId={ChannelId}",
-                    guildId,
-                    parsedId);
-
                 return ApplicationResponse<ReorderChannelsResponse>.Fail(
                     ApplicationErrorCodes.Channel.NotFound,
                     $"Channel '{item.ChannelId}' was not found in this guild");
@@ -135,15 +106,10 @@ public sealed class ReorderChannelsHandler
 
         await transaction.CommitAsync(cancellationToken);
 
-        var updatedChannels = await _guildChannelRepository.GetByGuildIdAsync(guildId, cancellationToken);
-
-        _logger.LogInformation(
-            "ReorderChannels succeeded. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
+        var updatedChannels = await _guildChannelRepository.GetByGuildIdAsync(input.GuildId, cancellationToken);
 
         var payload = new ReorderChannelsResponse(
-            GuildId: guildId.ToString(),
+            GuildId: input.GuildId.ToString(),
             Channels: updatedChannels.Select(c => new ReorderChannelsItemResponse(
                 ChannelId: c.Id.ToString(),
                 Name: c.Name,

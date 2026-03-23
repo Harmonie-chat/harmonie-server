@@ -66,8 +66,7 @@ public sealed class SendConversationMessageHandlerTests
             .ReturnsAsync((Conversation?)null);
 
         var response = await _handler.HandleAsync(
-            conversationId,
-            new SendMessageRequest("hello"),
+            new SendConversationMessageInput(conversationId, "hello"),
             userId);
 
         response.Success.Should().BeFalse();
@@ -89,8 +88,7 @@ public sealed class SendConversationMessageHandlerTests
             .ReturnsAsync(conversation);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SendMessageRequest("hello"),
+            new SendConversationMessageInput(conversation.Id, "hello"),
             outsider);
 
         response.Success.Should().BeFalse();
@@ -109,8 +107,7 @@ public sealed class SendConversationMessageHandlerTests
             .ReturnsAsync(conversation);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SendMessageRequest("   "),
+            new SendConversationMessageInput(conversation.Id, "   "),
             conversation.User1Id);
 
         response.Success.Should().BeFalse();
@@ -135,8 +132,7 @@ public sealed class SendConversationMessageHandlerTests
             .Returns(Task.CompletedTask);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SendMessageRequest("  hello dm  "),
+            new SendConversationMessageInput(conversation.Id, "  hello dm  "),
             conversation.User1Id);
 
         response.Success.Should().BeTrue();
@@ -178,8 +174,7 @@ public sealed class SendConversationMessageHandlerTests
             .Returns(Task.CompletedTask);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SendMessageRequest("hello dm", [attachment.Id.ToString()]),
+            new SendConversationMessageInput(conversation.Id, "hello dm", [attachment.Id.ToString()]),
             conversation.User1Id);
 
         response.Success.Should().BeTrue();
@@ -211,8 +206,7 @@ public sealed class SendConversationMessageHandlerTests
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new SendMessageRequest("hello"),
+            new SendConversationMessageInput(conversation.Id, "hello"),
             conversation.User1Id);
 
         response.Success.Should().BeTrue();

@@ -27,7 +27,7 @@ public static class SearchUsersEndpoint
 
     private static async Task<IResult> HandleAsync(
         [AsParameters] SearchUsersRequest request,
-        [FromServices] SearchUsersHandler handler,
+        [FromServices] IAuthenticatedHandler<SearchUsersRequest, SearchUsersResponse> handler,
         [FromServices] IValidator<SearchUsersRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)

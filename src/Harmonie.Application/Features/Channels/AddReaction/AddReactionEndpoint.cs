@@ -33,7 +33,7 @@ public static class AddReactionEndpoint
         GuildChannelId channelId,
         MessageId messageId,
         [AsParameters] AddReactionRouteRequest routeRequest,
-        [FromServices] AddReactionHandler handler,
+        [FromServices] IAuthenticatedHandler<ChannelAddReactionInput, bool> handler,
         [FromServices] IValidator<AddReactionRouteRequest> routeValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -49,7 +49,7 @@ public static class AddReactionEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, messageId, emoji, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new ChannelAddReactionInput(channelId, messageId, emoji), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

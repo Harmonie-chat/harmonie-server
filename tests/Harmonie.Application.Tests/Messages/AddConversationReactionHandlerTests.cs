@@ -61,7 +61,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conversation?)null);
 
-        var response = await _handler.HandleAsync(conversationId, MessageId.New(), "👍", callerId);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversationId, MessageId.New(), "👍"), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
@@ -80,7 +80,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
-        var response = await _handler.HandleAsync(conversation.Id, MessageId.New(), "👍", outsider);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, MessageId.New(), "👍"), outsider);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
@@ -103,7 +103,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Message?)null);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, "👍", participantOne);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "👍"), participantOne);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
@@ -127,7 +127,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, "👍", participantOne);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "👍"), participantOne);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
@@ -151,7 +151,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, "❤", participantOne);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "❤"), participantOne);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -174,7 +174,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        await _handler.HandleAsync(conversation.Id, messageId, "❤", participantOne);
+        await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "❤"), participantOne);
 
         _reactionRepositoryMock.Verify(
             x => x.AddAsync(messageId, participantOne, "❤", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
@@ -212,7 +212,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, "👍", participantTwo);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "👍"), participantTwo);
 
         response.Success.Should().BeTrue();
     }
@@ -238,7 +238,7 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.NotifyReactionAddedToConversationAsync(It.IsAny<ConversationReactionAddedNotification>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
-        var response = await _handler.HandleAsync(conversation.Id, messageId, "👍", participantOne);
+        var response = await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "👍"), participantOne);
 
         response.Success.Should().BeTrue();
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

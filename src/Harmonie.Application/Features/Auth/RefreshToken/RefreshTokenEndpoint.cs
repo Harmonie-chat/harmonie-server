@@ -29,7 +29,7 @@ public static class RefreshTokenEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] RefreshTokenRequest request,
-        [FromServices] RefreshTokenHandler handler,
+        [FromServices] IHandler<RefreshTokenRequest, RefreshTokenResponse> handler,
         [FromServices] IValidator<RefreshTokenRequest> validator,
         CancellationToken cancellationToken)
     {

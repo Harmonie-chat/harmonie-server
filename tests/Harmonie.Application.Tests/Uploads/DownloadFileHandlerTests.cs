@@ -7,7 +7,6 @@ using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,8 +25,7 @@ public sealed class DownloadFileHandlerTests
 
         _handler = new DownloadFileHandler(
             _uploadedFileRepositoryMock.Object,
-            _objectStorageServiceMock.Object,
-            NullLogger<DownloadFileHandler>.Instance);
+            _objectStorageServiceMock.Object);
     }
 
     [Fact]

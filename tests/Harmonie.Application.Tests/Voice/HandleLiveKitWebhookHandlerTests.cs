@@ -9,7 +9,6 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -31,8 +30,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
         _handler = new HandleLiveKitWebhookHandler(
             _webhookReceiverMock.Object,
             _guildChannelRepositoryMock.Object,
-            _voicePresenceNotifierMock.Object,
-            NullLogger<HandleLiveKitWebhookHandler>.Instance);
+            _voicePresenceNotifierMock.Object);
     }
 
     [Fact]

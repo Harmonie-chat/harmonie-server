@@ -4,47 +4,33 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
 
-public sealed class GetGuildVoiceParticipantsHandler
+public sealed class GetGuildVoiceParticipantsHandler : IAuthenticatedHandler<GuildId, GetGuildVoiceParticipantsResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly ILiveKitRoomService _liveKitRoomService;
-    private readonly ILogger<GetGuildVoiceParticipantsHandler> _logger;
 
     public GetGuildVoiceParticipantsHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
-        ILiveKitRoomService liveKitRoomService,
-        ILogger<GetGuildVoiceParticipantsHandler> logger)
+        ILiveKitRoomService liveKitRoomService)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _liveKitRoomService = liveKitRoomService;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<GetGuildVoiceParticipantsResponse>> HandleAsync(
         GuildId guildId,
-        UserId requesterUserId,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "GetGuildVoiceParticipants started. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-            guildId,
-            requesterUserId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, requesterUserId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "GetGuildVoiceParticipants guild not found. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-                guildId,
-                requesterUserId);
-
             return ApplicationResponse<GetGuildVoiceParticipantsResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -52,11 +38,6 @@ public sealed class GetGuildVoiceParticipantsHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "GetGuildVoiceParticipants access denied. GuildId={GuildId}, RequesterUserId={RequesterUserId}",
-                guildId,
-                requesterUserId);
-
             return ApplicationResponse<GetGuildVoiceParticipantsResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You do not have access to this guild");
@@ -65,12 +46,6 @@ public sealed class GetGuildVoiceParticipantsHandler
         var channels = await _liveKitRoomService.GetGuildVoiceParticipantsAsync(guildId, cancellationToken);
         var members = await _guildMemberRepository.GetGuildMembersAsync(guildId, cancellationToken);
         var memberLookup = members.ToDictionary(m => m.UserId);
-
-        _logger.LogInformation(
-            "GetGuildVoiceParticipants succeeded. GuildId={GuildId}, RequesterUserId={RequesterUserId}, ActiveVoiceChannelCount={ActiveVoiceChannelCount}",
-            guildId,
-            requesterUserId,
-            channels.Count);
 
         var payload = new GetGuildVoiceParticipantsResponse(
             channels.Select(channel => new GetGuildVoiceParticipantsChannelResponse(

@@ -3,44 +3,30 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.ListGuildInvites;
 
-public sealed class ListGuildInvitesHandler
+public sealed class ListGuildInvitesHandler : IAuthenticatedHandler<GuildId, ListGuildInvitesResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
-    private readonly ILogger<ListGuildInvitesHandler> _logger;
 
     public ListGuildInvitesHandler(
         IGuildRepository guildRepository,
-        IGuildInviteRepository guildInviteRepository,
-        ILogger<ListGuildInvitesHandler> logger)
+        IGuildInviteRepository guildInviteRepository)
     {
         _guildRepository = guildRepository;
         _guildInviteRepository = guildInviteRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<ListGuildInvitesResponse>> HandleAsync(
         GuildId guildId,
-        UserId callerId,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "ListGuildInvites started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
-
-        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var guildAccess = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
         if (guildAccess is null)
         {
-            _logger.LogWarning(
-                "ListGuildInvites failed because guild was not found. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<ListGuildInvitesResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -48,12 +34,6 @@ public sealed class ListGuildInvitesHandler
 
         if (guildAccess.CallerRole is null || guildAccess.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "ListGuildInvites forbidden. GuildId={GuildId}, CallerId={CallerId}, CallerRole={CallerRole}",
-                guildId,
-                callerId,
-                guildAccess.CallerRole);
-
             return ApplicationResponse<ListGuildInvitesResponse>.Fail(
                 ApplicationErrorCodes.Guild.InviteForbidden,
                 "Only guild administrators can list invite links");
@@ -74,12 +54,6 @@ public sealed class ListGuildInvitesHandler
                     || (i.ExpiresAtUtc.HasValue && i.ExpiresAtUtc.Value <= now)
                     || (i.MaxUses.HasValue && i.UsesCount >= i.MaxUses.Value)))
             .ToArray();
-
-        _logger.LogInformation(
-            "ListGuildInvites succeeded. GuildId={GuildId}, CallerId={CallerId}, InviteCount={InviteCount}",
-            guildId,
-            callerId,
-            items.Length);
 
         return ApplicationResponse<ListGuildInvitesResponse>.Ok(
             new ListGuildInvitesResponse(GuildId: guildId.ToString(), Invites: items));

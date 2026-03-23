@@ -52,14 +52,9 @@ public sealed class UploadFileHandlerTests
             .ReturnsAsync((User?)null);
 
         using var stream = CreateStream("hello");
+        var input = new UploadFileInput("hello.txt", "text/plain", stream.Length, stream, UploadPurpose.Attachment);
 
-        var response = await _handler.HandleAsync(
-            "hello.txt",
-            "text/plain",
-            stream.Length,
-            stream,
-            userId,
-            UploadPurpose.Attachment);
+        var response = await _handler.HandleAsync(input, userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -83,14 +78,9 @@ public sealed class UploadFileHandlerTests
             .ReturnsAsync(ObjectStorageUploadResult.Failed("Object storage upload failed."));
 
         using var stream = CreateStream("hello");
+        var input = new UploadFileInput("hello.txt", "text/plain", stream.Length, stream, UploadPurpose.Attachment);
 
-        var response = await _handler.HandleAsync(
-            "hello.txt",
-            "text/plain",
-            stream.Length,
-            stream,
-            user.Id,
-            UploadPurpose.Attachment);
+        var response = await _handler.HandleAsync(input, user.Id);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -118,14 +108,9 @@ public sealed class UploadFileHandlerTests
             .Returns(Task.CompletedTask);
 
         using var stream = CreateStream("hello");
+        var input = new UploadFileInput("hello.txt", "text/plain", stream.Length, stream, UploadPurpose.Attachment);
 
-        var response = await _handler.HandleAsync(
-            "hello.txt",
-            "text/plain",
-            stream.Length,
-            stream,
-            user.Id,
-            UploadPurpose.Attachment);
+        var response = await _handler.HandleAsync(input, user.Id);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
@@ -158,14 +143,9 @@ public sealed class UploadFileHandlerTests
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 
         using var stream = CreateStream("hello");
+        var input = new UploadFileInput("hello.txt", "text/plain", stream.Length, stream, UploadPurpose.Attachment);
 
-        var action = async () => await _handler.HandleAsync(
-            "hello.txt",
-            "text/plain",
-            stream.Length,
-            stream,
-            user.Id,
-            UploadPurpose.Attachment);
+        var action = async () => await _handler.HandleAsync(input, user.Id);
 
         await action.Should().ThrowAsync<InvalidOperationException>();
 

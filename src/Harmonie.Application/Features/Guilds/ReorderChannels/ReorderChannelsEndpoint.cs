@@ -31,7 +31,7 @@ public static class ReorderChannelsEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] ReorderChannelsRequest request,
-        [FromServices] ReorderChannelsHandler handler,
+        [FromServices] IAuthenticatedHandler<ReorderChannelsInput, ReorderChannelsResponse> handler,
         [FromServices] IValidator<ReorderChannelsRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public static class ReorderChannelsEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, callerId, request, cancellationToken);
+        var response = await handler.HandleAsync(new ReorderChannelsInput(guildId, request.Channels), callerId, cancellationToken);
         return response.ToHttpResult();
     }
 }

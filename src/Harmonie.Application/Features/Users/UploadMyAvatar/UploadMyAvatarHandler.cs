@@ -12,7 +12,10 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Harmonie.Application.Features.Users.UploadMyAvatar;
 
+public sealed record UploadMyAvatarInput(string FileName, string ContentType, Stream Content);
+
 public sealed class UploadMyAvatarHandler
+    : IAuthenticatedHandler<UploadMyAvatarInput, UploadMyAvatarResponse>
 {
     private const int AvatarSize = 256;
 
@@ -40,50 +43,32 @@ public sealed class UploadMyAvatarHandler
     }
 
     public async Task<ApplicationResponse<UploadMyAvatarResponse>> HandleAsync(
-        string fileName,
-        string contentType,
-        Stream content,
+        UploadMyAvatarInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UploadMyAvatar started. UserId={UserId}, FileName={FileName}, ContentType={ContentType}",
-            currentUserId,
-            fileName,
-            contentType);
-
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "UploadMyAvatar failed because user was not found. UserId={UserId}",
-                currentUserId);
-
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "User was not found");
         }
 
-        using var resizedStream = await ResizeImageAsync(content, contentType, cancellationToken);
-        var storageKey = BuildStorageKey(currentUserId, fileName);
+        using var resizedStream = await ResizeImageAsync(request.Content, request.ContentType, cancellationToken);
+        var storageKey = BuildStorageKey(currentUserId, request.FileName);
         var previousAvatarFileId = user.AvatarFileId;
 
         var uploadedFileResult = UploadedFile.Create(
             currentUserId,
-            fileName,
-            contentType,
+            request.FileName,
+            request.ContentType,
             resizedStream.Length,
             storageKey,
             UploadPurpose.Avatar);
 
         if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
         {
-            _logger.LogWarning(
-                "UploadMyAvatar domain validation failed. UserId={UserId}, FileName={FileName}, Error={Error}",
-                currentUserId,
-                fileName,
-                uploadedFileResult.Error);
-
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 uploadedFileResult.Error ?? "Uploaded file metadata is invalid");
@@ -92,19 +77,13 @@ public sealed class UploadMyAvatarHandler
         var uploadResult = await _objectStorageService.UploadAsync(
             new ObjectStorageUploadRequest(
                 storageKey,
-                contentType,
+                request.ContentType,
                 resizedStream.Length,
                 resizedStream),
             cancellationToken);
 
         if (!uploadResult.Success)
         {
-            _logger.LogWarning(
-                "UploadMyAvatar failed while storing object. UserId={UserId}, StorageKey={StorageKey}, Reason={Reason}",
-                currentUserId,
-                storageKey,
-                uploadResult.FailureReason);
-
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.Upload.StorageUnavailable,
                 uploadResult.FailureReason ?? "Object storage upload failed");
@@ -143,11 +122,6 @@ public sealed class UploadMyAvatarHandler
             await DeleteStoredObjectSafelyAsync(storageKey, cancellationToken);
             throw;
         }
-
-        _logger.LogInformation(
-            "UploadMyAvatar succeeded. UserId={UserId}, StorageKey={StorageKey}",
-            currentUserId,
-            storageKey);
 
         if (previousAvatarFileId is not null && previousAvatarFileId != uploadedFileResult.Value.Id)
             await _uploadedFileCleanupService.DeleteIfExistsAsync(previousAvatarFileId, cancellationToken);

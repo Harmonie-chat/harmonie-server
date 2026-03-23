@@ -2,27 +2,24 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Users.UpdateUserStatus;
 
 public sealed class UpdateUserStatusHandler
+    : IAuthenticatedHandler<UpdateUserStatusRequest, UpdateUserStatusResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IUserPresenceNotifier _userPresenceNotifier;
-    private readonly ILogger<UpdateUserStatusHandler> _logger;
 
     public UpdateUserStatusHandler(
         IUserRepository userRepository,
         IGuildMemberRepository guildMemberRepository,
-        IUserPresenceNotifier userPresenceNotifier,
-        ILogger<UpdateUserStatusHandler> logger)
+        IUserPresenceNotifier userPresenceNotifier)
     {
         _userRepository = userRepository;
         _guildMemberRepository = guildMemberRepository;
         _userPresenceNotifier = userPresenceNotifier;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateUserStatusResponse>> HandleAsync(
@@ -30,17 +27,9 @@ public sealed class UpdateUserStatusHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UpdateUserStatus started for user {UserId}",
-            currentUserId);
-
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "UpdateUserStatus failed because user was not found. UserId={UserId}",
-                currentUserId);
-
             return ApplicationResponse<UpdateUserStatusResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "User was not found");
@@ -88,11 +77,6 @@ public sealed class UpdateUserStatusHandler
         var payload = new UpdateUserStatusResponse(
             UserId: user.Id.ToString(),
             Status: user.Status);
-
-        _logger.LogInformation(
-            "UpdateUserStatus succeeded for user {UserId}. Status={Status}",
-            currentUserId,
-            user.Status);
 
         return ApplicationResponse<UpdateUserStatusResponse>.Ok(payload);
     }

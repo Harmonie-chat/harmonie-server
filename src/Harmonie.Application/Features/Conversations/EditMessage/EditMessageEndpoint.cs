@@ -36,7 +36,7 @@ public static class EditMessageEndpoint
         ConversationId conversationId,
         MessageId messageId,
         [FromBody] EditMessageRequest request,
-        [FromServices] EditMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<EditConversationMessageInput, EditMessageResponse> handler,
         [FromServices] IValidator<EditMessageRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public static class EditMessageEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, messageId, request, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new EditConversationMessageInput(conversationId, messageId, request.Content), callerId, cancellationToken);
         return response.ToHttpResult();
     }
 }

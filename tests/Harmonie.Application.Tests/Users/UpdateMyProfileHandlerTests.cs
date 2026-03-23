@@ -31,8 +31,7 @@ public sealed class UpdateMyProfileHandlerTests
             new UploadedFileCleanupService(
                 _uploadedFileRepositoryMock.Object,
                 _objectStorageServiceMock.Object,
-                NullLogger<UploadedFileCleanupService>.Instance),
-            NullLogger<UpdateMyProfileHandler>.Instance);
+                NullLogger<UploadedFileCleanupService>.Instance));
     }
 
     [Fact]

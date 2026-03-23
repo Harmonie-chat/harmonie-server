@@ -10,7 +10,7 @@ namespace Harmonie.Application.Features.Auth.Login;
 /// <summary>
 /// Handler for user login business logic
 /// </summary>
-public sealed class LoginHandler
+public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;

@@ -1,9 +1,9 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Common.Auth;
 using Harmonie.Application.Features.Auth.LogoutAll;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -21,8 +21,7 @@ public sealed class LogoutAllHandlerTests
     {
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _handler = new LogoutAllHandler(
-            _refreshTokenRepositoryMock.Object,
-            NullLogger<LogoutAllHandler>.Instance);
+            _refreshTokenRepositoryMock.Object);
     }
 
     [Fact]
@@ -40,7 +39,7 @@ public sealed class LogoutAllHandlerTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await _handler.HandleAsync(currentUserId);
+        var response = await _handler.HandleAsync(Unit.Value, currentUserId);
 
         // Assert
         response.Success.Should().BeTrue();

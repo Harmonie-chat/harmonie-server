@@ -1,5 +1,7 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
+using Harmonie.Domain.ValueObjects.Uploads;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application.Registration;
@@ -8,8 +10,8 @@ public static class UploadRegistration
 {
     public static IServiceCollection AddUploadHandlers(this IServiceCollection services)
     {
-        services.AddScoped<UploadFileHandler>();
-        services.AddScoped<DownloadFileHandler>();
+        services.AddAuthenticatedHandler<UploadFileInput, UploadFileResponse, UploadFileHandler>();
+        services.AddAuthenticatedHandler<UploadedFileId, DownloadFileResult, DownloadFileHandler>();
 
         return services;
     }

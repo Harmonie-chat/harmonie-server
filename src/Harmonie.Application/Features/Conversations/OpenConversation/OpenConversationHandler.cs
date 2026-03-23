@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.OpenConversation;
 
-public sealed class OpenConversationHandler
+public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversationRequest, OpenConversationResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IConversationRepository _conversationRepository;
@@ -28,21 +28,11 @@ public sealed class OpenConversationHandler
 
     public async Task<ApplicationResponse<OpenConversationResponse>> HandleAsync(
         OpenConversationRequest request,
-        UserId callerUserId,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "OpenConversation started. CallerUserId={CallerUserId}, TargetUserIdRaw={TargetUserIdRaw}",
-            callerUserId,
-            request.TargetUserId);
-
         if (!UserId.TryParse(request.TargetUserId, out var targetUserId) || targetUserId is null)
         {
-            _logger.LogWarning(
-                "OpenConversation validation failed. CallerUserId={CallerUserId}, TargetUserIdRaw={TargetUserIdRaw}",
-                callerUserId,
-                request.TargetUserId);
-
             return ApplicationResponse<OpenConversationResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
@@ -52,12 +42,8 @@ public sealed class OpenConversationHandler
                     "Target user ID must be a valid non-empty GUID"));
         }
 
-        if (targetUserId == callerUserId)
+        if (targetUserId == currentUserId)
         {
-            _logger.LogWarning(
-                "OpenConversation rejected because caller targeted self. CallerUserId={CallerUserId}",
-                callerUserId);
-
             return ApplicationResponse<OpenConversationResponse>.Fail(
                 ApplicationErrorCodes.Conversation.CannotOpenSelf,
                 "You cannot open a conversation with yourself");
@@ -66,27 +52,15 @@ public sealed class OpenConversationHandler
         var targetUser = await _userRepository.GetByIdAsync(targetUserId, cancellationToken);
         if (targetUser is null)
         {
-            _logger.LogWarning(
-                "OpenConversation target user not found. CallerUserId={CallerUserId}, TargetUserId={TargetUserId}",
-                callerUserId,
-                targetUserId);
-
             return ApplicationResponse<OpenConversationResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "Target user was not found");
         }
 
         var result = await _conversationRepository.GetOrCreateAsync(
-            callerUserId,
+            currentUserId,
             targetUserId,
             cancellationToken);
-
-        _logger.LogInformation(
-            "OpenConversation succeeded. ConversationId={ConversationId}, CallerUserId={CallerUserId}, TargetUserId={TargetUserId}, Created={Created}",
-            result.Conversation.Id,
-            callerUserId,
-            targetUserId,
-            result.WasCreated);
 
         if (result.WasCreated)
         {
@@ -95,7 +69,7 @@ public sealed class OpenConversationHandler
                 async ct =>
                 {
                     await Task.WhenAll(
-                        _realtimeGroupManager.AddUserToConversationGroupAsync(callerUserId, conversationId, ct),
+                        _realtimeGroupManager.AddUserToConversationGroupAsync(currentUserId, conversationId, ct),
                         _realtimeGroupManager.AddUserToConversationGroupAsync(targetUserId, conversationId, ct));
                 },
                 TimeSpan.FromSeconds(5),

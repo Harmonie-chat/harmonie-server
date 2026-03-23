@@ -43,7 +43,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId, targetId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guildId, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -61,7 +61,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, null));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -79,7 +79,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -101,7 +101,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildRole?)null);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, targetId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -123,7 +123,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.GetRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(GuildRole.Admin);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, ownerId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, ownerId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -150,7 +150,7 @@ public sealed class RemoveMemberHandlerTests
             .Setup(x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId);
+        var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), callerId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();

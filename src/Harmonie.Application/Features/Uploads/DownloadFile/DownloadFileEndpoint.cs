@@ -28,7 +28,7 @@ public static class DownloadFileEndpoint
 
     private static async Task<IResult> HandleAsync(
         UploadedFileId fileId,
-        [FromServices] DownloadFileHandler handler,
+        [FromServices] IAuthenticatedHandler<UploadedFileId, DownloadFileResult> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

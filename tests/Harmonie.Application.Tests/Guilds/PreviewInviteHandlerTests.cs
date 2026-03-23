@@ -20,8 +20,7 @@ public sealed class PreviewInviteHandlerTests
         _guildInviteRepositoryMock = new Mock<IGuildInviteRepository>();
 
         _handler = new PreviewInviteHandler(
-            _guildInviteRepositoryMock.Object,
-            NullLogger<PreviewInviteHandler>.Instance);
+            _guildInviteRepositoryMock.Object);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
 using Harmonie.Application.Features.Guilds.BanMember;
 using Harmonie.Application.Features.Guilds.CreateChannel;
@@ -22,6 +23,7 @@ using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Features.Guilds.UnbanMember;
 using Harmonie.Application.Features.Guilds.UpdateGuild;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
+using Harmonie.Domain.ValueObjects.Guilds;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application.Registration;
@@ -30,40 +32,40 @@ public static class GuildRegistration
 {
     public static IServiceCollection AddGuildHandlers(this IServiceCollection services)
     {
-        services.AddScoped<CreateGuildHandler>();
-        services.AddScoped<DeleteGuildHandler>();
-        services.AddScoped<DeleteGuildIconHandler>();
-        services.AddScoped<ListUserGuildsHandler>();
-        services.AddScoped<UpdateGuildHandler>();
-        services.AddScoped<TransferOwnershipHandler>();
-        services.AddScoped<SearchMessagesHandler>();
+        services.AddAuthenticatedHandler<CreateGuildRequest, CreateGuildResponse, CreateGuildHandler>();
+        services.AddAuthenticatedHandler<DeleteGuildInput, bool, DeleteGuildHandler>();
+        services.AddAuthenticatedHandler<DeleteGuildIconInput, bool, DeleteGuildIconHandler>();
+        services.AddAuthenticatedHandler<Unit, ListUserGuildsResponse, ListUserGuildsHandler>();
+        services.AddAuthenticatedHandler<UpdateGuildInput, UpdateGuildResponse, UpdateGuildHandler>();
+        services.AddAuthenticatedHandler<TransferOwnershipInput, bool, TransferOwnershipHandler>();
+        services.AddAuthenticatedHandler<SearchMessagesInput, SearchMessagesResponse, SearchMessagesHandler>();
 
         // Channels within guilds
-        services.AddScoped<CreateChannelHandler>();
-        services.AddScoped<GetGuildChannelsHandler>();
-        services.AddScoped<ReorderChannelsHandler>();
+        services.AddAuthenticatedHandler<CreateChannelInput, CreateChannelResponse, CreateChannelHandler>();
+        services.AddAuthenticatedHandler<GuildId, GetGuildChannelsResponse, GetGuildChannelsHandler>();
+        services.AddAuthenticatedHandler<ReorderChannelsInput, ReorderChannelsResponse, ReorderChannelsHandler>();
 
         // Members
-        services.AddScoped<GetGuildMembersHandler>();
-        services.AddScoped<InviteMemberHandler>();
-        services.AddScoped<RemoveMemberHandler>();
-        services.AddScoped<LeaveGuildHandler>();
-        services.AddScoped<UpdateMemberRoleHandler>();
+        services.AddAuthenticatedHandler<GuildId, GetGuildMembersResponse, GetGuildMembersHandler>();
+        services.AddAuthenticatedHandler<InviteMemberInput, InviteMemberResponse, InviteMemberHandler>();
+        services.AddAuthenticatedHandler<RemoveMemberInput, bool, RemoveMemberHandler>();
+        services.AddAuthenticatedHandler<LeaveGuildInput, bool, LeaveGuildHandler>();
+        services.AddAuthenticatedHandler<UpdateMemberRoleInput, bool, UpdateMemberRoleHandler>();
 
         // Bans
-        services.AddScoped<BanMemberHandler>();
-        services.AddScoped<ListBansHandler>();
-        services.AddScoped<UnbanMemberHandler>();
+        services.AddAuthenticatedHandler<BanMemberInput, BanMemberResponse, BanMemberHandler>();
+        services.AddAuthenticatedHandler<GuildId, ListBansResponse, ListBansHandler>();
+        services.AddAuthenticatedHandler<UnbanMemberInput, bool, UnbanMemberHandler>();
 
         // Invites
-        services.AddScoped<CreateGuildInviteHandler>();
-        services.AddScoped<ListGuildInvitesHandler>();
-        services.AddScoped<PreviewInviteHandler>();
-        services.AddScoped<AcceptInviteHandler>();
-        services.AddScoped<RevokeInviteHandler>();
+        services.AddAuthenticatedHandler<CreateGuildInviteInput, CreateGuildInviteResponse, CreateGuildInviteHandler>();
+        services.AddAuthenticatedHandler<GuildId, ListGuildInvitesResponse, ListGuildInvitesHandler>();
+        services.AddHandler<string, PreviewInviteResponse, PreviewInviteHandler>();
+        services.AddAuthenticatedHandler<string, AcceptInviteResponse, AcceptInviteHandler>();
+        services.AddAuthenticatedHandler<RevokeInviteInput, bool, RevokeInviteHandler>();
 
         // Voice
-        services.AddScoped<GetGuildVoiceParticipantsHandler>();
+        services.AddAuthenticatedHandler<GuildId, GetGuildVoiceParticipantsResponse, GetGuildVoiceParticipantsHandler>();
 
         return services;
     }

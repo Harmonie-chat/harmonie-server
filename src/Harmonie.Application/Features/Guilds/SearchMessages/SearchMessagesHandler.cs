@@ -9,47 +9,43 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.SearchMessages;
 
-public sealed class SearchMessagesHandler
+public sealed record SearchMessagesInput(
+    GuildId GuildId,
+    string? Q = null,
+    string? ChannelId = null,
+    string? AuthorId = null,
+    string? Before = null,
+    string? After = null,
+    string? Cursor = null,
+    int? Limit = null);
+
+public sealed class SearchMessagesHandler : IAuthenticatedHandler<SearchMessagesInput, SearchMessagesResponse>
 {
     private const int DefaultLimit = 25;
 
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessageSearchRepository _channelMessageRepository;
-    private readonly ILogger<SearchMessagesHandler> _logger;
 
     public SearchMessagesHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IMessageSearchRepository channelMessageRepository,
-        ILogger<SearchMessagesHandler> logger)
+        IMessageSearchRepository channelMessageRepository)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _channelMessageRepository = channelMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<SearchMessagesResponse>> HandleAsync(
-        GuildId guildId,
-        SearchMessagesRequest request,
+        SearchMessagesInput input,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "SearchMessages started. GuildId={GuildId}, UserId={UserId}, Limit={Limit}, HasChannelFilter={HasChannelFilter}, HasAuthorFilter={HasAuthorFilter}, HasCursor={HasCursor}",
-            guildId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.ChannelId is not null,
-            request.AuthorId is not null,
-            request.Cursor is not null);
-
-        if (request.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
+        if (input.Q is not string rawQuery || string.IsNullOrWhiteSpace(rawQuery))
         {
             return ApplicationResponse<SearchMessagesResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
@@ -57,15 +53,15 @@ public sealed class SearchMessagesHandler
         }
 
         MessageCursor? cursor = null;
-        if (request.Cursor is not null)
+        if (input.Cursor is not null)
         {
-            if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
+            if (!MessageCursorCodec.TryParse(input.Cursor, out var parsedCursor) || parsedCursor is null)
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.Cursor),
+                        nameof(input.Cursor),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Cursor is invalid"));
             }
@@ -74,15 +70,15 @@ public sealed class SearchMessagesHandler
         }
 
         GuildChannelId? channelId = null;
-        if (request.ChannelId is not null)
+        if (input.ChannelId is not null)
         {
-            if (!GuildChannelId.TryParse(request.ChannelId, out var parsedChannelId) || parsedChannelId is null)
+            if (!GuildChannelId.TryParse(input.ChannelId, out var parsedChannelId) || parsedChannelId is null)
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.ChannelId),
+                        nameof(input.ChannelId),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Channel ID is invalid"));
             }
@@ -91,15 +87,15 @@ public sealed class SearchMessagesHandler
         }
 
         UserId? authorId = null;
-        if (request.AuthorId is not null)
+        if (input.AuthorId is not null)
         {
-            if (!UserId.TryParse(request.AuthorId, out var parsedAuthorId) || parsedAuthorId is null)
+            if (!UserId.TryParse(input.AuthorId, out var parsedAuthorId) || parsedAuthorId is null)
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.AuthorId),
+                        nameof(input.AuthorId),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Author ID is invalid"));
             }
@@ -108,15 +104,15 @@ public sealed class SearchMessagesHandler
         }
 
         DateTime? beforeCreatedAtUtc = null;
-        if (request.Before is not null)
+        if (input.Before is not null)
         {
-            if (!TryParseUtcDateTime(request.Before, out var parsedBefore))
+            if (!TryParseUtcDateTime(input.Before, out var parsedBefore))
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.Before),
+                        nameof(input.Before),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "Before must be a valid ISO 8601 date/time"));
             }
@@ -125,15 +121,15 @@ public sealed class SearchMessagesHandler
         }
 
         DateTime? afterCreatedAtUtc = null;
-        if (request.After is not null)
+        if (input.After is not null)
         {
-            if (!TryParseUtcDateTime(request.After, out var parsedAfter))
+            if (!TryParseUtcDateTime(input.After, out var parsedAfter))
             {
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
-                        nameof(request.After),
+                        nameof(input.After),
                         ApplicationErrorCodes.Validation.InvalidFormat,
                         "After must be a valid ISO 8601 date/time"));
             }
@@ -149,19 +145,14 @@ public sealed class SearchMessagesHandler
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
                 EndpointExtensions.SingleValidationError(
-                    nameof(request.After),
+                    nameof(input.After),
                     ApplicationErrorCodes.Validation.OutOfRange,
                     "After must be earlier than or equal to before"));
         }
 
-        var guildContext = await _guildRepository.GetWithCallerRoleAsync(guildId, currentUserId, cancellationToken);
+        var guildContext = await _guildRepository.GetWithCallerRoleAsync(input.GuildId, currentUserId, cancellationToken);
         if (guildContext is null)
         {
-            _logger.LogWarning(
-                "SearchMessages failed because guild was not found. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                currentUserId);
-
             return ApplicationResponse<SearchMessagesResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
@@ -169,11 +160,6 @@ public sealed class SearchMessagesHandler
 
         if (guildContext.CallerRole is null)
         {
-            _logger.LogWarning(
-                "SearchMessages access denied. GuildId={GuildId}, UserId={UserId}",
-                guildId,
-                currentUserId);
-
             return ApplicationResponse<SearchMessagesResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "You do not have access to this guild");
@@ -182,14 +168,8 @@ public sealed class SearchMessagesHandler
         if (channelId is not null)
         {
             var channelContext = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, currentUserId, cancellationToken);
-            if (channelContext is null || channelContext.Channel.GuildId != guildId)
+            if (channelContext is null || channelContext.Channel.GuildId != input.GuildId)
             {
-                _logger.LogWarning(
-                    "SearchMessages failed because channel filter was not found in guild. GuildId={GuildId}, ChannelId={ChannelId}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.NotFound,
                     "Channel was not found");
@@ -197,13 +177,6 @@ public sealed class SearchMessagesHandler
 
             if (channelContext.Channel.Type != GuildChannelType.Text)
             {
-                _logger.LogWarning(
-                    "SearchMessages failed because channel filter is not text. GuildId={GuildId}, ChannelId={ChannelId}, ChannelType={ChannelType}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    channelContext.Channel.Type,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.NotText,
                     "Messages can only be searched in text channels");
@@ -211,22 +184,16 @@ public sealed class SearchMessagesHandler
 
             if (channelContext.CallerRole is null)
             {
-                _logger.LogWarning(
-                    "SearchMessages access denied for channel filter. GuildId={GuildId}, ChannelId={ChannelId}, UserId={UserId}",
-                    guildId,
-                    channelId,
-                    currentUserId);
-
                 return ApplicationResponse<SearchMessagesResponse>.Fail(
                     ApplicationErrorCodes.Channel.AccessDenied,
                     "You do not have access to this channel");
             }
         }
 
-        var limit = request.Limit ?? DefaultLimit;
+        var limit = input.Limit ?? DefaultLimit;
         var page = await _channelMessageRepository.SearchGuildMessagesAsync(
             new SearchGuildMessagesQuery(
-                GuildId: guildId,
+                GuildId: input.GuildId,
                 SearchText: rawQuery.Trim(),
                 ChannelId: channelId,
                 AuthorId: authorId,
@@ -236,15 +203,8 @@ public sealed class SearchMessagesHandler
             limit,
             cancellationToken);
 
-        _logger.LogInformation(
-            "SearchMessages succeeded. GuildId={GuildId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            guildId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
-
         var payload = new SearchMessagesResponse(
-            GuildId: guildId.ToString(),
+            GuildId: input.GuildId.ToString(),
             Items: page.Items
                 .Select(item =>
                 {

@@ -9,7 +9,6 @@ using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -29,16 +28,14 @@ public sealed class GetConversationMessagesHandlerTests
 
         _handler = new GetMessagesHandler(
             _conversationRepositoryMock.Object,
-            _directMessageRepositoryMock.Object,
-            NullLogger<GetMessagesHandler>.Instance);
+            _directMessageRepositoryMock.Object);
     }
 
     [Fact]
     public async Task HandleAsync_WhenCursorIsInvalid_ShouldReturnValidationFailure()
     {
         var response = await _handler.HandleAsync(
-            ConversationId.New(),
-            new GetMessagesRequest { Cursor = "invalid-cursor", Limit = 50 },
+            new GetConversationMessagesInput(ConversationId.New(), Cursor: "invalid-cursor", Limit: 50),
             UserId.New());
 
         response.Success.Should().BeFalse();
@@ -57,8 +54,7 @@ public sealed class GetConversationMessagesHandlerTests
             .ReturnsAsync((Conversation?)null);
 
         var response = await _handler.HandleAsync(
-            conversationId,
-            new GetMessagesRequest { Limit = 50 },
+            new GetConversationMessagesInput(conversationId, Limit: 50),
             userId);
 
         response.Success.Should().BeFalse();
@@ -79,8 +75,7 @@ public sealed class GetConversationMessagesHandlerTests
             .ReturnsAsync(conversation);
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new GetMessagesRequest { Limit = 50 },
+            new GetConversationMessagesInput(conversation.Id, Limit: 50),
             outsider);
 
         response.Success.Should().BeFalse();
@@ -115,8 +110,7 @@ public sealed class GetConversationMessagesHandlerTests
                 new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>()));
 
         var response = await _handler.HandleAsync(
-            conversation.Id,
-            new GetMessagesRequest { Limit = 50 },
+            new GetConversationMessagesInput(conversation.Id, Limit: 50),
             participantOne);
 
         response.Success.Should().BeTrue();

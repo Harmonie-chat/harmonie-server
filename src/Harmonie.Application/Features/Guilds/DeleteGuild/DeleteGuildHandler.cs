@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.DeleteGuild;
 
-public sealed class DeleteGuildHandler
+public sealed record DeleteGuildInput(GuildId GuildId);
+
+public sealed class DeleteGuildHandler : IAuthenticatedHandler<DeleteGuildInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
@@ -33,34 +35,20 @@ public sealed class DeleteGuildHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
+        DeleteGuildInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "DeleteGuild started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(request.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "DeleteGuild failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
         }
 
-        if (ctx.Guild.OwnerUserId != callerId)
+        if (ctx.Guild.OwnerUserId != currentUserId)
         {
-            _logger.LogWarning(
-                "DeleteGuild failed because caller is not the owner. GuildId={GuildId}, CallerId={CallerId}",
-                guildId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only the guild owner can delete this guild");
@@ -70,17 +58,12 @@ public sealed class DeleteGuildHandler
 
         await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
         {
-            await _guildRepository.DeleteAsync(guildId, cancellationToken);
+            await _guildRepository.DeleteAsync(request.GuildId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
 
-        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(guildId));
+        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(request.GuildId));
         await _uploadedFileCleanupService.DeleteIfExistsAsync(guildIconFileId, cancellationToken);
-
-        _logger.LogInformation(
-            "DeleteGuild succeeded. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
 
         return ApplicationResponse<bool>.Ok(true);
     }

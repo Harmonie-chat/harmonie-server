@@ -28,8 +28,7 @@ public sealed class UpdateUserStatusHandlerTests
         _handler = new UpdateUserStatusHandler(
             _userRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _userPresenceNotifierMock.Object,
-            NullLogger<UpdateUserStatusHandler>.Instance);
+            _userPresenceNotifierMock.Object);
     }
 
     [Fact]

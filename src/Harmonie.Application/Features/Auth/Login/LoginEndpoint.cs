@@ -32,7 +32,7 @@ public static class LoginEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] LoginRequest request,
-        [FromServices] LoginHandler handler,
+        [FromServices] IHandler<LoginRequest, LoginResponse> handler,
         [FromServices] IValidator<LoginRequest> validator,
         CancellationToken cancellationToken)
     {

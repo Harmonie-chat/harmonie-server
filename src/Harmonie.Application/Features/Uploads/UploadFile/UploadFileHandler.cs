@@ -9,7 +9,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Uploads.UploadFile;
 
-public sealed class UploadFileHandler
+public sealed record UploadFileInput(
+    string FileName,
+    string ContentType,
+    long SizeBytes,
+    Stream Content,
+    UploadPurpose Purpose);
+
+public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, UploadFileResponse>
 {
     private readonly IUserRepository _userRepository;
     private readonly IUploadedFileRepository _uploadedFileRepository;
@@ -32,50 +39,29 @@ public sealed class UploadFileHandler
     }
 
     public async Task<ApplicationResponse<UploadFileResponse>> HandleAsync(
-        string fileName,
-        string contentType,
-        long sizeBytes,
-        Stream content,
+        UploadFileInput request,
         UserId currentUserId,
-        UploadPurpose purpose,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UploadFile started. UserId={UserId}, FileName={FileName}, ContentType={ContentType}, SizeBytes={SizeBytes}",
-            currentUserId,
-            fileName,
-            contentType,
-            sizeBytes);
-
         var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         if (user is null)
         {
-            _logger.LogWarning(
-                "UploadFile failed because uploader was not found. UserId={UserId}",
-                currentUserId);
-
             return ApplicationResponse<UploadFileResponse>.Fail(
                 ApplicationErrorCodes.User.NotFound,
                 "Uploader was not found");
         }
 
-        var storageKey = BuildStorageKey(fileName);
+        var storageKey = BuildStorageKey(request.FileName);
         var uploadFileResult = UploadedFile.Create(
             currentUserId,
-            fileName,
-            contentType,
-            sizeBytes,
+            request.FileName,
+            request.ContentType,
+            request.SizeBytes,
             storageKey,
-            purpose);
+            request.Purpose);
 
         if (uploadFileResult.IsFailure || uploadFileResult.Value is null)
         {
-            _logger.LogWarning(
-                "UploadFile domain validation failed. UserId={UserId}, FileName={FileName}, Error={Error}",
-                currentUserId,
-                fileName,
-                uploadFileResult.Error);
-
             return ApplicationResponse<UploadFileResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 uploadFileResult.Error ?? "Uploaded file metadata is invalid");
@@ -86,17 +72,11 @@ public sealed class UploadFileHandler
                 uploadFileResult.Value.StorageKey,
                 uploadFileResult.Value.ContentType,
                 uploadFileResult.Value.SizeBytes,
-                content),
+                request.Content),
             cancellationToken);
 
         if (!uploadResult.Success)
         {
-            _logger.LogWarning(
-                "UploadFile failed while storing object. UserId={UserId}, StorageKey={StorageKey}, Reason={Reason}",
-                currentUserId,
-                uploadFileResult.Value.StorageKey,
-                uploadResult.FailureReason);
-
             return ApplicationResponse<UploadFileResponse>.Fail(
                 ApplicationErrorCodes.Upload.StorageUnavailable,
                 uploadResult.FailureReason ?? "Object storage upload failed");
@@ -121,12 +101,6 @@ public sealed class UploadFileHandler
             Filename: uploadFileResult.Value.FileName,
             ContentType: uploadFileResult.Value.ContentType,
             SizeBytes: uploadFileResult.Value.SizeBytes);
-
-        _logger.LogInformation(
-            "UploadFile succeeded. FileId={FileId}, UserId={UserId}, StorageKey={StorageKey}",
-            uploadFileResult.Value.Id,
-            currentUserId,
-            uploadFileResult.Value.StorageKey);
 
         return ApplicationResponse<UploadFileResponse>.Ok(payload);
     }

@@ -1,9 +1,9 @@
 using FluentAssertions;
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -18,8 +18,7 @@ public sealed class ListConversationsHandlerTests
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _handler = new ListConversationsHandler(
-            _conversationRepositoryMock.Object,
-            NullLogger<ListConversationsHandler>.Instance);
+            _conversationRepositoryMock.Object);
     }
 
     [Fact]
@@ -31,7 +30,7 @@ public sealed class ListConversationsHandlerTests
             .Setup(x => x.GetUserConversationsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var response = await _handler.HandleAsync(userId);
+        var response = await _handler.HandleAsync(Unit.Value, userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -60,7 +59,7 @@ public sealed class ListConversationsHandlerTests
                 new UserConversationSummary(ConversationId.New(), UserId.New(), usernameOne.Value!, firstCreatedAt)
             ]);
 
-        var response = await _handler.HandleAsync(userId);
+        var response = await _handler.HandleAsync(Unit.Value, userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();

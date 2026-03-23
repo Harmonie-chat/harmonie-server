@@ -38,7 +38,7 @@ public static class EditMessageEndpoint
         GuildChannelId channelId,
         MessageId messageId,
         [FromBody] EditMessageRequest request,
-        [FromServices] EditMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<EditChannelMessageInput, EditMessageResponse> handler,
         [FromServices] IValidator<EditMessageRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -49,7 +49,7 @@ public static class EditMessageEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, messageId, request, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new EditChannelMessageInput(channelId, messageId, request.Content), callerId, cancellationToken);
         return response.ToHttpResult();
     }
 }

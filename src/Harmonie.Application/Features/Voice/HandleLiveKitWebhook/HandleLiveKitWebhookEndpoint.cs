@@ -26,7 +26,7 @@ public static class HandleLiveKitWebhookEndpoint
     private static async Task<IResult> HandleAsync(
         HttpRequest httpRequest,
         [FromHeader(Name = "Authorization")] string? authorizationHeader,
-        [FromServices] HandleLiveKitWebhookHandler handler,
+        [FromServices] IHandler<HandleLiveKitWebhookRequest, HandleLiveKitWebhookResponse> handler,
         [FromServices] IValidator<HandleLiveKitWebhookRequest> validator,
         CancellationToken cancellationToken)
     {

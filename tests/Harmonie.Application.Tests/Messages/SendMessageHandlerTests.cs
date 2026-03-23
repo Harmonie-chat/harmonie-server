@@ -68,7 +68,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channelId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChannelAccessContext?)null);
 
-        var response = await _handler.HandleAsync(channelId, request, userId);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channelId, request.Content, request.AttachmentFileIds), userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -87,7 +87,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(channel.Id, request, userId);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds), userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -106,7 +106,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
-        var response = await _handler.HandleAsync(channel.Id, request, userId);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds), userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -118,8 +118,7 @@ public sealed class SendMessageHandlerTests
     public async Task HandleAsync_WithEmptyContent_ShouldReturnMessageContentEmpty()
     {
         var response = await _handler.HandleAsync(
-            GuildChannelId.New(),
-            new SendMessageRequest("   "),
+            new SendChannelMessageInput(GuildChannelId.New(), "   "),
             UserId.New());
 
         response.Success.Should().BeFalse();
@@ -145,7 +144,7 @@ public sealed class SendMessageHandlerTests
             .Callback<Message, CancellationToken>((message, _) => persistedMessage = message)
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(channel.Id, request, userId);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds), userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -190,8 +189,7 @@ public sealed class SendMessageHandlerTests
             .Returns(Task.CompletedTask);
 
         var response = await _handler.HandleAsync(
-            channel.Id,
-            new SendMessageRequest("message with file", [attachment.Id.ToString()]),
+            new SendChannelMessageInput(channel.Id, "message with file", [attachment.Id.ToString()]),
             userId);
 
         response.Success.Should().BeTrue();
@@ -224,7 +222,7 @@ public sealed class SendMessageHandlerTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
-        var response = await _handler.HandleAsync(channel.Id, request, userId);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds), userId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -261,7 +259,7 @@ public sealed class SendMessageHandlerTests
             .Callback<TextChannelMessageCreatedNotification, CancellationToken>((_, token) => notifierToken = token)
             .Returns(Task.CompletedTask);
 
-        var response = await _handler.HandleAsync(channel.Id, request, userId, requestCts.Token);
+        var response = await _handler.HandleAsync(new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds), userId, requestCts.Token);
 
         response.Success.Should().BeTrue();
         notifierToken.Equals(requestCts.Token).Should().BeFalse();

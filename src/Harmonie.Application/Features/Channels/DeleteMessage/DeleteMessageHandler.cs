@@ -10,7 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.DeleteMessage;
 
-public sealed class DeleteMessageHandler
+public sealed record DeleteChannelMessageInput(GuildChannelId ChannelId, MessageId MessageId);
+
+public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMessageInput, bool>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
     private readonly IGuildChannelRepository _guildChannelRepository;
@@ -34,24 +36,13 @@ public sealed class DeleteMessageHandler
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
-        GuildChannelId channelId,
-        MessageId messageId,
-        UserId callerId,
+        DeleteChannelMessageInput request,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "DeleteMessage started. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            callerId);
-
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(channelId, callerId, cancellationToken);
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "DeleteMessage failed because channel was not found. ChannelId={ChannelId}",
-                channelId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotFound,
                 "Channel was not found");
@@ -59,11 +50,6 @@ public sealed class DeleteMessageHandler
 
         if (ctx.Channel.Type != GuildChannelType.Text)
         {
-            _logger.LogWarning(
-                "DeleteMessage failed because channel is not text. ChannelId={ChannelId}, ChannelType={ChannelType}",
-                channelId,
-                ctx.Channel.Type);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.NotText,
                 "Messages can only be deleted in text channels");
@@ -71,39 +57,22 @@ public sealed class DeleteMessageHandler
 
         if (ctx.CallerRole is null)
         {
-            _logger.LogWarning(
-                "DeleteMessage failed because caller is not a member. ChannelId={ChannelId}, GuildId={GuildId}, CallerId={CallerId}",
-                channelId,
-                ctx.Channel.GuildId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Channel.AccessDenied,
                 "You do not have access to this channel");
         }
 
-        var message = await _channelMessageRepository.GetByIdAsync(messageId, cancellationToken);
+        var message = await _channelMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
         var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != channelId)
+        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
         {
-            _logger.LogWarning(
-                "DeleteMessage failed because message was not found. ChannelId={ChannelId}, MessageId={MessageId}",
-                channelId,
-                messageId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
                 "Message was not found");
         }
 
-        if (message.AuthorUserId != callerId && ctx.CallerRole != GuildRole.Admin)
+        if (message.AuthorUserId != currentUserId && ctx.CallerRole != GuildRole.Admin)
         {
-            _logger.LogWarning(
-                "DeleteMessage forbidden because caller is not the author or an admin. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-                channelId,
-                messageId,
-                callerId);
-
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.DeleteForbidden,
                 "You can only delete your own messages unless you are a guild admin");
@@ -121,14 +90,8 @@ public sealed class DeleteMessageHandler
         await _channelMessageRepository.SoftDeleteAsync(message, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "DeleteMessage succeeded. ChannelId={ChannelId}, MessageId={MessageId}, CallerId={CallerId}",
-            channelId,
-            messageId,
-            callerId);
-
         await NotifyMessageDeletedSafelyAsync(
-            new TextChannelMessageDeletedNotification(messageId, channelId, ctx.Channel.GuildId));
+            new TextChannelMessageDeletedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId));
 
         return ApplicationResponse<bool>.Ok(true);
     }

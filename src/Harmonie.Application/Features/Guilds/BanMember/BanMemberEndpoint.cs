@@ -34,7 +34,7 @@ public static class BanMemberEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] BanMemberRequest request,
-        [FromServices] BanMemberHandler handler,
+        [FromServices] IAuthenticatedHandler<BanMemberInput, BanMemberResponse> handler,
         [FromServices] IValidator<BanMemberRequest> bodyValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -54,11 +54,8 @@ public static class BanMemberEndpoint
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            guildId,
+            new BanMemberInput(guildId, parsedTargetId, request.Reason, request.PurgeMessagesDays),
             callerId,
-            parsedTargetId,
-            request.Reason,
-            request.PurgeMessagesDays,
             cancellationToken);
 
         return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/bans");

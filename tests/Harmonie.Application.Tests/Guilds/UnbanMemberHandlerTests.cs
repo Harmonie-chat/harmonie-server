@@ -35,8 +35,7 @@ public sealed class UnbanMemberHandlerTests
         _handler = new UnbanMemberHandler(
             _guildRepositoryMock.Object,
             _guildBanRepositoryMock.Object,
-            _unitOfWorkMock.Object,
-            NullLogger<UnbanMemberHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -50,7 +49,7 @@ public sealed class UnbanMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId, targetId);
+        var response = await _handler.HandleAsync(new UnbanMemberInput(guildId, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -68,7 +67,7 @@ public sealed class UnbanMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId);
+        var response = await _handler.HandleAsync(new UnbanMemberInput(guild.Id, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
@@ -85,7 +84,7 @@ public sealed class UnbanMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, null));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, targetId);
+        var response = await _handler.HandleAsync(new UnbanMemberInput(guild.Id, targetId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
@@ -106,7 +105,7 @@ public sealed class UnbanMemberHandlerTests
             .Setup(x => x.DeleteAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, targetId);
+        var response = await _handler.HandleAsync(new UnbanMemberInput(guild.Id, targetId), ownerId);
 
         response.Success.Should().BeFalse();
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.NotBanned);
@@ -127,7 +126,7 @@ public sealed class UnbanMemberHandlerTests
             .Setup(x => x.DeleteAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, targetId);
+        var response = await _handler.HandleAsync(new UnbanMemberInput(guild.Id, targetId), ownerId);
 
         response.Success.Should().BeTrue();
 

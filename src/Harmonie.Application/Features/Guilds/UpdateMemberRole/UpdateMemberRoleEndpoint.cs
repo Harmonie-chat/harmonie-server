@@ -33,7 +33,7 @@ public static class UpdateMemberRoleEndpoint
         GuildId guildId,
         UserId userId,
         [FromBody] UpdateMemberRoleRequest request,
-        [FromServices] UpdateMemberRoleHandler handler,
+        [FromServices] IAuthenticatedHandler<UpdateMemberRoleInput, bool> handler,
         [FromServices] IValidator<UpdateMemberRoleRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -44,7 +44,7 @@ public static class UpdateMemberRoleEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, callerId, userId, request.Role.ToDomain(), cancellationToken);
+        var response = await handler.HandleAsync(new UpdateMemberRoleInput(guildId, userId, request.Role.ToDomain()), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

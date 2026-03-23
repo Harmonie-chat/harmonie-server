@@ -43,8 +43,7 @@ public sealed class UpdateGuildHandlerTests
                 _uploadedFileRepositoryMock.Object,
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
-            _unitOfWorkMock.Object,
-            NullLogger<UpdateGuildHandler>.Instance);
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -57,7 +56,7 @@ public sealed class UpdateGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guildId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GuildAccessContext?)null);
 
-        var response = await _handler.HandleAsync(guildId, callerId, new UpdateGuildRequest());
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guildId, null, null, null, null, null, false, false, false, false, false), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -74,7 +73,7 @@ public sealed class UpdateGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, callerId, new UpdateGuildRequest());
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, null, null, null, null, null, false, false, false, false, false), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -106,7 +105,7 @@ public sealed class UpdateGuildHandlerTests
             IconBgIsSet = true
         };
 
-        var response = await _handler.HandleAsync(guild.Id, adminId, request);
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, request.Name, request.IconFileId, request.IconColor, request.IconName, request.IconBg, request.NameIsSet, request.IconFileIdIsSet, request.IconColorIsSet, request.IconNameIsSet, request.IconBgIsSet), adminId);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
@@ -154,7 +153,7 @@ public sealed class UpdateGuildHandlerTests
             IconBgIsSet = true
         };
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, request.Name, request.IconFileId, request.IconColor, request.IconName, request.IconBg, request.NameIsSet, request.IconFileIdIsSet, request.IconColorIsSet, request.IconNameIsSet, request.IconBgIsSet), ownerId);
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
@@ -171,7 +170,7 @@ public sealed class UpdateGuildHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, new UpdateGuildRequest());
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, null, null, null, null, null, false, false, false, false, false), ownerId);
 
         response.Success.Should().BeTrue();
         _guildRepositoryMock.Verify(
@@ -204,7 +203,7 @@ public sealed class UpdateGuildHandlerTests
             IconFileIdIsSet = true
         };
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, request.Name, request.IconFileId, request.IconColor, request.IconName, request.IconBg, request.NameIsSet, request.IconFileIdIsSet, request.IconColorIsSet, request.IconNameIsSet, request.IconBgIsSet), ownerId);
 
         response.Success.Should().BeTrue();
         _objectStorageServiceMock.Verify(
@@ -237,7 +236,7 @@ public sealed class UpdateGuildHandlerTests
             IconFileIdIsSet = true
         };
 
-        var response = await _handler.HandleAsync(guild.Id, ownerId, request);
+        var response = await _handler.HandleAsync(new UpdateGuildInput(guild.Id, request.Name, request.IconFileId, request.IconColor, request.IconName, request.IconBg, request.NameIsSet, request.IconFileIdIsSet, request.IconColorIsSet, request.IconNameIsSet, request.IconBgIsSet), ownerId);
 
         response.Success.Should().BeTrue();
         _uploadedFileRepositoryMock.Verify(

@@ -1,3 +1,4 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,7 +8,7 @@ public static class VoiceRegistration
 {
     public static IServiceCollection AddVoiceHandlers(this IServiceCollection services)
     {
-        services.AddScoped<HandleLiveKitWebhookHandler>();
+        services.AddHandler<HandleLiveKitWebhookRequest, HandleLiveKitWebhookResponse, HandleLiveKitWebhookHandler>();
 
         return services;
     }

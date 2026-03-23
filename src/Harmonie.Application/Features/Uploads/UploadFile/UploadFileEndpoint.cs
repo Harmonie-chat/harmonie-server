@@ -30,7 +30,7 @@ public static class UploadFileEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromForm] UploadFileRequest request,
-        [FromServices] UploadFileHandler handler,
+        [FromServices] IAuthenticatedHandler<UploadFileInput, UploadFileResponse> handler,
         [FromServices] IValidator<UploadFileRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -64,14 +64,8 @@ public static class UploadFileEndpoint
             Enum.TryParse(request.Purpose, ignoreCase: true, out purpose);
 
         await using var stream = file.OpenReadStream();
-        var response = await handler.HandleAsync(
-            fileName,
-            contentType,
-            file.Length,
-            stream,
-            currentUserId,
-            purpose,
-            cancellationToken);
+        var input = new UploadFileInput(fileName, contentType, file.Length, stream, purpose);
+        var response = await handler.HandleAsync(input, currentUserId, cancellationToken);
 
         return response.ToCreatedHttpResult(data => $"/api/files/{data.FileId}");
     }

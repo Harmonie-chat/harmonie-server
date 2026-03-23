@@ -27,8 +27,7 @@ public sealed class GetGuildChannelsHandlerTests
 
         _handler = new GetGuildChannelsHandler(
             _guildRepositoryMock.Object,
-            _guildChannelRepositoryMock.Object,
-            NullLogger<GetGuildChannelsHandler>.Instance);
+            _guildChannelRepositoryMock.Object);
     }
 
     [Fact]

@@ -31,7 +31,7 @@ public static class AcknowledgeReadEndpoint
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
         [FromBody] AcknowledgeReadRequest request,
-        [FromServices] AcknowledgeReadHandler handler,
+        [FromServices] IAuthenticatedHandler<AcknowledgeConversationReadInput, bool> handler,
         [FromServices] IValidator<AcknowledgeReadRequest> bodyValidator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public static class AcknowledgeReadEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(conversationId, parsedMessageId, callerId, cancellationToken);
+        var response = await handler.HandleAsync(new AcknowledgeConversationReadInput(conversationId, parsedMessageId), callerId, cancellationToken);
 
         if (response.Success)
             return Results.NoContent();

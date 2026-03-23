@@ -30,16 +30,15 @@ public static class UnbanMemberEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         UserId userId,
-        [FromServices] UnbanMemberHandler handler,
+        [FromServices] IAuthenticatedHandler<UnbanMemberInput, bool> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            guildId,
+            new UnbanMemberInput(guildId, userId),
             callerId,
-            userId,
             cancellationToken);
 
         if (response.Success)

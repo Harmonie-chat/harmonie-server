@@ -1,55 +1,39 @@
-using System.Runtime.InteropServices.JavaScript;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.GetMessages;
 
-public sealed class GetMessagesHandler
+public sealed record GetConversationMessagesInput(ConversationId ConversationId, string? Cursor = null, int? Limit = null);
+
+public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMessagesInput, GetMessagesResponse>
 {
     private const int DefaultLimit = 50;
 
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessagePaginationRepository _conversationMessageRepository;
-    private readonly ILogger<GetMessagesHandler> _logger;
 
     public GetMessagesHandler(
         IConversationRepository conversationRepository,
-        IMessagePaginationRepository conversationMessageRepository,
-        ILogger<GetMessagesHandler> logger)
+        IMessagePaginationRepository conversationMessageRepository)
     {
         _conversationRepository = conversationRepository;
         _conversationMessageRepository = conversationMessageRepository;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<GetMessagesResponse>> HandleAsync(
-        ConversationId conversationId,
-        GetMessagesRequest request,
+        GetConversationMessagesInput request,
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "GetConversationMessages started. ConversationId={ConversationId}, UserId={UserId}, Limit={Limit}, HasCursor={HasCursor}",
-            conversationId,
-            currentUserId,
-            request.Limit ?? DefaultLimit,
-            request.Cursor is not null);
-
         MessageCursor? cursor = null;
         if (request.Cursor is not null)
         {
             if (!MessageCursorCodec.TryParse(request.Cursor, out var parsedCursor) || parsedCursor is null)
             {
-                _logger.LogWarning(
-                    "GetConversationMessages invalid cursor. ConversationId={ConversationId}, UserId={UserId}",
-                    conversationId,
-                    currentUserId);
-
                 return ApplicationResponse<GetMessagesResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
@@ -64,14 +48,9 @@ public sealed class GetMessagesHandler
 
         var limit = request.Limit ?? DefaultLimit;
 
-        var conversation = await _conversationRepository.GetByIdAsync(conversationId, cancellationToken);
+        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
         if (conversation is null)
         {
-            _logger.LogWarning(
-                "GetConversationMessages failed because conversation was not found. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
@@ -79,29 +58,17 @@ public sealed class GetMessagesHandler
 
         if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
         {
-            _logger.LogWarning(
-                "GetConversationMessages access denied. ConversationId={ConversationId}, UserId={UserId}",
-                conversationId,
-                currentUserId);
-
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
         var page = await _conversationMessageRepository.GetConversationPageAsync(
-            conversationId,
+            request.ConversationId,
             cursor,
             limit,
             currentUserId,
             cancellationToken);
-
-        _logger.LogInformation(
-            "GetConversationMessages fetched page. ConversationId={ConversationId}, UserId={UserId}, ItemCount={ItemCount}, HasNextCursor={HasNextCursor}",
-            conversationId,
-            currentUserId,
-            page.Items.Count,
-            page.NextCursor is not null);
 
         var items = page.Items
             .OrderBy(x => x.CreatedAtUtc)
@@ -122,7 +89,7 @@ public sealed class GetMessagesHandler
             .ToArray();
 
         var payload = new GetMessagesResponse(
-            ConversationId: conversationId.ToString(),
+            ConversationId: request.ConversationId.ToString(),
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null

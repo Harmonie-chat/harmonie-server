@@ -36,7 +36,7 @@ public static class SendMessageEndpoint
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
         [FromBody] SendMessageRequest request,
-        [FromServices] SendMessageHandler handler,
+        [FromServices] IAuthenticatedHandler<SendChannelMessageInput, SendMessageResponse> handler,
         [FromServices] IValidator<SendMessageRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public static class SendMessageEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(channelId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new SendChannelMessageInput(channelId, request.Content, request.AttachmentFileIds), currentUserId, cancellationToken);
         return response.ToCreatedHttpResult(data => $"/api/channels/{data.ChannelId}/messages/{data.MessageId}");
     }
 }

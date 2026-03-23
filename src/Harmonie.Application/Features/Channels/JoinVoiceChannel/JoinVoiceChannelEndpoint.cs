@@ -29,7 +29,7 @@ public static class JoinVoiceChannelEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
-        [FromServices] JoinVoiceChannelHandler handler,
+        [FromServices] IAuthenticatedHandler<GuildChannelId, JoinVoiceChannelResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {

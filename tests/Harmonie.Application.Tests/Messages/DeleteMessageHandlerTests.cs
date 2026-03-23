@@ -58,7 +58,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channelId, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChannelAccessContext?)null);
 
-        var response = await _handler.HandleAsync(channelId, MessageId.New(), callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channelId, MessageId.New()), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -76,7 +76,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, MessageId.New()), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -94,7 +94,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, CallerRole: null));
 
-        var response = await _handler.HandleAsync(channel.Id, MessageId.New(), callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, MessageId.New()), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -117,7 +117,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Message?)null);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -141,7 +141,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(messageFromOtherChannel);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -166,7 +166,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, callerId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), callerId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -190,7 +190,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), authorId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -212,7 +212,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        await _handler.HandleAsync(channel.Id, messageId, authorId);
+        await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), authorId);
 
         _channelMessageRepositoryMock.Verify(
             x => x.SoftDeleteAsync(
@@ -245,7 +245,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, adminId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), adminId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
@@ -268,7 +268,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        await _handler.HandleAsync(channel.Id, messageId, adminId);
+        await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), adminId);
 
         _channelMessageRepositoryMock.Verify(
             x => x.SoftDeleteAsync(
@@ -300,7 +300,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), authorId);
 
         response.Success.Should().BeTrue();
         _textChannelNotifierMock.Verify(
@@ -333,7 +333,7 @@ public sealed class DeleteMessageHandlerTests
             .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
 
-        var response = await _handler.HandleAsync(channel.Id, messageId, authorId);
+        var response = await _handler.HandleAsync(new DeleteChannelMessageInput(channel.Id, messageId), authorId);
 
         response.Success.Should().BeTrue();
     }

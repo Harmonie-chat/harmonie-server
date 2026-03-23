@@ -1,3 +1,4 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Features.Users.DeleteMyAvatar;
 using Harmonie.Application.Features.Users.GetMyProfile;
 using Harmonie.Application.Features.Users.SearchUsers;
@@ -12,12 +13,12 @@ public static class UserRegistration
 {
     public static IServiceCollection AddUserHandlers(this IServiceCollection services)
     {
-        services.AddScoped<GetMyProfileHandler>();
-        services.AddScoped<UpdateMyProfileHandler>();
-        services.AddScoped<DeleteMyAvatarHandler>();
-        services.AddScoped<UploadMyAvatarHandler>();
-        services.AddScoped<SearchUsersHandler>();
-        services.AddScoped<UpdateUserStatusHandler>();
+        services.AddAuthenticatedHandler<Unit, GetMyProfileResponse, GetMyProfileHandler>();
+        services.AddAuthenticatedHandler<UpdateMyProfileRequest, UpdateMyProfileResponse, UpdateMyProfileHandler>();
+        services.AddAuthenticatedHandler<Unit, bool, DeleteMyAvatarHandler>();
+        services.AddAuthenticatedHandler<UploadMyAvatarInput, UploadMyAvatarResponse, UploadMyAvatarHandler>();
+        services.AddAuthenticatedHandler<SearchUsersRequest, SearchUsersResponse, SearchUsersHandler>();
+        services.AddAuthenticatedHandler<UpdateUserStatusRequest, UpdateUserStatusResponse, UpdateUserStatusHandler>();
 
         return services;
     }

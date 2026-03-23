@@ -1,14 +1,15 @@
+using Harmonie.Application.Common;
+using Harmonie.Application.Features.Conversations.AcknowledgeRead;
+using Harmonie.Application.Features.Conversations.AddReaction;
+using Harmonie.Application.Features.Conversations.DeleteMessage;
+using Harmonie.Application.Features.Conversations.DeleteMessageAttachment;
+using Harmonie.Application.Features.Conversations.EditMessage;
+using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
+using Harmonie.Application.Features.Conversations.RemoveReaction;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
-using ConversationAcknowledgeReadHandler = Harmonie.Application.Features.Conversations.AcknowledgeRead.AcknowledgeReadHandler;
-using ConversationAddReactionHandler = Harmonie.Application.Features.Conversations.AddReaction.AddReactionHandler;
-using ConversationDeleteMessageAttachmentHandler = Harmonie.Application.Features.Conversations.DeleteMessageAttachment.DeleteMessageAttachmentHandler;
-using ConversationDeleteMessageHandler = Harmonie.Application.Features.Conversations.DeleteMessage.DeleteMessageHandler;
-using ConversationEditMessageHandler = Harmonie.Application.Features.Conversations.EditMessage.EditMessageHandler;
-using ConversationGetMessagesHandler = Harmonie.Application.Features.Conversations.GetMessages.GetMessagesHandler;
-using ConversationRemoveReactionHandler = Harmonie.Application.Features.Conversations.RemoveReaction.RemoveReactionHandler;
-using ConversationSendMessageHandler = Harmonie.Application.Features.Conversations.SendMessage.SendMessageHandler;
+using Harmonie.Application.Features.Conversations.SendMessage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application.Registration;
@@ -17,21 +18,21 @@ public static class ConversationRegistration
 {
     public static IServiceCollection AddConversationHandlers(this IServiceCollection services)
     {
-        services.AddScoped<OpenConversationHandler>();
-        services.AddScoped<ListConversationsHandler>();
-        services.AddScoped<SearchConversationMessagesHandler>();
+        services.AddAuthenticatedHandler<OpenConversationRequest, OpenConversationResponse, OpenConversationHandler>();
+        services.AddAuthenticatedHandler<Unit, ListConversationsResponse, ListConversationsHandler>();
+        services.AddAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse, SearchConversationMessagesHandler>();
 
         // Messages
-        services.AddScoped<ConversationSendMessageHandler>();
-        services.AddScoped<ConversationGetMessagesHandler>();
-        services.AddScoped<ConversationEditMessageHandler>();
-        services.AddScoped<ConversationDeleteMessageHandler>();
-        services.AddScoped<ConversationDeleteMessageAttachmentHandler>();
-        services.AddScoped<ConversationAcknowledgeReadHandler>();
+        services.AddAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse, SendMessageHandler>();
+        services.AddAuthenticatedHandler<GetConversationMessagesInput, GetMessagesResponse, GetMessagesHandler>();
+        services.AddAuthenticatedHandler<EditConversationMessageInput, EditMessageResponse, EditMessageHandler>();
+        services.AddAuthenticatedHandler<DeleteConversationMessageInput, bool, DeleteMessageHandler>();
+        services.AddAuthenticatedHandler<DeleteConversationMessageAttachmentInput, bool, DeleteMessageAttachmentHandler>();
+        services.AddAuthenticatedHandler<AcknowledgeConversationReadInput, bool, AcknowledgeReadHandler>();
 
         // Reactions
-        services.AddScoped<ConversationAddReactionHandler>();
-        services.AddScoped<ConversationRemoveReactionHandler>();
+        services.AddAuthenticatedHandler<ConversationAddReactionInput, bool, AddReactionHandler>();
+        services.AddAuthenticatedHandler<ConversationRemoveReactionInput, bool, RemoveReactionHandler>();
 
         return services;
     }

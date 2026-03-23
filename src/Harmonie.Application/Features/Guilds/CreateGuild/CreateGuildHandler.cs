@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.CreateGuild;
 
-public sealed class CreateGuildHandler
+public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildRequest, CreateGuildResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
@@ -43,18 +43,9 @@ public sealed class CreateGuildHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "CreateGuild started for user {UserId}",
-            currentUserId);
-
         var guildNameResult = GuildName.Create(request.Name);
         if (guildNameResult.IsFailure || guildNameResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuild validation failed for user {UserId}: {Error}",
-                currentUserId,
-                guildNameResult.Error);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
@@ -67,11 +58,6 @@ public sealed class CreateGuildHandler
         var guildResult = Guild.Create(guildNameResult.Value, currentUserId);
         if (guildResult.IsFailure || guildResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuild domain creation failed for user {UserId}: {Error}",
-                currentUserId,
-                guildResult.Error);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 guildResult.Error ?? "Unable to create guild");
@@ -124,11 +110,6 @@ public sealed class CreateGuildHandler
             invitedByUserId: null);
         if (ownerMembershipResult.IsFailure || ownerMembershipResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuild owner membership creation failed for guild {GuildId}: {Error}",
-                guild.Id,
-                ownerMembershipResult.Error);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 ownerMembershipResult.Error ?? "Unable to create owner membership");
@@ -142,11 +123,6 @@ public sealed class CreateGuildHandler
             position: 0);
         if (defaultTextChannelResult.IsFailure || defaultTextChannelResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuild default text channel creation failed for guild {GuildId}: {Error}",
-                guild.Id,
-                defaultTextChannelResult.Error);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 defaultTextChannelResult.Error ?? "Unable to create default text channel");
@@ -160,11 +136,6 @@ public sealed class CreateGuildHandler
             position: 1);
         if (defaultVoiceChannelResult.IsFailure || defaultVoiceChannelResult.Value is null)
         {
-            _logger.LogWarning(
-                "CreateGuild default voice channel creation failed for guild {GuildId}: {Error}",
-                guild.Id,
-                defaultVoiceChannelResult.Error);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 defaultVoiceChannelResult.Error ?? "Unable to create default voice channel");
@@ -177,10 +148,6 @@ public sealed class CreateGuildHandler
             cancellationToken);
         if (!ownerMembershipAdded)
         {
-            _logger.LogWarning(
-                "CreateGuild owner membership insert failed for guild {GuildId}",
-                guild.Id);
-
             return ApplicationResponse<CreateGuildResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Owner membership could not be created.");
@@ -189,13 +156,6 @@ public sealed class CreateGuildHandler
         await _guildChannelRepository.AddAsync(defaultTextChannelResult.Value, cancellationToken);
         await _guildChannelRepository.AddAsync(defaultVoiceChannelResult.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "CreateGuild succeeded. GuildId={GuildId}, OwnerUserId={OwnerUserId}, DefaultTextChannelId={DefaultTextChannelId}, DefaultVoiceChannelId={DefaultVoiceChannelId}",
-            guild.Id,
-            guild.OwnerUserId,
-            defaultTextChannelResult.Value.Id,
-            defaultVoiceChannelResult.Value.Id);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _realtimeGroupManager.AddUserToGuildGroupsAsync(currentUserId, guild.Id, ct),

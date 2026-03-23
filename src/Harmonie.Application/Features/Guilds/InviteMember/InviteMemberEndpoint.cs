@@ -32,7 +32,7 @@ public static class InviteMemberEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] InviteMemberRequest request,
-        [FromServices] InviteMemberHandler handler,
+        [FromServices] IAuthenticatedHandler<InviteMemberInput, InviteMemberResponse> handler,
         [FromServices] IValidator<InviteMemberRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -43,7 +43,7 @@ public static class InviteMemberEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(guildId, request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new InviteMemberInput(guildId, request.UserId), currentUserId, cancellationToken);
         return response.ToHttpResult();
     }
 }

@@ -31,7 +31,7 @@ public static class CreateChannelEndpoint
     private static async Task<IResult> HandleAsync(
         GuildId guildId,
         [FromBody] CreateChannelRequest request,
-        [FromServices] CreateChannelHandler handler,
+        [FromServices] IAuthenticatedHandler<CreateChannelInput, CreateChannelResponse> handler,
         [FromServices] IValidator<CreateChannelRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -43,11 +43,8 @@ public static class CreateChannelEndpoint
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            guildId,
+            new CreateChannelInput(guildId, request.Name, request.Type.ToDomain(), request.Position),
             callerId,
-            request.Name,
-            request.Type.ToDomain(),
-            request.Position,
             cancellationToken);
 
         return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/channels/{data.ChannelId}");

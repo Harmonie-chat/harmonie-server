@@ -9,64 +9,57 @@ using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging;
-
 
 namespace Harmonie.Application.Features.Guilds.UpdateGuild;
 
+public sealed record UpdateGuildInput(
+    GuildId GuildId,
+    string? Name,
+    string? IconFileId,
+    string? IconColor,
+    string? IconName,
+    string? IconBg,
+    bool NameIsSet,
+    bool IconFileIdIsSet,
+    bool IconColorIsSet,
+    bool IconNameIsSet,
+    bool IconBgIsSet);
+
 public sealed class UpdateGuildHandler
+    : IAuthenticatedHandler<UpdateGuildInput, UpdateGuildResponse>
 {
     private readonly IGuildRepository _guildRepository;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<UpdateGuildHandler> _logger;
 
     public UpdateGuildHandler(
         IGuildRepository guildRepository,
         UploadedFileCleanupService uploadedFileCleanupService,
-        IUnitOfWork unitOfWork,
-        ILogger<UpdateGuildHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _guildRepository = guildRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateGuildResponse>> HandleAsync(
-        GuildId guildId,
-        UserId callerId,
-        UpdateGuildRequest request,
+        UpdateGuildInput input,
+        UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "UpdateGuild started. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
-
-        var ctx = await _guildRepository.GetWithCallerRoleAsync(guildId, callerId, cancellationToken);
+        var ctx = await _guildRepository.GetWithCallerRoleAsync(input.GuildId, currentUserId, cancellationToken);
         if (ctx is null)
         {
-            _logger.LogWarning(
-                "UpdateGuild failed because guild was not found. GuildId={GuildId}",
-                guildId);
-
             return ApplicationResponse<UpdateGuildResponse>.Fail(
                 ApplicationErrorCodes.Guild.NotFound,
                 "Guild was not found");
         }
 
-        var isCallerOwner = ctx.Guild.OwnerUserId == callerId;
+        var isCallerOwner = ctx.Guild.OwnerUserId == currentUserId;
         var isCallerAdmin = ctx.CallerRole == GuildRole.Admin;
 
         if (!isCallerOwner && !isCallerAdmin)
         {
-            _logger.LogWarning(
-                "UpdateGuild failed because caller lacks permissions. GuildId={GuildId}, CallerId={CallerId}, Role={Role}",
-                guildId,
-                callerId,
-                ctx.CallerRole);
-
             return ApplicationResponse<UpdateGuildResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
                 "Only the guild owner or an admin can update guild settings");
@@ -75,62 +68,62 @@ public sealed class UpdateGuildHandler
         var guild = ctx.Guild;
         var previousIconFileId = guild.IconFileId;
 
-        if (request.NameIsSet)
+        if (input.NameIsSet)
         {
-            var guildNameResult = GuildName.Create(request.Name);
+            var guildNameResult = GuildName.Create(input.Name);
             if (guildNameResult.IsFailure || guildNameResult.Value is null)
             {
                 return BuildValidationFailure(
-                    nameof(request.Name),
+                    nameof(input.Name),
                     guildNameResult.Error ?? "Guild name is invalid");
             }
 
             var updateResult = guild.UpdateName(guildNameResult.Value);
             if (updateResult.IsFailure)
-                return BuildValidationFailure(nameof(request.Name), updateResult);
+                return BuildValidationFailure(nameof(input.Name), updateResult);
         }
 
-        if (request.IconFileIdIsSet)
+        if (input.IconFileIdIsSet)
         {
-            if (!TryParseUploadedFileId(request.IconFileId, out var iconFileId))
+            if (!TryParseUploadedFileId(input.IconFileId, out var iconFileId))
             {
                 return BuildValidationFailure(
-                    nameof(request.IconFileId),
+                    nameof(input.IconFileId),
                     "Guild icon file ID is invalid");
             }
 
             var iconFileResult = guild.UpdateIconFile(iconFileId);
             if (iconFileResult.IsFailure)
-                return BuildValidationFailure(nameof(request.IconFileId), iconFileResult);
+                return BuildValidationFailure(nameof(input.IconFileId), iconFileResult);
         }
 
-        if (request.IconColorIsSet)
+        if (input.IconColorIsSet)
         {
-            var iconColorResult = guild.UpdateIconColor(request.IconColor);
+            var iconColorResult = guild.UpdateIconColor(input.IconColor);
             if (iconColorResult.IsFailure)
                 return BuildValidationFailure("Icon.Color", iconColorResult);
         }
 
-        if (request.IconNameIsSet)
+        if (input.IconNameIsSet)
         {
-            var iconNameResult = guild.UpdateIconName(request.IconName);
+            var iconNameResult = guild.UpdateIconName(input.IconName);
             if (iconNameResult.IsFailure)
                 return BuildValidationFailure("Icon.Name", iconNameResult);
         }
 
-        if (request.IconBgIsSet)
+        if (input.IconBgIsSet)
         {
-            var iconBgResult = guild.UpdateIconBg(request.IconBg);
+            var iconBgResult = guild.UpdateIconBg(input.IconBg);
             if (iconBgResult.IsFailure)
                 return BuildValidationFailure("Icon.Bg", iconBgResult);
         }
 
-        var anyFieldSet = request.NameIsSet
-            || request.IconFileIdIsSet
-            || request.IconColorIsSet
-            || request.IconNameIsSet
-            || request.IconBgIsSet;
-        var shouldDeletePreviousIconFile = request.IconFileIdIsSet
+        var anyFieldSet = input.NameIsSet
+            || input.IconFileIdIsSet
+            || input.IconColorIsSet
+            || input.IconNameIsSet
+            || input.IconBgIsSet;
+        var shouldDeletePreviousIconFile = input.IconFileIdIsSet
             && previousIconFileId is not null
             && previousIconFileId != guild.IconFileId;
 
@@ -143,11 +136,6 @@ public sealed class UpdateGuildHandler
 
         if (shouldDeletePreviousIconFile)
             await _uploadedFileCleanupService.DeleteIfExistsAsync(previousIconFileId, cancellationToken);
-
-        _logger.LogInformation(
-            "UpdateGuild succeeded. GuildId={GuildId}, CallerId={CallerId}",
-            guildId,
-            callerId);
 
         return ApplicationResponse<UpdateGuildResponse>.Ok(
             new UpdateGuildResponse(
