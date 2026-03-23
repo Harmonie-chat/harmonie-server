@@ -40,7 +40,7 @@ public sealed class InviteMemberHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, inviterUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
-        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request), inviterUserId);
+        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request.UserId), inviterUserId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -63,7 +63,7 @@ public sealed class InviteMemberHandlerTests
             .Setup(x => x.GetInviteMemberTargetLookupAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new InviteMemberTargetLookup(UserExists: false, IsMember: false));
 
-        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request), inviterUserId);
+        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request.UserId), inviterUserId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -86,7 +86,7 @@ public sealed class InviteMemberHandlerTests
             .Setup(x => x.GetInviteMemberTargetLookupAsync(guild.Id, targetUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new InviteMemberTargetLookup(UserExists: true, IsMember: true));
 
-        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request), inviterUserId);
+        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request.UserId), inviterUserId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();
@@ -113,7 +113,7 @@ public sealed class InviteMemberHandlerTests
             .Setup(x => x.TryAddAsync(It.IsAny<GuildMember>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request), inviterUserId);
+        var response = await _handler.HandleAsync(new InviteMemberInput(guild.Id, request.UserId), inviterUserId);
 
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
