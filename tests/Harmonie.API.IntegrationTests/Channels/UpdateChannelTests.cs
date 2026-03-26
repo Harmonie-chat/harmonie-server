@@ -183,7 +183,7 @@ public sealed class UpdateChannelTests : IClassFixture<HarmonieWebApplicationFac
 
         var error = await updateResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Common.DomainRuleViolation);
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────

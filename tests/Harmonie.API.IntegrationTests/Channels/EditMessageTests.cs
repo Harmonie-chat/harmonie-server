@@ -145,6 +145,6 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
 
         var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
 }
