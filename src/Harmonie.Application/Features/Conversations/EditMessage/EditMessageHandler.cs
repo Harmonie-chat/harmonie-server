@@ -58,7 +58,8 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
+        var isParticipant = await _conversationRepository.IsParticipantAsync(request.ConversationId, currentUserId, cancellationToken);
+        if (!isParticipant)
         {
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

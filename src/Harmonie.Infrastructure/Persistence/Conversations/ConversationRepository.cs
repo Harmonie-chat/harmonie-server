@@ -23,8 +23,8 @@ public sealed class ConversationRepository : IConversationRepository
     {
         const string sql = """
                            SELECT id             AS "Id",
-                                  user1_id       AS "User1Id",
-                                  user2_id       AS "User2Id",
+                                  type           AS "Type",
+                                  name           AS "Name",
                                   created_at_utc AS "CreatedAtUtc"
                            FROM conversations
                            WHERE id = @ConversationId
@@ -41,7 +41,7 @@ public sealed class ConversationRepository : IConversationRepository
         return row is null ? null : MapToConversation(row);
     }
 
-    public async Task<ConversationGetOrCreateResult> GetOrCreateAsync(
+    public async Task<ConversationGetOrCreateResult> GetOrCreateDirectAsync(
         UserId firstUserId,
         UserId secondUserId,
         CancellationToken cancellationToken = default)
@@ -49,63 +49,114 @@ public sealed class ConversationRepository : IConversationRepository
         if (firstUserId == secondUserId)
             throw new ArgumentException("Conversation participants must be different users.");
 
-        var (user1Id, user2Id) = NormalizeParticipants(firstUserId, secondUserId);
-        var createdConversationId = ConversationId.New();
-        var createdAtUtc = DateTime.UtcNow;
-
-        const string sql = """
-                           WITH inserted AS (
-                               INSERT INTO conversations (
-                                   id,
-                                   user1_id,
-                                   user2_id,
-                                   created_at_utc)
-                               VALUES (
-                                   @ConversationId,
-                                   @User1Id,
-                                   @User2Id,
-                                   @CreatedAtUtc)
-                               ON CONFLICT ((LEAST(user1_id, user2_id)), (GREATEST(user1_id, user2_id)))
-                               DO NOTHING
-                               RETURNING id             AS "Id",
-                                         user1_id       AS "User1Id",
-                                         user2_id       AS "User2Id",
-                                         created_at_utc AS "CreatedAtUtc",
-                                         TRUE           AS "WasCreated"
-                           )
-                           SELECT inserted."Id",
-                                  inserted."User1Id",
-                                  inserted."User2Id",
-                                  inserted."CreatedAtUtc",
-                                  inserted."WasCreated"
-                           FROM inserted
-                           UNION ALL
-                           SELECT c.id             AS "Id",
-                                  c.user1_id       AS "User1Id",
-                                  c.user2_id       AS "User2Id",
-                                  c.created_at_utc AS "CreatedAtUtc",
-                                  FALSE            AS "WasCreated"
-                           FROM conversations c
-                           WHERE LEAST(c.user1_id, c.user2_id) = LEAST(@User1Id, @User2Id)
-                             AND GREATEST(c.user1_id, c.user2_id) = GREATEST(@User1Id, @User2Id)
-                           LIMIT 1
-                           """;
+        var user1Id = firstUserId.Value.CompareTo(secondUserId.Value) <= 0
+            ? firstUserId.Value
+            : secondUserId.Value;
+        var user2Id = user1Id == firstUserId.Value ? secondUserId.Value : firstUserId.Value;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(
-            sql,
-            new
-            {
-                ConversationId = createdConversationId.Value,
-                User1Id = user1Id.Value,
-                User2Id = user2Id.Value,
-                CreatedAtUtc = createdAtUtc
-            },
+
+        // Step 1: check if DM already exists
+        const string selectLookupSql = """
+                                        SELECT conversation_id AS "ConversationId"
+                                        FROM direct_conversation_lookup
+                                        WHERE user1_id = @User1Id AND user2_id = @User2Id
+                                        """;
+        var selectCommand = new CommandDefinition(
+            selectLookupSql,
+            new { User1Id = user1Id, User2Id = user2Id },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstAsync<ConversationGetOrCreateRow>(command);
-        return new ConversationGetOrCreateResult(MapToConversation(row), row.WasCreated);
+        var existingConversationId = await connection.QueryFirstOrDefaultAsync<Guid?>(selectCommand);
+        if (existingConversationId is not null)
+        {
+            var existing = await GetByIdAsync(ConversationId.From(existingConversationId.Value), cancellationToken);
+            return new ConversationGetOrCreateResult(existing!, WasCreated: false);
+        }
+
+        // Step 2: create the conversation, participants and lookup entry
+        var newConversationId = ConversationId.New();
+        var createdAtUtc = DateTime.UtcNow;
+
+        const string insertConversationSql = """
+                                              INSERT INTO conversations (id, type, name, created_at_utc)
+                                              VALUES (@Id, 'direct', NULL, @CreatedAtUtc)
+                                              """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            insertConversationSql,
+            new { Id = newConversationId.Value, CreatedAtUtc = createdAtUtc },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+
+        const string insertParticipantsSql = """
+                                              INSERT INTO conversation_participants (conversation_id, user_id, joined_at_utc)
+                                              VALUES (@ConversationId, @UserId1, @JoinedAt),
+                                                     (@ConversationId, @UserId2, @JoinedAt)
+                                              """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            insertParticipantsSql,
+            new
+            {
+                ConversationId = newConversationId.Value,
+                UserId1 = firstUserId.Value,
+                UserId2 = secondUserId.Value,
+                JoinedAt = createdAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+
+        const string insertLookupSql = """
+                                        INSERT INTO direct_conversation_lookup (user1_id, user2_id, conversation_id)
+                                        VALUES (@User1Id, @User2Id, @ConversationId)
+                                        ON CONFLICT (user1_id, user2_id) DO NOTHING
+                                        """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            insertLookupSql,
+            new { User1Id = user1Id, User2Id = user2Id, ConversationId = newConversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+
+        var conversation = Conversation.Rehydrate(newConversationId, ConversationType.Direct, null, createdAtUtc);
+        return new ConversationGetOrCreateResult(conversation, WasCreated: true);
+    }
+
+    public async Task<Conversation> CreateGroupAsync(
+        string? name,
+        IReadOnlyList<UserId> participantIds,
+        CancellationToken cancellationToken = default)
+    {
+        var conversationId = ConversationId.New();
+        var createdAtUtc = DateTime.UtcNow;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+
+        const string insertConversationSql = """
+                                              INSERT INTO conversations (id, type, name, created_at_utc)
+                                              VALUES (@Id, 'group', @Name, @CreatedAtUtc)
+                                              """;
+        var convCommand = new CommandDefinition(
+            insertConversationSql,
+            new { Id = conversationId.Value, Name = name, CreatedAtUtc = createdAtUtc },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(convCommand);
+
+        const string insertParticipantSql = """
+                                             INSERT INTO conversation_participants (conversation_id, user_id, joined_at_utc)
+                                             VALUES (@ConversationId, @UserId, @JoinedAt)
+                                             """;
+        foreach (var participantId in participantIds)
+        {
+            var participantCommand = new CommandDefinition(
+                insertParticipantSql,
+                new { ConversationId = conversationId.Value, UserId = participantId.Value, JoinedAt = createdAtUtc },
+                transaction: _dbSession.Transaction,
+                cancellationToken: cancellationToken);
+            await connection.ExecuteAsync(participantCommand);
+        }
+
+        return Conversation.Rehydrate(conversationId, ConversationType.Group, name, createdAtUtc);
     }
 
     public async Task<IReadOnlyList<UserConversationSummary>> GetUserConversationsAsync(
@@ -113,22 +164,19 @@ public sealed class ConversationRepository : IConversationRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT c.id AS "ConversationId",
-                                  CASE
-                                      WHEN c.user1_id = @UserId THEN c.user2_id
-                                      ELSE c.user1_id
-                                  END AS "OtherParticipantUserId",
-                                  u.username AS "OtherParticipantUsername",
-                                  c.created_at_utc AS "CreatedAtUtc"
-                           FROM conversations c
-                           INNER JOIN users u
-                                   ON u.id = CASE
-                                                 WHEN c.user1_id = @UserId THEN c.user2_id
-                                                 ELSE c.user1_id
-                                             END
-                           WHERE @UserId IN (c.user1_id, c.user2_id)
+                           SELECT c.id             AS "ConversationId",
+                                  c.type           AS "Type",
+                                  c.name           AS "Name",
+                                  c.created_at_utc AS "CreatedAtUtc",
+                                  cp2.user_id      AS "ParticipantUserId",
+                                  u.username       AS "ParticipantUsername"
+                           FROM conversation_participants cp1
+                           INNER JOIN conversations c ON c.id = cp1.conversation_id
+                           INNER JOIN conversation_participants cp2 ON cp2.conversation_id = c.id
+                           INNER JOIN users u ON u.id = cp2.user_id
+                           WHERE cp1.user_id = @UserId
                              AND u.deleted_at IS NULL
-                           ORDER BY c.created_at_utc DESC, c.id ASC
+                           ORDER BY c.created_at_utc DESC, c.id ASC, cp2.user_id ASC
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -139,47 +187,68 @@ public sealed class ConversationRepository : IConversationRepository
             cancellationToken: cancellationToken);
 
         var rows = await connection.QueryAsync<UserConversationSummaryRow>(command);
-        return rows.Select(MapToUserConversationSummary).ToArray();
+
+        return rows
+            .GroupBy(r => r.ConversationId)
+            .Select(g =>
+            {
+                var first = g.First();
+                var type = ParseConversationType(first.Type);
+                var participants = g.Select(r =>
+                {
+                    var usernameResult = Username.Create(r.ParticipantUsername);
+                    if (usernameResult.IsFailure || usernameResult.Value is null)
+                        throw new InvalidOperationException("Stored conversation participant username is invalid.");
+                    return new ConversationParticipantSummary(UserId.From(r.ParticipantUserId), usernameResult.Value);
+                }).ToArray();
+
+                return new UserConversationSummary(
+                    ConversationId.From(first.ConversationId),
+                    type,
+                    first.Name,
+                    participants,
+                    first.CreatedAtUtc);
+            })
+            .ToArray();
+    }
+
+    public async Task<bool> IsParticipantAsync(
+        ConversationId conversationId,
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT EXISTS(
+                               SELECT 1
+                               FROM conversation_participants
+                               WHERE conversation_id = @ConversationId
+                                 AND user_id = @UserId
+                           )
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ConversationId = conversationId.Value, UserId = userId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        return await connection.ExecuteScalarAsync<bool>(command);
     }
 
     private static Conversation MapToConversation(ConversationRow row)
         => Conversation.Rehydrate(
             ConversationId.From(row.Id),
-            UserId.From(row.User1Id),
-            UserId.From(row.User2Id),
+            ParseConversationType(row.Type),
+            row.Name,
             row.CreatedAtUtc);
 
-    private static Conversation MapToConversation(ConversationGetOrCreateRow row)
-        => Conversation.Rehydrate(
-            ConversationId.From(row.Id),
-            UserId.From(row.User1Id),
-            UserId.From(row.User2Id),
-            row.CreatedAtUtc);
+    private static ConversationType ParseConversationType(string type)
+        => type.ToLowerInvariant() switch
+        {
+            "direct" => ConversationType.Direct,
+            "group"  => ConversationType.Group,
+            _        => throw new InvalidOperationException($"Unknown conversation type: '{type}'")
+        };
 
-    private static UserConversationSummary MapToUserConversationSummary(UserConversationSummaryRow row)
-    {
-        var usernameResult = Username.Create(row.OtherParticipantUsername);
-        if (usernameResult.IsFailure || usernameResult.Value is null)
-            throw new InvalidOperationException("Stored conversation participant username is invalid.");
-
-        return new UserConversationSummary(
-            ConversationId.From(row.ConversationId),
-            UserId.From(row.OtherParticipantUserId),
-            usernameResult.Value,
-            row.CreatedAtUtc);
-    }
-
-    private static (UserId User1Id, UserId User2Id) NormalizeParticipants(UserId firstUserId, UserId secondUserId)
-        => firstUserId.Value.CompareTo(secondUserId.Value) <= 0
-            ? (firstUserId, secondUserId)
-            : (secondUserId, firstUserId);
-
-    private sealed class ConversationGetOrCreateRow
-    {
-        public Guid Id { get; init; }
-        public Guid User1Id { get; init; }
-        public Guid User2Id { get; init; }
-        public DateTime CreatedAtUtc { get; init; }
-        public bool WasCreated { get; init; }
-    }
 }

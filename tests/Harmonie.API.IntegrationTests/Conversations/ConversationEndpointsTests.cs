@@ -36,7 +36,8 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
         payload.Should().NotBeNull();
         payload!.Created.Should().BeTrue();
         payload.ConversationId.Should().NotBeNullOrWhiteSpace();
-        payload.User1Id.Should().NotBe(payload.User2Id);
+        payload.Type.Should().Be("direct");
+        payload.ParticipantIds.Should().HaveCount(2).And.Contain(caller.UserId).And.Contain(target.UserId);
     }
 
     [Fact]
@@ -138,12 +139,10 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
         payload.Should().NotBeNull();
         payload!.Conversations.Should().HaveCount(2);
         payload.Conversations.Should().Contain(x =>
-            x.OtherParticipantUserId == targetOne.UserId &&
-            x.OtherParticipantUsername == targetOne.Username);
+            x.Participants.Any(p => p.UserId == targetOne.UserId && p.Username == targetOne.Username));
         payload.Conversations.Should().Contain(x =>
-            x.OtherParticipantUserId == targetTwo.UserId &&
-            x.OtherParticipantUsername == targetTwo.Username);
-        payload.Conversations.Should().OnlyContain(x => x.OtherParticipantUserId != caller.UserId);
+            x.Participants.Any(p => p.UserId == targetTwo.UserId && p.Username == targetTwo.Username));
+        payload.Conversations.Should().OnlyContain(x => x.Type == "direct");
     }
 
     [Fact]

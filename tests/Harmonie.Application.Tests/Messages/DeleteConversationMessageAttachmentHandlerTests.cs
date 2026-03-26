@@ -106,6 +106,10 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
+        _conversationRepositoryMock
+            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _conversationMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(message);
@@ -130,6 +134,10 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         _conversationRepositoryMock
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
+
+        _conversationRepositoryMock
+            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _conversationMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
@@ -159,6 +167,10 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             .InSequence(sequence)
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
+
+        _conversationRepositoryMock
+            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _conversationMessageRepositoryMock
             .InSequence(sequence)

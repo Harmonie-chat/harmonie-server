@@ -90,6 +90,10 @@ public sealed class SearchConversationMessagesHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
+        _conversationRepositoryMock
+            .Setup(x => x.IsParticipantAsync(conversation.Id, user1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _directMessageRepositoryMock
             .Setup(x => x.SearchConversationMessagesAsync(
                 It.Is<SearchConversationMessagesQuery>(query =>

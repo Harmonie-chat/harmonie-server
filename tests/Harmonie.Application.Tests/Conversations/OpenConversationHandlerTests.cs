@@ -78,7 +78,7 @@ public sealed class OpenConversationHandlerTests
             .ReturnsAsync(targetUser);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetOrCreateAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationGetOrCreateResult(conversation, true));
 
         var response = await _handler.HandleAsync(
@@ -89,6 +89,8 @@ public sealed class OpenConversationHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.ConversationId.Should().Be(conversation.Id.ToString());
         response.Data.Created.Should().BeTrue();
+        response.Data.Type.Should().Be("direct");
+        response.Data.ParticipantIds.Should().HaveCount(2);
     }
 
     [Fact]
@@ -104,7 +106,7 @@ public sealed class OpenConversationHandlerTests
             .ReturnsAsync(targetUser);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetOrCreateAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationGetOrCreateResult(conversation, false));
 
         var response = await _handler.HandleAsync(
@@ -148,5 +150,4 @@ public sealed class OpenConversationHandlerTests
             createdAtUtc: DateTime.UtcNow,
             updatedAtUtc: DateTime.UtcNow);
     }
-
 }

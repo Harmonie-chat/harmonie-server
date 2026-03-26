@@ -97,6 +97,10 @@ public sealed class GetConversationMessagesHandlerTests
             .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conversation);
 
+        _conversationRepositoryMock
+            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _directMessageRepositoryMock
             .Setup(x => x.GetConversationPageAsync(
                 conversation.Id,

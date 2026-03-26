@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.AcknowledgeRead;
 using Harmonie.Application.Features.Conversations.AddReaction;
+using Harmonie.Application.Features.Conversations.CreateGroupConversation;
 using Harmonie.Application.Features.Conversations.DeleteMessage;
 using Harmonie.Application.Features.Conversations.DeleteMessageAttachment;
 using Harmonie.Application.Features.Conversations.EditMessage;
@@ -19,6 +20,7 @@ public static class ConversationRegistration
     public static IServiceCollection AddConversationHandlers(this IServiceCollection services)
     {
         services.AddAuthenticatedHandler<OpenConversationRequest, OpenConversationResponse, OpenConversationHandler>();
+        services.AddAuthenticatedHandler<CreateGroupConversationRequest, CreateGroupConversationResponse, CreateGroupConversationHandler>();
         services.AddAuthenticatedHandler<Unit, ListConversationsResponse, ListConversationsHandler>();
         services.AddAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse, SearchConversationMessagesHandler>();
 

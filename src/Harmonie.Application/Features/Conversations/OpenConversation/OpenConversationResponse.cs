@@ -2,7 +2,7 @@ namespace Harmonie.Application.Features.Conversations.OpenConversation;
 
 public sealed record OpenConversationResponse(
     string ConversationId,
-    string User1Id,
-    string User2Id,
+    string Type,
+    IReadOnlyList<string> ParticipantIds,
     DateTime CreatedAtUtc,
     bool Created);

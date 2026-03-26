@@ -6,24 +6,24 @@ namespace Harmonie.Domain.Entities.Conversations;
 
 public sealed class Conversation : Entity<ConversationId>
 {
-    public UserId User1Id { get; private set; }
+    public ConversationType Type { get; private set; }
 
-    public UserId User2Id { get; private set; }
+    public string? Name { get; private set; }
 
     private Conversation(
         ConversationId id,
-        UserId user1Id,
-        UserId user2Id,
+        ConversationType type,
+        string? name,
         DateTime createdAtUtc)
     {
         Id = id;
-        User1Id = user1Id;
-        User2Id = user2Id;
+        Type = type;
+        Name = name;
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = null;
     }
 
-    public static Result<Conversation> Create(UserId firstUserId, UserId secondUserId)
+    public static Result<Conversation> CreateDirect(UserId firstUserId, UserId secondUserId)
     {
         if (firstUserId is null)
             return Result.Failure<Conversation>("First user ID is required");
@@ -34,37 +34,33 @@ public sealed class Conversation : Entity<ConversationId>
         if (firstUserId == secondUserId)
             return Result.Failure<Conversation>("Conversation participants must be different users");
 
-        var (user1Id, user2Id) = NormalizeParticipants(firstUserId, secondUserId);
+        return Result.Success(new Conversation(
+            ConversationId.New(),
+            ConversationType.Direct,
+            null,
+            DateTime.UtcNow));
+    }
+
+    public static Result<Conversation> CreateGroup(string? name, IReadOnlyList<UserId> participantIds)
+    {
+        if (participantIds is null || participantIds.Count < 2)
+            return Result.Failure<Conversation>("A group conversation requires at least 2 participants");
 
         return Result.Success(new Conversation(
             ConversationId.New(),
-            user1Id,
-            user2Id,
+            ConversationType.Group,
+            name,
             DateTime.UtcNow));
     }
 
     public static Conversation Rehydrate(
         ConversationId id,
-        UserId user1Id,
-        UserId user2Id,
+        ConversationType type,
+        string? name,
         DateTime createdAtUtc)
     {
         ArgumentNullException.ThrowIfNull(id);
-        ArgumentNullException.ThrowIfNull(user1Id);
-        ArgumentNullException.ThrowIfNull(user2Id);
 
-        if (user1Id == user2Id)
-            throw new ArgumentException("Conversation participants must be different users.");
-
-        return new Conversation(
-            id,
-            user1Id,
-            user2Id,
-            createdAtUtc);
+        return new Conversation(id, type, name, createdAtUtc);
     }
-
-    private static (UserId User1Id, UserId User2Id) NormalizeParticipants(UserId firstUserId, UserId secondUserId)
-        => firstUserId.Value.CompareTo(secondUserId.Value) <= 0
-            ? (firstUserId, secondUserId)
-            : (secondUserId, firstUserId);
 }

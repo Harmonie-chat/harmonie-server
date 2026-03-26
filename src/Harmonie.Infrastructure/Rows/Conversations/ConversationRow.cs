@@ -4,9 +4,9 @@ public sealed class ConversationRow
 {
     public Guid Id { get; init; }
 
-    public Guid User1Id { get; init; }
+    public string Type { get; init; } = string.Empty;
 
-    public Guid User2Id { get; init; }
+    public string? Name { get; init; }
 
     public DateTime CreatedAtUtc { get; init; }
 }

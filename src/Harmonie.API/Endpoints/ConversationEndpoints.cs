@@ -1,3 +1,4 @@
+using Harmonie.Application.Features.Conversations.CreateGroupConversation;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
@@ -17,6 +18,7 @@ public static class ConversationEndpoints
     public static void MapConversationEndpoints(this IEndpointRouteBuilder app)
     {
         OpenConversationEndpoint.Map(app);
+        CreateGroupConversationEndpoint.Map(app);
         ListConversationsEndpoint.Map(app);
         SearchConversationMessagesEndpoint.Map(app);
 

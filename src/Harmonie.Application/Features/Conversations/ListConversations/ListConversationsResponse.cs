@@ -5,6 +5,9 @@ public sealed record ListConversationsResponse(
 
 public sealed record ListConversationsItemResponse(
     string ConversationId,
-    string OtherParticipantUserId,
-    string OtherParticipantUsername,
+    string Type,
+    string? Name,
+    IReadOnlyList<ListConversationsParticipantDto> Participants,
     DateTime CreatedAtUtc);
+
+public sealed record ListConversationsParticipantDto(string UserId, string Username);

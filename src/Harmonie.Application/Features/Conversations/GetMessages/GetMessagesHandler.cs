@@ -56,7 +56,8 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
                 "Conversation was not found");
         }
 
-        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
+        var isParticipant = await _conversationRepository.IsParticipantAsync(request.ConversationId, currentUserId, cancellationToken);
+        if (!isParticipant)
         {
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

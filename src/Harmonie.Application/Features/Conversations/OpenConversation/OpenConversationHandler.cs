@@ -48,7 +48,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                 "Target user was not found");
         }
 
-        var result = await _conversationRepository.GetOrCreateAsync(
+        var result = await _conversationRepository.GetOrCreateDirectAsync(
             currentUserId,
             targetUserId,
             cancellationToken);
@@ -71,8 +71,8 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
 
         var payload = new OpenConversationResponse(
             ConversationId: result.Conversation.Id.ToString(),
-            User1Id: result.Conversation.User1Id.ToString(),
-            User2Id: result.Conversation.User2Id.ToString(),
+            Type: "direct",
+            ParticipantIds: [currentUserId.ToString(), targetUserId.ToString()],
             CreatedAtUtc: result.Conversation.CreatedAtUtc,
             Created: result.WasCreated);
 

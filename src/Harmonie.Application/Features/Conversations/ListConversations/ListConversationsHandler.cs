@@ -26,8 +26,11 @@ public sealed class ListConversationsHandler : IAuthenticatedHandler<Unit, ListC
         var payload = new ListConversationsResponse(
             conversations.Select(conversation => new ListConversationsItemResponse(
                     ConversationId: conversation.ConversationId.ToString(),
-                    OtherParticipantUserId: conversation.OtherParticipantUserId.ToString(),
-                    OtherParticipantUsername: conversation.OtherParticipantUsername.Value,
+                    Type: conversation.Type.ToString().ToLowerInvariant(),
+                    Name: conversation.Name,
+                    Participants: conversation.Participants
+                        .Select(p => new ListConversationsParticipantDto(p.UserId.ToString(), p.Username.Value))
+                        .ToArray(),
                     CreatedAtUtc: conversation.CreatedAtUtc))
                 .ToArray());
 

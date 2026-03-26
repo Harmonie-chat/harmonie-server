@@ -8,25 +8,60 @@ namespace Harmonie.Domain.Tests;
 public sealed class ConversationTests
 {
     [Fact]
-    public void Create_WithDistinctUsers_ShouldSucceedAndNormalizeOrdering()
+    public void CreateDirect_WithDistinctUsers_ShouldSucceed()
     {
-        var largerUserId = UserId.From(Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"));
-        var smallerUserId = UserId.From(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        var user1 = UserId.New();
+        var user2 = UserId.New();
 
-        var result = Conversation.Create(largerUserId, smallerUserId);
+        var result = Conversation.CreateDirect(user1, user2);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.User1Id.Should().Be(smallerUserId);
-        result.Value.User2Id.Should().Be(largerUserId);
+        result.Value!.Type.Should().Be(ConversationType.Direct);
+        result.Value.Name.Should().BeNull();
     }
 
     [Fact]
-    public void Create_WithSameUserTwice_ShouldFail()
+    public void CreateDirect_WithSameUserTwice_ShouldFail()
     {
         var userId = UserId.New();
 
-        var result = Conversation.Create(userId, userId);
+        var result = Conversation.CreateDirect(userId, userId);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void CreateGroup_WithTwoOrMoreParticipants_ShouldSucceed()
+    {
+        var participants = new[] { UserId.New(), UserId.New(), UserId.New() };
+
+        var result = Conversation.CreateGroup("My Group", participants);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.Type.Should().Be(ConversationType.Group);
+        result.Value.Name.Should().Be("My Group");
+    }
+
+    [Fact]
+    public void CreateGroup_WithNullName_ShouldSucceed()
+    {
+        var participants = new[] { UserId.New(), UserId.New() };
+
+        var result = Conversation.CreateGroup(null, participants);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Name.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateGroup_WithFewerThanTwoParticipants_ShouldFail()
+    {
+        var participants = new[] { UserId.New() };
+
+        var result = Conversation.CreateGroup("Only one", participants);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().NotBeNullOrWhiteSpace();

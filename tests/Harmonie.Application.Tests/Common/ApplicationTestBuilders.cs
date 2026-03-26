@@ -112,13 +112,11 @@ internal static class ApplicationTestBuilders
     }
 
     public static Conversation CreateConversation(UserId user1Id, UserId user2Id)
-    {
-        var result = Conversation.Create(user1Id, user2Id);
-        if (result.IsFailure || result.Value is null)
-            throw new InvalidOperationException("Failed to create test conversation.");
-
-        return result.Value;
-    }
+        => Conversation.Rehydrate(
+            ConversationId.New(),
+            Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
+            null,
+            DateTime.UtcNow);
 
     public static UploadedFile CreateUploadedFile(
         UserId? uploaderUserId = null,

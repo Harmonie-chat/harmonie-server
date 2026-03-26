@@ -122,7 +122,12 @@ public sealed class RealtimeHub : Hub
         if (conversation is null)
             throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
 
-        if (conversation.User1Id != currentUserId && conversation.User2Id != currentUserId)
+        var isParticipant = await _conversationRepository.IsParticipantAsync(
+            parsedConversationId,
+            currentUserId,
+            Context.ConnectionAborted);
+
+        if (!isParticipant)
             throw new HubException(ApplicationErrorCodes.Conversation.AccessDenied);
 
         var throttleKey = $"conversation:{currentUserId}:{conversationId}";
