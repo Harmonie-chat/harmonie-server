@@ -8,6 +8,8 @@ public sealed record ConversationParticipantSummary(UserId UserId, Username User
 
 public sealed record ConversationGetOrCreateResult(Conversation Conversation, bool WasCreated);
 
+public sealed record ConversationAccess(Conversation Conversation, bool IsParticipant);
+
 public sealed record UserConversationSummary(
     ConversationId ConversationId,
     ConversationType Type,
@@ -35,7 +37,7 @@ public interface IConversationRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
-    Task<bool> IsParticipantAsync(
+    Task<ConversationAccess?> GetByIdWithParticipantCheckAsync(
         ConversationId conversationId,
         UserId userId,
         CancellationToken cancellationToken = default);

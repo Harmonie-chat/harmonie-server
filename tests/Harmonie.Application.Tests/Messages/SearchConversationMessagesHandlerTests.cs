@@ -4,7 +4,6 @@ using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -39,8 +38,8 @@ public sealed class SearchConversationMessagesHandlerTests
         var currentUserId = UserId.New();
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Conversation?)null);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversationId, It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ConversationAccess?)null);
 
         var response = await _handler.HandleAsync(
             new SearchConversationMessagesInput(conversationId, Q: "deploy"),
@@ -60,8 +59,8 @@ public sealed class SearchConversationMessagesHandlerTests
         var conversation = ApplicationTestBuilders.CreateConversation(user1, user2);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, outsider, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: false));
 
         var response = await _handler.HandleAsync(
             new SearchConversationMessagesInput(conversation.Id, Q: "deploy"),
@@ -87,12 +86,8 @@ public sealed class SearchConversationMessagesHandlerTests
         var nextCursor = new MessageCursor(item.CreatedAtUtc, item.MessageId);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
-
-        _conversationRepositoryMock
-            .Setup(x => x.IsParticipantAsync(conversation.Id, user1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, user1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
 
         _directMessageRepositoryMock
             .Setup(x => x.SearchConversationMessagesAsync(

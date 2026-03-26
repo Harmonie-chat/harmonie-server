@@ -50,16 +50,14 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        var conversation = await _conversationRepository.GetByIdAsync(request.ConversationId, cancellationToken);
-        if (conversation is null)
+        var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(request.ConversationId, currentUserId, cancellationToken);
+        if (access is null)
         {
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-
-        var isParticipant = await _conversationRepository.IsParticipantAsync(request.ConversationId, currentUserId, cancellationToken);
-        if (!isParticipant)
+        if (!access.IsParticipant)
         {
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

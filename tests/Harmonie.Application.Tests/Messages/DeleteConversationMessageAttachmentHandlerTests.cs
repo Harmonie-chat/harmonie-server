@@ -7,7 +7,6 @@ using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
-using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -62,8 +61,8 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         var callerId = UserId.New();
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversationId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Conversation?)null);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversationId, It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ConversationAccess?)null);
 
         var response = await _handler.HandleAsync(new DeleteConversationMessageAttachmentInput(conversationId, messageId, attachmentId), callerId);
 
@@ -81,8 +80,8 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, outsider, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: false));
 
         var response = await _handler.HandleAsync(
             new DeleteConversationMessageAttachmentInput(conversation.Id, MessageId.New(), UploadedFileId.New()),
@@ -103,12 +102,8 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "hello", attachments: [new MessageAttachment(attachmentId, "notes.txt", "text/plain", 12)]);
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
-
-        _conversationRepositoryMock
-            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
 
         _conversationMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
@@ -132,12 +127,8 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
         var missingAttachmentId = UploadedFileId.New();
 
         _conversationRepositoryMock
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
-
-        _conversationRepositoryMock
-            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
 
         _conversationMessageRepositoryMock
             .Setup(x => x.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
@@ -165,12 +156,8 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
 
         _conversationRepositoryMock
             .InSequence(sequence)
-            .Setup(x => x.GetByIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conversation);
-
-        _conversationRepositoryMock
-            .Setup(x => x.IsParticipantAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
 
         _conversationMessageRepositoryMock
             .InSequence(sequence)

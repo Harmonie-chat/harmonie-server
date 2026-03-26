@@ -212,18 +212,22 @@ public sealed class ConversationRepository : IConversationRepository
             .ToArray();
     }
 
-    public async Task<bool> IsParticipantAsync(
+    public async Task<ConversationAccess?> GetByIdWithParticipantCheckAsync(
         ConversationId conversationId,
         UserId userId,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT EXISTS(
-                               SELECT 1
-                               FROM conversation_participants
-                               WHERE conversation_id = @ConversationId
-                                 AND user_id = @UserId
-                           )
+                           SELECT c.id             AS "Id",
+                                  c.type           AS "Type",
+                                  c.name           AS "Name",
+                                  c.created_at_utc AS "CreatedAtUtc",
+                                  EXISTS(
+                                      SELECT 1 FROM conversation_participants
+                                      WHERE conversation_id = c.id AND user_id = @UserId
+                                  ) AS "IsParticipant"
+                           FROM conversations c
+                           WHERE c.id = @ConversationId
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -233,10 +237,18 @@ public sealed class ConversationRepository : IConversationRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        return await connection.ExecuteScalarAsync<bool>(command);
+        var row = await connection.QueryFirstOrDefaultAsync<ConversationWithParticipantRow>(command);
+        return row is null ? null : new ConversationAccess(MapToConversation(row), row.IsParticipant);
     }
 
     private static Conversation MapToConversation(ConversationRow row)
+        => Conversation.Rehydrate(
+            ConversationId.From(row.Id),
+            ParseConversationType(row.Type),
+            row.Name,
+            row.CreatedAtUtc);
+
+    private static Conversation MapToConversation(ConversationWithParticipantRow row)
         => Conversation.Rehydrate(
             ConversationId.From(row.Id),
             ParseConversationType(row.Type),
@@ -250,5 +262,18 @@ public sealed class ConversationRepository : IConversationRepository
             "group"  => ConversationType.Group,
             _        => throw new InvalidOperationException($"Unknown conversation type: '{type}'")
         };
+
+    private sealed class ConversationWithParticipantRow
+    {
+        public Guid Id { get; init; }
+
+        public string Type { get; init; } = string.Empty;
+
+        public string? Name { get; init; }
+
+        public DateTime CreatedAtUtc { get; init; }
+
+        public bool IsParticipant { get; init; }
+    }
 
 }

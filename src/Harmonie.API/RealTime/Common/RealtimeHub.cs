@@ -115,19 +115,15 @@ public sealed class RealtimeHub : Hub
             throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         var parsedConversationId = ConversationId.From(conversationId);
-        var conversation = await _conversationRepository.GetByIdAsync(
-            parsedConversationId,
-            Context.ConnectionAborted);
-
-        if (conversation is null)
-            throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
-
-        var isParticipant = await _conversationRepository.IsParticipantAsync(
+        var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(
             parsedConversationId,
             currentUserId,
             Context.ConnectionAborted);
 
-        if (!isParticipant)
+        if (access is null)
+            throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
+
+        if (!access.IsParticipant)
             throw new HubException(ApplicationErrorCodes.Conversation.AccessDenied);
 
         var throttleKey = $"conversation:{currentUserId}:{conversationId}";
