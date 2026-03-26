@@ -178,6 +178,23 @@ public sealed class UserProfileTests : IClassFixture<HarmonieWebApplicationFacto
     }
 
     [Fact]
+    public async Task UpdateMyProfile_WithInvalidAvatarFileIdFormat_ShouldReturnValidationError()
+    {
+        var user = await AuthTestHelper.RegisterAsync(_client);
+
+        var response = await _client.SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatarFileId = "not-a-guid" },
+            user.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+    }
+
+    [Fact]
     public async Task UpdateMyProfile_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         var response = await _client.PatchAsJsonAsync(
