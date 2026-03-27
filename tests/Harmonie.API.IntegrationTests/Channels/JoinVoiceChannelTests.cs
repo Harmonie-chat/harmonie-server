@@ -99,9 +99,9 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
-    private async Task<string> GetDefaultVoiceChannelIdAsync(
+    private async Task<Guid> GetDefaultVoiceChannelIdAsync(
         string accessToken,
-        string guildId)
+        Guid guildId)
     {
         var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guildId}/channels",

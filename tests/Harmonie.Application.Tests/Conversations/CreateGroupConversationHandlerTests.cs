@@ -112,7 +112,7 @@ public sealed class CreateGroupConversationHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.Type.Should().Be("group");
         response.Data.Name.Should().Be("Team Chat");
-        response.Data.ConversationId.Should().Be(conversation.Id.ToString());
+        response.Data.ConversationId.Should().Be(conversation.Id.Value);
         response.Data.ParticipantIds.Should().HaveCount(2);
     }
 

@@ -4,10 +4,10 @@ public sealed record ListConversationsResponse(
     IReadOnlyList<ListConversationsItemResponse> Conversations);
 
 public sealed record ListConversationsItemResponse(
-    string ConversationId,
+    Guid ConversationId,
     string Type,
     string? Name,
     IReadOnlyList<ListConversationsParticipantDto> Participants,
     DateTime CreatedAtUtc);
 
-public sealed record ListConversationsParticipantDto(string UserId, string Username);
+public sealed record ListConversationsParticipantDto(Guid UserId, string Username);

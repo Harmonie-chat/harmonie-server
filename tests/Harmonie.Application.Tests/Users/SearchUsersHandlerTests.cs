@@ -109,7 +109,7 @@ public sealed class SearchUsersHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Data!.Users.Should().ContainSingle();
-        response.Data.Users[0].UserId.Should().Be(matchedUser.UserId.ToString());
+        response.Data.Users[0].UserId.Should().Be(matchedUser.UserId.Value);
         response.Data.Users[0].Username.Should().Be("alice-dev");
         response.Data.Users[0].DisplayName.Should().Be("Alice Dev");
         response.Data.Users[0].Status.Should().Be("Active");

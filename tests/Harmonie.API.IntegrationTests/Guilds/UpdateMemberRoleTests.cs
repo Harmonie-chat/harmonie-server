@@ -38,7 +38,7 @@ public sealed class UpdateMemberRoleTests : IClassFixture<HarmonieWebApplication
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -66,7 +66,7 @@ public sealed class UpdateMemberRoleTests : IClassFixture<HarmonieWebApplication
 
         await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(otherAdmin.UserId)),
+            new InviteMemberRequest(otherAdmin.UserId),
             owner.AccessToken);
 
         await _client.SendAuthorizedPutAsync(
@@ -99,12 +99,12 @@ public sealed class UpdateMemberRoleTests : IClassFixture<HarmonieWebApplication
 
         await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
 
         await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(target.UserId)),
+            new InviteMemberRequest(target.UserId),
             owner.AccessToken);
 
         var updateRoleResponse = await _client.SendAuthorizedPutAsync(
@@ -190,7 +190,7 @@ public sealed class UpdateMemberRoleTests : IClassFixture<HarmonieWebApplication
 
         await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
 
         var updateRoleResponse = await SendAuthorizedPutRawAsync(

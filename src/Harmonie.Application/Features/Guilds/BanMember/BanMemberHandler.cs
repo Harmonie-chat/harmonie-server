@@ -123,10 +123,10 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
 
         var ban = banResult.Value;
         var payload = new BanMemberResponse(
-            GuildId: ban.GuildId.ToString(),
-            UserId: ban.UserId.ToString(),
+            GuildId: ban.GuildId.Value,
+            UserId: ban.UserId.Value,
             Reason: ban.Reason,
-            BannedBy: ban.BannedBy.ToString(),
+            BannedBy: ban.BannedBy.Value,
             CreatedAtUtc: ban.CreatedAtUtc);
 
         return ApplicationResponse<BanMemberResponse>.Ok(payload);

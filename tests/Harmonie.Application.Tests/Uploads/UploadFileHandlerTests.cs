@@ -114,7 +114,7 @@ public sealed class UploadFileHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        Guid.TryParse(response.Data!.FileId, out _).Should().BeTrue();
+        response.Data!.FileId.Should().NotBeEmpty();
         response.Data!.Filename.Should().Be("hello.txt");
         response.Data.ContentType.Should().Be("text/plain");
         response.Data.SizeBytes.Should().Be(stream.Length);

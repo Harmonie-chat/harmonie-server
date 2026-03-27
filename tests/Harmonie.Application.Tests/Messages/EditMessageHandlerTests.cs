@@ -224,8 +224,8 @@ public sealed class EditMessageHandlerTests
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
         response.Data!.Content.Should().Be("updated content");
-        response.Data.ChannelId.Should().Be(channel.Id.ToString());
-        response.Data.AuthorUserId.Should().Be(authorId.ToString());
+        response.Data.ChannelId.Should().Be(channel.Id.Value);
+        response.Data.AuthorUserId.Should().Be(authorId.Value);
     }
 
     [Fact]

@@ -49,7 +49,7 @@ public sealed class UpdateUserStatusHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.UserId.Should().Be(user.Id.ToString());
+        response.Data!.UserId.Should().Be(user.Id.Value);
         response.Data.Status.Should().Be("dnd");
 
         _userRepositoryMock.Verify(

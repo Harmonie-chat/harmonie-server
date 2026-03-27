@@ -133,10 +133,10 @@ public sealed class UpdateGuildHandler
 
         return ApplicationResponse<UpdateGuildResponse>.Ok(
             new UpdateGuildResponse(
-                GuildId: guild.Id.ToString(),
+                GuildId: guild.Id.Value,
                 Name: guild.Name.Value,
-                OwnerUserId: guild.OwnerUserId.ToString(),
-                IconFileId: guild.IconFileId?.ToString(),
+                OwnerUserId: guild.OwnerUserId.Value,
+                IconFileId: guild.IconFileId?.Value,
                 Icon: BuildIcon(guild)));
     }
 

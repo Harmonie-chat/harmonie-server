@@ -104,9 +104,9 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
         var updatedChannels = await _guildChannelRepository.GetByGuildIdAsync(input.GuildId, cancellationToken);
 
         var payload = new ReorderChannelsResponse(
-            GuildId: input.GuildId.ToString(),
+            GuildId: input.GuildId.Value,
             Channels: updatedChannels.Select(c => new ReorderChannelsItemResponse(
-                ChannelId: c.Id.ToString(),
+                ChannelId: c.Id.Value,
                 Name: c.Name,
                 Type: c.Type.ToString(),
                 IsDefault: c.IsDefault,

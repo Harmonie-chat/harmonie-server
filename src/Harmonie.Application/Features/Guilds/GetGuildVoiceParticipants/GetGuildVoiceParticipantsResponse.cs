@@ -6,12 +6,12 @@ public sealed record GetGuildVoiceParticipantsResponse(
     IReadOnlyList<GetGuildVoiceParticipantsChannelResponse> Channels);
 
 public sealed record GetGuildVoiceParticipantsChannelResponse(
-    string ChannelId,
+    Guid ChannelId,
     IReadOnlyList<GetGuildVoiceParticipantResponse> Participants);
 
 public sealed record GetGuildVoiceParticipantResponse(
-    string UserId,
+    Guid UserId,
     string Username,
     string? DisplayName,
-    string? AvatarFileId,
+    Guid? AvatarFileId,
     AvatarAppearanceDto? Avatar);

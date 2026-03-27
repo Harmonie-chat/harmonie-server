@@ -96,8 +96,8 @@ public sealed class RealtimeHub : Hub
             return;
 
         var payload = new UserTypingEvent(
-            UserId: currentUserId.ToString(),
-            ChannelId: channelId.ToString(),
+            UserId: currentUserId.Value,
+            ChannelId: channelId,
             Timestamp: DateTime.UtcNow);
 
         await Clients.GroupExcept(
@@ -131,8 +131,8 @@ public sealed class RealtimeHub : Hub
             return;
 
         var payload = new ConversationUserTypingEvent(
-            UserId: currentUserId.ToString(),
-            ConversationId: conversationId.ToString(),
+            UserId: currentUserId.Value,
+            ConversationId: conversationId,
             Timestamp: DateTime.UtcNow);
 
         await Clients.GroupExcept(
@@ -184,11 +184,11 @@ public sealed class RealtimeHub : Hub
 }
 
 public sealed record UserTypingEvent(
-    string UserId,
-    string ChannelId,
+    Guid UserId,
+    Guid ChannelId,
     DateTime Timestamp);
 
 public sealed record ConversationUserTypingEvent(
-    string UserId,
-    string ConversationId,
+    Guid UserId,
+    Guid ConversationId,
     DateTime Timestamp);

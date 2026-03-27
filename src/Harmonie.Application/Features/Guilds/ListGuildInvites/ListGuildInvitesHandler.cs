@@ -44,7 +44,7 @@ public sealed class ListGuildInvitesHandler : IAuthenticatedHandler<GuildId, Lis
         var now = DateTime.UtcNow;
         var items = invites.Select(i => new ListGuildInvitesItemResponse(
             Code: i.Code,
-            CreatorId: i.CreatorId.ToString(),
+            CreatorId: i.CreatorId.Value,
             UsesCount: i.UsesCount,
             MaxUses: i.MaxUses,
             ExpiresAtUtc: i.ExpiresAtUtc,
@@ -56,6 +56,6 @@ public sealed class ListGuildInvitesHandler : IAuthenticatedHandler<GuildId, Lis
             .ToArray();
 
         return ApplicationResponse<ListGuildInvitesResponse>.Ok(
-            new ListGuildInvitesResponse(GuildId: guildId.ToString(), Invites: items));
+            new ListGuildInvitesResponse(GuildId: guildId.Value, Invites: items));
     }
 }

@@ -3,15 +3,15 @@ using Harmonie.Application.Features.Users;
 namespace Harmonie.Application.Features.Guilds.ListBans;
 
 public sealed record ListBansResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<ListBansItemResponse> Bans);
 
 public sealed record ListBansItemResponse(
-    string UserId,
+    Guid UserId,
     string Username,
     string? DisplayName,
-    string? AvatarFileId,
+    Guid? AvatarFileId,
     AvatarAppearanceDto? Avatar,
     string? Reason,
-    string BannedBy,
+    Guid BannedBy,
     DateTime CreatedAtUtc);

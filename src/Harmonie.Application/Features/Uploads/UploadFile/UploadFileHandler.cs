@@ -97,7 +97,7 @@ public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, U
         }
 
         var payload = new UploadFileResponse(
-            FileId: uploadFileResult.Value.Id.ToString(),
+            FileId: uploadFileResult.Value.Id.Value,
             Filename: uploadFileResult.Value.FileName,
             ContentType: uploadFileResult.Value.ContentType,
             SizeBytes: uploadFileResult.Value.SizeBytes);

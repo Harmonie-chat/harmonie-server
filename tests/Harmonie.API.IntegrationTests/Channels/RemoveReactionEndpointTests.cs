@@ -217,7 +217,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
     // ─── Helpers ────────────────────────────────────────────────────
 
     private async Task<ConversationSendMessageResponse> SendConversationMessageAsync(
-        string conversationId,
+        Guid conversationId,
         string content,
         string accessToken)
     {

@@ -8,7 +8,7 @@ namespace Harmonie.API.IntegrationTests.Common;
 
 public static class ChannelTestHelper
 {
-    public static async Task<(string GuildId, string ChannelId)> CreateGuildAndChannelAsync(
+    public static async Task<(Guid GuildId, Guid ChannelId)> CreateGuildAndChannelAsync(
         HttpClient client,
         string accessToken)
     {
@@ -25,7 +25,7 @@ public static class ChannelTestHelper
 
     public static async Task<SendMessageResponse> SendChannelMessageAsync(
         HttpClient client,
-        string channelId,
+        Guid channelId,
         string content,
         string accessToken)
     {
@@ -41,11 +41,11 @@ public static class ChannelTestHelper
     }
 
 
-    public static async Task<string> CreateChannelAndGetIdAsync(
+    public static async Task<Guid> CreateChannelAndGetIdAsync(
         HttpClient client,
         string accessToken,
         string name,
-        string? guildId = null,
+        Guid? guildId = null,
         int position = 0)
     {
         if (guildId is null)
@@ -65,9 +65,9 @@ public static class ChannelTestHelper
         return payload!.ChannelId;
     }
 
-    public static async Task<string> SendMessageAndGetIdAsync(
+    public static async Task<Guid> SendMessageAndGetIdAsync(
         HttpClient client,
-        string channelId,
+        Guid channelId,
         string content,
         string accessToken)
     {

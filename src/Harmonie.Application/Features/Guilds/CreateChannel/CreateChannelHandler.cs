@@ -92,8 +92,8 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
         }
 
         return ApplicationResponse<CreateChannelResponse>.Ok(new CreateChannelResponse(
-            ChannelId: channel.Id.ToString(),
-            GuildId: request.GuildId.ToString(),
+            ChannelId: channel.Id.Value,
+            GuildId: request.GuildId.Value,
             Name: channel.Name,
             Type: channel.Type.ToString(),
             IsDefault: channel.IsDefault,

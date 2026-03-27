@@ -64,10 +64,10 @@ public sealed class SearchUsersHandler
 
         var payload = new SearchUsersResponse(
             users.Select(user => new SearchUsersItemResponse(
-                UserId: user.UserId.ToString(),
+                UserId: user.UserId.Value,
                 Username: user.Username.Value,
                 DisplayName: user.DisplayName,
-                AvatarFileId: user.AvatarFileId?.ToString(),
+                AvatarFileId: user.AvatarFileId?.Value,
                 Bio: user.Bio,
                 Status: user.IsActive ? "Active" : "Blocked"))
             .ToArray());

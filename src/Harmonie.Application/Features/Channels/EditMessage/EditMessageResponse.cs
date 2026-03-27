@@ -4,9 +4,9 @@ using Harmonie.Application.Common.Messages;
 namespace Harmonie.Application.Features.Channels.EditMessage;
 
 public sealed record EditMessageResponse(
-    string MessageId,
-    string ChannelId,
-    string AuthorUserId,
+    Guid MessageId,
+    Guid ChannelId,
+    Guid AuthorUserId,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc,

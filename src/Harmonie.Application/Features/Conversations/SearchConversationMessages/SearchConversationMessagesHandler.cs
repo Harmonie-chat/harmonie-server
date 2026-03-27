@@ -128,7 +128,7 @@ public sealed class SearchConversationMessagesHandler : IAuthenticatedHandler<Se
             cancellationToken);
 
         var payload = new SearchConversationMessagesResponse(
-            ConversationId: request.ConversationId.ToString(),
+            ConversationId: request.ConversationId.Value,
             Items: page.Items
                 .Select(item =>
                 {
@@ -137,11 +137,11 @@ public sealed class SearchConversationMessagesHandler : IAuthenticatedHandler<Se
                         : null;
 
                     return new SearchConversationMessagesItemResponse(
-                        MessageId: item.MessageId.ToString(),
-                        AuthorUserId: item.AuthorUserId.ToString(),
+                        MessageId: item.MessageId.Value,
+                        AuthorUserId: item.AuthorUserId.Value,
                         AuthorUsername: item.AuthorUsername,
                         AuthorDisplayName: item.AuthorDisplayName,
-                        AuthorAvatarFileId: item.AuthorAvatarFileId?.ToString(),
+                        AuthorAvatarFileId: item.AuthorAvatarFileId?.Value,
                         AuthorAvatar: authorAvatar,
                         Content: item.Content.Value,
                         Attachments: item.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),

@@ -1,12 +1,12 @@
 namespace Harmonie.Application.Features.Guilds.ListGuildInvites;
 
 public sealed record ListGuildInvitesResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<ListGuildInvitesItemResponse> Invites);
 
 public sealed record ListGuildInvitesItemResponse(
     string Code,
-    string CreatorId,
+    Guid CreatorId,
     int UsesCount,
     int? MaxUses,
     DateTime? ExpiresAtUtc,

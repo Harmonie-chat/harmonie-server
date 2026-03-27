@@ -94,8 +94,8 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
         }
 
         return ApplicationResponse<UpdateChannelResponse>.Ok(new UpdateChannelResponse(
-            ChannelId: channel.Id.ToString(),
-            GuildId: channel.GuildId.ToString(),
+            ChannelId: channel.Id.Value,
+            GuildId: channel.GuildId.Value,
             Name: channel.Name,
             Type: channel.Type.ToString(),
             IsDefault: channel.IsDefault,

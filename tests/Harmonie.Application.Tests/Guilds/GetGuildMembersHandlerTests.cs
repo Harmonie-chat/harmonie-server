@@ -83,7 +83,7 @@ public sealed class GetGuildMembersHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Members.Should().HaveCount(2);
         response.Data.Members[0].Role.Should().Be("Admin");
         response.Data.Members[0].DisplayName.Should().Be("Owner");

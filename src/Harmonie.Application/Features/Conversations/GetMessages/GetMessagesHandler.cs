@@ -76,8 +76,8 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
             {
                 page.ReactionsByMessageId.TryGetValue(x.Id.Value, out var reactions);
                 return new GetMessagesItemResponse(
-                    MessageId: x.Id.ToString(),
-                    AuthorUserId: x.AuthorUserId.ToString(),
+                    MessageId: x.Id.Value,
+                    AuthorUserId: x.AuthorUserId.Value,
                     Content: x.Content.Value,
                     Attachments: x.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                     Reactions: reactions?.Select(r => new MessageReactionDto(r.Emoji, r.Count, r.ReactedByCaller)).ToArray()
@@ -88,12 +88,12 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
             .ToArray();
 
         var payload = new GetMessagesResponse(
-            ConversationId: request.ConversationId.ToString(),
+            ConversationId: request.ConversationId.Value,
             Items: items,
             NextCursor: page.NextCursor is null
                 ? null
                 : MessageCursorCodec.Encode(page.NextCursor),
-            LastReadMessageId: page.LastReadMessageId?.ToString());
+            LastReadMessageId: page.LastReadMessageId?.Value);
 
         return ApplicationResponse<GetMessagesResponse>.Ok(payload);
     }

@@ -70,9 +70,9 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         }
 
         var payload = new OpenConversationResponse(
-            ConversationId: result.Conversation.Id.ToString(),
+            ConversationId: result.Conversation.Id.Value,
             Type: "direct",
-            ParticipantIds: [currentUserId.ToString(), targetUserId.ToString()],
+            ParticipantIds: [currentUserId.Value, targetUserId.Value],
             CreatedAtUtc: result.Conversation.CreatedAtUtc,
             Created: result.WasCreated);
 

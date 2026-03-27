@@ -153,10 +153,9 @@ public sealed class SearchUsersEndpointTests : IClassFixture<HarmonieWebApplicat
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    private async Task DeactivateUserAsync(string userId)
+    private async Task DeactivateUserAsync(Guid userId)
     {
-        if (!UserId.TryParse(userId, out var parsedUserId) || parsedUserId is null)
-            throw new InvalidOperationException("Generated user ID could not be parsed.");
+        var parsedUserId = UserId.From(userId);
 
         await using var scope = _factory.Services.CreateAsyncScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();

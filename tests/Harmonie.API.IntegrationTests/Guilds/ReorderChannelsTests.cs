@@ -30,8 +30,8 @@ public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationF
         var reorderResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guildId}/channels/reorder",
             new ReorderChannelsRequest([
-                new ReorderChannelsItemRequest(Guid.Parse(ch2), 0),
-                new ReorderChannelsItemRequest(Guid.Parse(ch1), 1)
+                new ReorderChannelsItemRequest(ch2, 0),
+                new ReorderChannelsItemRequest(ch1, 1)
             ]),
             owner.AccessToken);
         reorderResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -58,8 +58,8 @@ public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationF
         await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guildId}/channels/reorder",
             new ReorderChannelsRequest([
-                new ReorderChannelsItemRequest(Guid.Parse(ch2), 0),
-                new ReorderChannelsItemRequest(Guid.Parse(ch1), 1)
+                new ReorderChannelsItemRequest(ch2, 0),
+                new ReorderChannelsItemRequest(ch1, 1)
             ]),
             owner.AccessToken);
 
@@ -90,7 +90,7 @@ public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationF
         var reorderResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guildId}/channels/reorder",
             new ReorderChannelsRequest([
-                new ReorderChannelsItemRequest(Guid.Parse(ch1), 5)
+                new ReorderChannelsItemRequest(ch1, 5)
             ]),
             member.AccessToken);
         reorderResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -146,8 +146,8 @@ public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationF
         var reorderResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guildId}/channels/reorder",
             new ReorderChannelsRequest([
-                new ReorderChannelsItemRequest(Guid.Parse(ch1), 0),
-                new ReorderChannelsItemRequest(Guid.Parse(ch1), 1)
+                new ReorderChannelsItemRequest(ch1, 0),
+                new ReorderChannelsItemRequest(ch1, 1)
             ]),
             owner.AccessToken);
         reorderResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);

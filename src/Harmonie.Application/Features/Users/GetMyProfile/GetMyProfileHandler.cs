@@ -33,11 +33,11 @@ public sealed class GetMyProfileHandler : IAuthenticatedHandler<Unit, GetMyProfi
             : null;
 
         var payload = new GetMyProfileResponse(
-            UserId: user.Id.ToString(),
+            UserId: user.Id.Value,
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarFileId: user.AvatarFileId?.ToString(),
+            AvatarFileId: user.AvatarFileId?.Value,
             Avatar: avatar,
             Theme: user.Theme,
             Language: user.Language,

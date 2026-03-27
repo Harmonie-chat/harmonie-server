@@ -127,9 +127,9 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 messageResult.Value.CreatedAtUtc));
 
         var payload = new SendMessageResponse(
-            MessageId: messageResult.Value.Id.ToString(),
-            ChannelId: messageChannelId.ToString(),
-            AuthorUserId: messageResult.Value.AuthorUserId.ToString(),
+            MessageId: messageResult.Value.Id.Value,
+            ChannelId: messageChannelId.Value,
+            AuthorUserId: messageResult.Value.AuthorUserId.Value,
             Content: messageResult.Value.Content.Value,
             Attachments: messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
             CreatedAtUtc: messageResult.Value.CreatedAtUtc);

@@ -32,7 +32,7 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
         // Ban the member first
         var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
-            new BanMemberRequest(Guid.Parse(member.UserId), "Spamming"),
+            new BanMemberRequest(member.UserId, "Spamming"),
             owner.AccessToken);
         banResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -57,7 +57,7 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
         // Ban, then unban
         var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
-            new BanMemberRequest(Guid.Parse(member.UserId)),
+            new BanMemberRequest(member.UserId),
             owner.AccessToken);
         banResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -110,7 +110,7 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
         // Ban target
         var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
-            new BanMemberRequest(Guid.Parse(target.UserId)),
+            new BanMemberRequest(target.UserId),
             owner.AccessToken);
         banResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 

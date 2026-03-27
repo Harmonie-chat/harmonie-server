@@ -6,10 +6,10 @@ public sealed record ListUserGuildsResponse(
     IReadOnlyList<ListUserGuildsItemResponse> Guilds);
 
 public sealed record ListUserGuildsItemResponse(
-    string GuildId,
+    Guid GuildId,
     string Name,
-    string OwnerUserId,
-    string? IconFileId,
+    Guid OwnerUserId,
+    Guid? IconFileId,
     GuildIconDto? Icon,
     string Role,
     DateTime JoinedAtUtc);

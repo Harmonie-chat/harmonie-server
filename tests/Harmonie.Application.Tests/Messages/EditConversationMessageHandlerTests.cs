@@ -207,8 +207,8 @@ public sealed class EditConversationMessageHandlerTests
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
         response.Data!.Content.Should().Be("updated content");
-        response.Data.ConversationId.Should().Be(conversation.Id.ToString());
-        response.Data.AuthorUserId.Should().Be(participantOne.ToString());
+        response.Data.ConversationId.Should().Be(conversation.Id.Value);
+        response.Data.AuthorUserId.Should().Be(participantOne.Value);
         response.Data.UpdatedAtUtc.Should().NotBeNull();
     }
 

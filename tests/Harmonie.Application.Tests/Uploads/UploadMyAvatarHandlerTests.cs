@@ -114,7 +114,7 @@ public sealed class UploadMyAvatarHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        Guid.TryParse(response.Data!.AvatarFileId, out _).Should().BeTrue();
+        response.Data!.AvatarFileId.Should().NotBeEmpty();
 
         capturedUploadRequest.Should().NotBeNull();
         capturedUploadRequest!.StorageKey.Should().StartWith($"avatars/{user.Id}/");

@@ -96,7 +96,7 @@ public sealed class ListBansHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Bans.Should().BeEmpty();
     }
 
@@ -138,11 +138,11 @@ public sealed class ListBansHandlerTests
         response.Data!.Bans.Should().HaveCount(1);
 
         var ban = response.Data.Bans[0];
-        ban.UserId.Should().Be(bannedUserId.ToString());
+        ban.UserId.Should().Be(bannedUserId.Value);
         ban.Username.Should().Be("banneduser");
         ban.DisplayName.Should().Be("Banned User");
         ban.Reason.Should().Be("Spamming");
-        ban.BannedBy.Should().Be(ownerId.ToString());
+        ban.BannedBy.Should().Be(ownerId.Value);
         ban.Avatar.Should().NotBeNull();
         ban.Avatar!.Color.Should().Be("#ff0000");
     }

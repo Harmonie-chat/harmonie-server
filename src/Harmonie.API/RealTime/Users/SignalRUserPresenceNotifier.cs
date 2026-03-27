@@ -20,7 +20,7 @@ public sealed class SignalRUserPresenceNotifier : IUserPresenceNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new UserPresenceChangedEvent(
-            UserId: notification.UserId.ToString(),
+            UserId: notification.UserId.Value,
             Status: notification.Status);
 
         var broadcastTasks = notification.GuildIds.Select(guildId =>
@@ -33,5 +33,5 @@ public sealed class SignalRUserPresenceNotifier : IUserPresenceNotifier
 }
 
 public sealed record UserPresenceChangedEvent(
-    string UserId,
+    Guid UserId,
     string Status);

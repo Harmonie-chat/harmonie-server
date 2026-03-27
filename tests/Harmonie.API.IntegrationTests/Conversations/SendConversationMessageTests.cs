@@ -50,7 +50,7 @@ public sealed class SendConversationMessageTests : IClassFixture<HarmonieWebAppl
 
         var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
-            new SendMessageRequest("hello direct", [Guid.Parse(uploadedFileId)]),
+            new SendMessageRequest("hello direct", [uploadedFileId]),
             caller.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 

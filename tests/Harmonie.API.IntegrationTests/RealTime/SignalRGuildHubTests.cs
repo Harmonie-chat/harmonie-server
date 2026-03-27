@@ -40,7 +40,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -68,7 +68,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         completedTask.Should().Be(eventReceived.Task);
 
         var eventPayload = await eventReceived.Task;
-        eventPayload.GuildId.Should().Be(createGuildPayload.GuildId);
+        eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
     }
 
     private HubConnection CreateHubConnection(string accessToken)

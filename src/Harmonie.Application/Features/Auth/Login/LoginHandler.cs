@@ -86,7 +86,7 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
         await transaction.CommitAsync(cancellationToken);
 
         var payload = new LoginResponse(
-            UserId: user.Id.ToString(),
+            UserId: user.Id.Value,
             Email: user.Email,
             Username: user.Username,
             AccessToken: accessToken,

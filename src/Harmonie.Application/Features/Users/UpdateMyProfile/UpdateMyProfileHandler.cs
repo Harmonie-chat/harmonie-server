@@ -141,11 +141,11 @@ public sealed class UpdateMyProfileHandler
             : null;
 
         var payload = new UpdateMyProfileResponse(
-            UserId: user.Id.ToString(),
+            UserId: user.Id.Value,
             Username: user.Username.Value,
             DisplayName: user.DisplayName,
             Bio: user.Bio,
-            AvatarFileId: user.AvatarFileId?.ToString(),
+            AvatarFileId: user.AvatarFileId?.Value,
             Avatar: avatar,
             Theme: user.Theme,
             Language: user.Language);

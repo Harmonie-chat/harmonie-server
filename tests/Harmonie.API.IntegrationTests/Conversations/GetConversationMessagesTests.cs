@@ -151,7 +151,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<HarmonieWebAppl
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    private async Task SoftDeleteConversationMessageAsync(string messageId)
+    private async Task SoftDeleteConversationMessageAsync(Guid messageId)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
@@ -163,7 +163,7 @@ public sealed class GetConversationMessagesTests : IClassFixture<HarmonieWebAppl
                               WHERE id = @MessageId
                               """;
         command.Parameters.AddWithValue("DeletedAtUtc", DateTime.UtcNow);
-        command.Parameters.AddWithValue("MessageId", Guid.Parse(messageId));
+        command.Parameters.AddWithValue("MessageId", messageId);
         await command.ExecuteNonQueryAsync();
     }
 }

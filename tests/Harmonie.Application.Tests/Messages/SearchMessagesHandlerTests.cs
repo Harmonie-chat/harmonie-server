@@ -164,10 +164,10 @@ public sealed class SearchMessagesHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Items.Should().ContainSingle();
         response.Data.Items[0].ChannelName.Should().Be("deployments");
-        response.Data.Items[0].AuthorUserId.Should().Be(authorId.ToString());
+        response.Data.Items[0].AuthorUserId.Should().Be(authorId.Value);
         response.Data.Items[0].Content.Should().Be("deploy finished");
         response.Data.Items[0].Attachments.Should().BeEmpty();
         response.Data.NextCursor.Should().NotBeNullOrWhiteSpace();

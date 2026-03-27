@@ -5,18 +5,18 @@ using Harmonie.Application.Features.Users;
 namespace Harmonie.Application.Features.Guilds.SearchMessages;
 
 public sealed record SearchMessagesResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<SearchMessagesItemResponse> Items,
     string? NextCursor);
 
 public sealed record SearchMessagesItemResponse(
-    string MessageId,
-    string ChannelId,
+    Guid MessageId,
+    Guid ChannelId,
     string ChannelName,
-    string AuthorUserId,
+    Guid AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
-    string? AuthorAvatarFileId,
+    Guid? AuthorAvatarFileId,
     AvatarAppearanceDto? AuthorAvatar,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,

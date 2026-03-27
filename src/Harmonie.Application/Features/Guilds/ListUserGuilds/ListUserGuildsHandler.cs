@@ -26,10 +26,10 @@ public sealed class ListUserGuildsHandler : IAuthenticatedHandler<Unit, ListUser
 
         var payload = new ListUserGuildsResponse(
             memberships.Select(membership => new ListUserGuildsItemResponse(
-                    GuildId: membership.Guild.Id.ToString(),
+                    GuildId: membership.Guild.Id.Value,
                     Name: membership.Guild.Name.Value,
-                    OwnerUserId: membership.Guild.OwnerUserId.ToString(),
-                    IconFileId: membership.Guild.IconFileId?.ToString(),
+                    OwnerUserId: membership.Guild.OwnerUserId.Value,
+                    IconFileId: membership.Guild.IconFileId?.Value,
                     Icon: membership.Guild.IconColor is not null
                         || membership.Guild.IconName is not null
                         || membership.Guild.IconBg is not null

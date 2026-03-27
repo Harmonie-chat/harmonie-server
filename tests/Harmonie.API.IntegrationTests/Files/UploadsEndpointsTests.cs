@@ -52,7 +52,7 @@ public sealed class UploadsEndpointsTests : IClassFixture<HarmonieWebApplication
         payload!.Filename.Should().Be("avatar.png");
         payload.ContentType.Should().Be("image/png");
         payload.SizeBytes.Should().Be(4);
-        Guid.TryParse(payload.FileId, out _).Should().BeTrue();
+        payload.FileId.Should().NotBeEmpty();
         fakeStorage.UploadedObjects.Should().ContainSingle();
     }
 

@@ -168,10 +168,10 @@ public sealed class ReorderChannelsHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
 
-        var reorderedCh1 = response.Data.Channels.First(c => c.ChannelId == ch1.Id.ToString());
-        var reorderedCh2 = response.Data.Channels.First(c => c.ChannelId == ch2.Id.ToString());
+        var reorderedCh1 = response.Data.Channels.First(c => c.ChannelId == ch1.Id.Value);
+        var reorderedCh2 = response.Data.Channels.First(c => c.ChannelId == ch2.Id.Value);
         reorderedCh2.Position.Should().Be(3);
         reorderedCh1.Position.Should().Be(5);
     }

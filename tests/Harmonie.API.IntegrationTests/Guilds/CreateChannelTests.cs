@@ -58,7 +58,7 @@ public sealed class CreateChannelTests : IClassFixture<HarmonieWebApplicationFac
     }
 
     private async Task CreateChannelInGuildAsync(
-        string guildId,
+        Guid guildId,
         CreateChannelRequest request,
         string accessToken)
     {

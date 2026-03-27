@@ -61,10 +61,10 @@ public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuild
         await transaction.CommitAsync(cancellationToken);
 
         var payload = new CreateGuildInviteResponse(
-            InviteId: invite.Id.ToString(),
+            InviteId: invite.Id.Value,
             Code: invite.Code,
-            GuildId: input.GuildId.ToString(),
-            CreatorId: currentUserId.ToString(),
+            GuildId: input.GuildId.Value,
+            CreatorId: currentUserId.Value,
             MaxUses: invite.MaxUses,
             UsesCount: invite.UsesCount,
             ExpiresAtUtc: invite.ExpiresAtUtc,

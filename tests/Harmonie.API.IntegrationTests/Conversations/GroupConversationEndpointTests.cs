@@ -29,9 +29,9 @@ public sealed class GroupConversationEndpointTests : IClassFixture<HarmonieWebAp
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations/group",
             new CreateGroupConversationRequest("Dev Team", [
-                Guid.Parse(caller.UserId),
-                Guid.Parse(memberB.UserId),
-                Guid.Parse(memberC.UserId)
+                caller.UserId,
+                memberB.UserId,
+                memberC.UserId
             ]),
             caller.AccessToken);
 
@@ -41,7 +41,7 @@ public sealed class GroupConversationEndpointTests : IClassFixture<HarmonieWebAp
         payload.Should().NotBeNull();
         payload!.Type.Should().Be("group");
         payload.Name.Should().Be("Dev Team");
-        payload.ConversationId.Should().NotBeNullOrWhiteSpace();
+        payload.ConversationId.Should().NotBeEmpty();
         payload.ParticipantIds.Should().HaveCount(3)
             .And.Contain(caller.UserId)
             .And.Contain(memberB.UserId)
@@ -58,8 +58,8 @@ public sealed class GroupConversationEndpointTests : IClassFixture<HarmonieWebAp
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations/group",
             new CreateGroupConversationRequest("Dev Team", [
-                Guid.Parse(memberA.UserId),
-                Guid.Parse(memberB.UserId)
+                memberA.UserId,
+                memberB.UserId
             ]),
             caller.AccessToken);
 
@@ -78,7 +78,7 @@ public sealed class GroupConversationEndpointTests : IClassFixture<HarmonieWebAp
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations/group",
             new CreateGroupConversationRequest(null, [
-                Guid.Parse(caller.UserId),
+                caller.UserId,
                 Guid.NewGuid()
             ]),
             caller.AccessToken);
@@ -98,8 +98,8 @@ public sealed class GroupConversationEndpointTests : IClassFixture<HarmonieWebAp
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations/group",
             new CreateGroupConversationRequest(null, [
-                Guid.Parse(caller.UserId),
-                Guid.Parse(caller.UserId)
+                caller.UserId,
+                caller.UserId
             ]),
             caller.AccessToken);
 

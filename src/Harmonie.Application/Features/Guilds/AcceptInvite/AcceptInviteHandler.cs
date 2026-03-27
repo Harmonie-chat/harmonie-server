@@ -113,8 +113,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
             invite.GuildId);
 
         var payload = new AcceptInviteResponse(
-            GuildId: invite.GuildId.ToString(),
-            UserId: currentUserId.ToString(),
+            GuildId: invite.GuildId.Value,
+            UserId: currentUserId.Value,
             Role: GuildRole.Member.ToString(),
             JoinedAtUtc: memberResult.Value.JoinedAtUtc);
 

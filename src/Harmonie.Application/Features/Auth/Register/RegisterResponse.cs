@@ -4,7 +4,7 @@ namespace Harmonie.Application.Features.Auth.Register;
 /// Response for successful user registration with authentication tokens
 /// </summary>
 public sealed record RegisterResponse(
-    string UserId,
+    Guid UserId,
     string Email,
     string Username,
     string AccessToken,

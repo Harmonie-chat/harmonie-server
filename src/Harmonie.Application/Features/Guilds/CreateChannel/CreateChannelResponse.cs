@@ -1,8 +1,8 @@
 namespace Harmonie.Application.Features.Guilds.CreateChannel;
 
 public sealed record CreateChannelResponse(
-    string ChannelId,
-    string GuildId,
+    Guid ChannelId,
+    Guid GuildId,
     string Name,
     string Type,
     bool IsDefault,

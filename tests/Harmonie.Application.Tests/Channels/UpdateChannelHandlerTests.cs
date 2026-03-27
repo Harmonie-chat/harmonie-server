@@ -138,7 +138,7 @@ public sealed class UpdateChannelHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.ChannelId.Should().Be(channel.Id.ToString());
+        response.Data!.ChannelId.Should().Be(channel.Id.Value);
         response.Data.Name.Should().Be("new-name");
     }
 

@@ -118,8 +118,8 @@ public sealed class InviteMemberHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
-        response.Data.UserId.Should().Be(targetUserId.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
+        response.Data.UserId.Should().Be(targetUserId.Value);
         response.Data.Role.Should().Be(GuildRole.Member.ToString());
     }
 

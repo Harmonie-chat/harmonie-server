@@ -59,9 +59,9 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<Harmonie
         completedTask.Should().Be(messageReceived.Task);
 
         var eventPayload = await messageReceived.Task;
-        eventPayload.MessageId.Should().Be(sendPayload!.MessageId);
-        eventPayload.ConversationId.Should().Be(conversationId);
-        eventPayload.AuthorUserId.Should().Be(sender.UserId);
+        eventPayload.MessageId.Should().Be(sendPayload!.MessageId.ToString());
+        eventPayload.ConversationId.Should().Be(conversationId.ToString());
+        eventPayload.AuthorUserId.Should().Be(sender.UserId.ToString());
         eventPayload.Content.Should().Be("hello realtime dm");
     }
 
@@ -106,8 +106,8 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<Harmonie
         completedTask.Should().Be(messageReceived.Task);
 
         var eventPayload = await messageReceived.Task;
-        eventPayload.MessageId.Should().Be(sendPayload.MessageId);
-        eventPayload.ConversationId.Should().Be(conversationId);
+        eventPayload.MessageId.Should().Be(sendPayload.MessageId.ToString());
+        eventPayload.ConversationId.Should().Be(conversationId.ToString());
         eventPayload.Content.Should().Be("updated realtime dm");
         eventPayload.UpdatedAtUtc.Should().NotBe(default);
     }
@@ -152,8 +152,8 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<Harmonie
         completedTask.Should().Be(messageReceived.Task);
 
         var eventPayload = await messageReceived.Task;
-        eventPayload.MessageId.Should().Be(sendPayload.MessageId);
-        eventPayload.ConversationId.Should().Be(conversationId);
+        eventPayload.MessageId.Should().Be(sendPayload.MessageId.ToString());
+        eventPayload.ConversationId.Should().Be(conversationId.ToString());
     }
 
     private HubConnection CreateHubConnection(string accessToken)

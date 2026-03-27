@@ -3,7 +3,7 @@ using Harmonie.Domain.Entities.Messages;
 namespace Harmonie.Application.Common.Messages;
 
 public sealed record MessageAttachmentDto(
-    string FileId,
+    Guid FileId,
     string FileName,
     string ContentType,
     long SizeBytes)
@@ -13,7 +13,7 @@ public sealed record MessageAttachmentDto(
         ArgumentNullException.ThrowIfNull(attachment);
 
         return new MessageAttachmentDto(
-            attachment.FileId.ToString(),
+            attachment.FileId.Value,
             attachment.FileName,
             attachment.ContentType,
             attachment.SizeBytes);

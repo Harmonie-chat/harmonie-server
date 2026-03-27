@@ -36,7 +36,7 @@ public sealed class LeaveGuildTests : IClassFixture<HarmonieWebApplicationFactor
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 

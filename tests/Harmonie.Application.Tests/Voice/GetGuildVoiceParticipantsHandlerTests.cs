@@ -98,9 +98,9 @@ public sealed class GetGuildVoiceParticipantsHandlerTests
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
         response.Data!.Channels.Should().HaveCount(1);
-        response.Data.Channels[0].ChannelId.Should().Be(channelId.ToString());
+        response.Data.Channels[0].ChannelId.Should().Be(channelId.Value);
         response.Data.Channels[0].Participants.Should().HaveCount(1);
-        response.Data.Channels[0].Participants[0].UserId.Should().Be(participantUserId.ToString());
+        response.Data.Channels[0].Participants[0].UserId.Should().Be(participantUserId.Value);
         response.Data.Channels[0].Participants[0].Username.Should().Be("alice");
     }
 

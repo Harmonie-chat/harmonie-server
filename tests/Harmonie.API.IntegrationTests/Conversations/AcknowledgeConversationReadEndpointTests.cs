@@ -28,7 +28,7 @@ public sealed class AcknowledgeConversationReadEndpointTests : IClassFixture<Har
 
         var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -60,13 +60,13 @@ public sealed class AcknowledgeConversationReadEndpointTests : IClassFixture<Har
 
         var firstResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             caller.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var secondResponse = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             caller.AccessToken);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }

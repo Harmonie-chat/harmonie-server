@@ -28,7 +28,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
 
         var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
-            new SendMessageRequest("message with attachment", [Guid.Parse(fileId)]),
+            new SendMessageRequest("message with attachment", [fileId]),
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -58,7 +58,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
 
         var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
-            new SendMessageRequest("message with attachment", [Guid.Parse(fileId)]),
+            new SendMessageRequest("message with attachment", [fileId]),
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -98,7 +98,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
 
         var sendResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
-            new SendMessageRequest("message with attachment", [Guid.Parse(fileId)]),
+            new SendMessageRequest("message with attachment", [fileId]),
             owner.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 

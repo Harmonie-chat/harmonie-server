@@ -37,7 +37,7 @@ public sealed class GuildInvitesTests : IClassFixture<HarmonieWebApplicationFact
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -73,7 +73,7 @@ public sealed class GuildInvitesTests : IClassFixture<HarmonieWebApplicationFact
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(target.UserId)),
+            new InviteMemberRequest(target.UserId),
             outsider.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
@@ -125,13 +125,13 @@ public sealed class GuildInvitesTests : IClassFixture<HarmonieWebApplicationFact
 
         var firstInviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         firstInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var secondInviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         secondInviteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
 

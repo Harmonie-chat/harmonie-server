@@ -173,7 +173,7 @@ public sealed class SearchMessagesHandler : IAuthenticatedHandler<SearchMessages
             cancellationToken);
 
         var payload = new SearchMessagesResponse(
-            GuildId: input.GuildId.ToString(),
+            GuildId: input.GuildId.Value,
             Items: page.Items
                 .Select(item =>
                 {
@@ -182,13 +182,13 @@ public sealed class SearchMessagesHandler : IAuthenticatedHandler<SearchMessages
                         : null;
 
                     return new SearchMessagesItemResponse(
-                        MessageId: item.MessageId.ToString(),
-                        ChannelId: item.ChannelId.ToString(),
+                        MessageId: item.MessageId.Value,
+                        ChannelId: item.ChannelId.Value,
                         ChannelName: item.ChannelName,
-                        AuthorUserId: item.AuthorUserId.ToString(),
+                        AuthorUserId: item.AuthorUserId.Value,
                         AuthorUsername: item.AuthorUsername,
                         AuthorDisplayName: item.AuthorDisplayName,
-                        AuthorAvatarFileId: item.AuthorAvatarFileId?.ToString(),
+                        AuthorAvatarFileId: item.AuthorAvatarFileId?.Value,
                         AuthorAvatar: authorAvatar,
                         Content: item.Content.Value,
                         Attachments: item.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),

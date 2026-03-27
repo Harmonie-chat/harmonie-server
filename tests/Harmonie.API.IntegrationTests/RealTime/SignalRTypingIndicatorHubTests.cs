@@ -53,8 +53,8 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         channelsPayload.Should().NotBeNull();
 
         var textChannel = channelsPayload!.Channels.First(channel => channel.Type == "Text");
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
+        var textChannelId = textChannel.ChannelId;
+        textChannelId.Should().NotBeEmpty();
 
         await using var connection = CreateHubConnection(outsider.AccessToken);
         await StartAndWaitReadyAsync(connection);
@@ -82,7 +82,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -95,8 +95,8 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         channelsPayload.Should().NotBeNull();
 
         var textChannel = channelsPayload!.Channels.First(channel => channel.Type == "Text");
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
+        var textChannelId = textChannel.ChannelId;
+        textChannelId.Should().NotBeEmpty();
 
         await using var receiverConnection = CreateHubConnection(member.AccessToken);
         var typingReceived = new TaskCompletionSource<SignalRUserTypingEvent>(
@@ -118,8 +118,8 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         completedTask.Should().Be(typingReceived.Task);
 
         var eventPayload = await typingReceived.Task;
-        eventPayload.UserId.Should().Be(owner.UserId);
-        eventPayload.ChannelId.Should().Be(textChannel.ChannelId);
+        eventPayload.UserId.Should().Be(owner.UserId.ToString());
+        eventPayload.ChannelId.Should().Be(textChannel.ChannelId.ToString());
         eventPayload.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
     }
 
@@ -140,7 +140,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -153,8 +153,8 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         channelsPayload.Should().NotBeNull();
 
         var textChannel = channelsPayload!.Channels.First(channel => channel.Type == "Text");
-        var textChannelIdParsed = Guid.TryParse(textChannel.ChannelId, out var textChannelId);
-        textChannelIdParsed.Should().BeTrue();
+        var textChannelId = textChannel.ChannelId;
+        textChannelId.Should().NotBeEmpty();
 
         var eventsReceived = 0;
         await using var receiverConnection = CreateHubConnection(member.AccessToken);
@@ -190,7 +190,7 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         await using var connection = CreateHubConnection(outsider.AccessToken);
         await StartAndWaitReadyAsync(connection);
 
-        var act = async () => await connection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
+        var act = async () => await connection.InvokeAsync("StartTypingConversation", conversationId);
 
         var exception = await act.Should().ThrowAsync<HubException>();
         exception.Which.Message.Should().Contain(ApplicationErrorCodes.Conversation.AccessDenied);
@@ -216,15 +216,15 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
 
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
         await StartAndWaitReadyAsync(senderConnection);
-        await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
+        await senderConnection.InvokeAsync("StartTypingConversation", conversationId);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var completedTask = await Task.WhenAny(typingReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
         completedTask.Should().Be(typingReceived.Task);
 
         var eventPayload = await typingReceived.Task;
-        eventPayload.UserId.Should().Be(sender.UserId);
-        eventPayload.ConversationId.Should().Be(conversationId);
+        eventPayload.UserId.Should().Be(sender.UserId.ToString());
+        eventPayload.ConversationId.Should().Be(conversationId.ToString());
         eventPayload.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
     }
 
@@ -247,9 +247,9 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
         await using var senderConnection = CreateHubConnection(sender.AccessToken);
         await StartAndWaitReadyAsync(senderConnection);
 
-        await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
-        await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
-        await senderConnection.InvokeAsync("StartTypingConversation", Guid.Parse(conversationId));
+        await senderConnection.InvokeAsync("StartTypingConversation", conversationId);
+        await senderConnection.InvokeAsync("StartTypingConversation", conversationId);
+        await senderConnection.InvokeAsync("StartTypingConversation", conversationId);
 
         await Task.Delay(TimeSpan.FromSeconds(1));
 

@@ -45,7 +45,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
         Assert.NotNull(payload);
         Assert.Equal("hello.txt", payload!.Filename);
         Assert.Equal("text/plain", payload.ContentType);
-        Assert.False(string.IsNullOrWhiteSpace(payload.FileId));
+        Assert.NotEqual(Guid.Empty, payload.FileId);
 
         // Verify file exists on disk by downloading through the authorized endpoint
         var downloadResponse = await client.SendAuthorizedGetAsync($"/api/files/{payload.FileId}", user.AccessToken);
@@ -113,7 +113,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
         var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
 
         Assert.NotNull(payload);
-        Assert.False(string.IsNullOrWhiteSpace(payload!.FileId));
+        Assert.NotEqual(Guid.Empty, payload!.FileId);
         Assert.Equal("doc.txt", payload.Filename);
         Assert.Equal("text/plain", payload.ContentType);
         Assert.Equal(bytes.Length, payload.SizeBytes);
@@ -297,7 +297,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
 
         var sendMessageResponse = await client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
-            new SendMessageRequest("message with attachment", [Guid.Parse(uploadPayload!.FileId)]),
+            new SendMessageRequest("message with attachment", [uploadPayload!.FileId]),
             user.AccessToken);
         Assert.Equal(HttpStatusCode.Created, sendMessageResponse.StatusCode);
 
@@ -332,7 +332,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
 
         var sendMessageResponse = await client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",
-            new ConversationSendMessageRequest("message with attachment", [Guid.Parse(uploadPayload!.FileId)]),
+            new ConversationSendMessageRequest("message with attachment", [uploadPayload!.FileId]),
             caller.AccessToken);
         Assert.Equal(HttpStatusCode.Created, sendMessageResponse.StatusCode);
 
@@ -407,14 +407,14 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
             });
         });
 
-    private static async Task<string> OpenConversationAsync(
+    private static async Task<Guid> OpenConversationAsync(
         HttpClient client,
         string accessToken,
-        string targetUserId)
+        Guid targetUserId)
     {
         var response = await client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(targetUserId)),
+            new OpenConversationRequest(targetUserId),
             accessToken);
         Assert.True(response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK);
 
@@ -423,7 +423,7 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
         return payload!.ConversationId;
     }
 
-    private static async Task<string> CreateGuildAsync(
+    private static async Task<Guid> CreateGuildAsync(
         HttpClient client,
         string accessToken,
         string name)
@@ -439,10 +439,10 @@ public sealed class UploadsLocalFileSystemE2ETests : IClassFixture<HarmonieWebAp
         return payload!.GuildId;
     }
 
-    private static async Task<string> CreateChannelAsync(
+    private static async Task<Guid> CreateChannelAsync(
         HttpClient client,
         string accessToken,
-        string guildId,
+        Guid guildId,
         string name)
     {
         var response = await client.SendAuthorizedPostAsync(

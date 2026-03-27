@@ -184,7 +184,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
     // ─── Helpers ────────────────────────────────────────────────────
 
     private async Task<ConversationSendMessageResponse> SendConversationMessageAsync(
-        string conversationId,
+        Guid conversationId,
         string content,
         string accessToken)
     {

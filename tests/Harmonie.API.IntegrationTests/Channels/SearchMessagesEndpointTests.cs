@@ -123,7 +123,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
     }
 
-    private async Task<string> GetDefaultTextChannelIdAsync(string accessToken, string guildId)
+    private async Task<Guid> GetDefaultTextChannelIdAsync(string accessToken, Guid guildId)
     {
         var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guildId}/channels",
@@ -136,7 +136,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         return payload!.Channels.First(channel => channel.Type == "Text").ChannelId;
     }
 
-    private async Task SendMessageAsync(string channelId, string content, string accessToken)
+    private async Task SendMessageAsync(Guid channelId, string content, string accessToken)
     {
         var response = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/messages",
@@ -146,10 +146,10 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
     }
 
     private static string BuildSearchUri(
-        string guildId,
+        Guid guildId,
         string query,
-        string? channelId = null,
-        string? authorId = null,
+        Guid? channelId = null,
+        Guid? authorId = null,
         int? limit = null,
         string? cursor = null)
     {
@@ -159,10 +159,10 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         };
 
         if (channelId is not null)
-            parts.Add($"channelId={Uri.EscapeDataString(channelId)}");
+            parts.Add($"channelId={Uri.EscapeDataString(channelId.Value.ToString())}");
 
         if (authorId is not null)
-            parts.Add($"authorId={Uri.EscapeDataString(authorId)}");
+            parts.Add($"authorId={Uri.EscapeDataString(authorId.Value.ToString())}");
 
         if (limit.HasValue)
             parts.Add($"limit={limit.Value}");

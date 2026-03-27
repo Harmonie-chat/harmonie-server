@@ -214,9 +214,9 @@ public sealed class BanMemberHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
-        response.Data.UserId.Should().Be(targetId.ToString());
-        response.Data.BannedBy.Should().Be(ownerId.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
+        response.Data.UserId.Should().Be(targetId.Value);
+        response.Data.BannedBy.Should().Be(ownerId.Value);
 
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),

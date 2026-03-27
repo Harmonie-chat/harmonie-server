@@ -41,11 +41,11 @@ public sealed class GetMyProfileHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.UserId.Should().Be(user.Id.ToString());
+        response.Data!.UserId.Should().Be(user.Id.Value);
         response.Data.Username.Should().Be(user.Username.Value);
         response.Data.DisplayName.Should().Be("Alice");
         response.Data.Bio.Should().Be("Hello Harmonie");
-        response.Data.AvatarFileId.Should().Be(avatarFileId.ToString());
+        response.Data.AvatarFileId.Should().Be(avatarFileId.Value);
         response.Data.Theme.Should().Be("default");
         response.Data.Language.Should().BeNull();
         response.Data.Avatar.Should().BeNull();

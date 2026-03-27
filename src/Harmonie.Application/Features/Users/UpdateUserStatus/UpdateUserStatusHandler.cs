@@ -75,7 +75,7 @@ public sealed class UpdateUserStatusHandler
         }
 
         var payload = new UpdateUserStatusResponse(
-            UserId: user.Id.ToString(),
+            UserId: user.Id.Value,
             Status: user.Status);
 
         return ApplicationResponse<UpdateUserStatusResponse>.Ok(payload);

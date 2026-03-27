@@ -27,7 +27,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
 
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(target.UserId)),
+            new OpenConversationRequest(target.UserId),
             caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -35,7 +35,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
         var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>();
         payload.Should().NotBeNull();
         payload!.Created.Should().BeTrue();
-        payload.ConversationId.Should().NotBeNullOrWhiteSpace();
+        payload.ConversationId.Should().NotBeEmpty();
         payload.Type.Should().Be("direct");
         payload.ParticipantIds.Should().HaveCount(2).And.Contain(caller.UserId).And.Contain(target.UserId);
     }
@@ -48,7 +48,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
 
         var firstResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(target.UserId)),
+            new OpenConversationRequest(target.UserId),
             caller.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -57,7 +57,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
 
         var secondResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(caller.UserId)),
+            new OpenConversationRequest(caller.UserId),
             target.AccessToken);
 
         secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -92,7 +92,7 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
 
         var response = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(caller.UserId)),
+            new OpenConversationRequest(caller.UserId),
             caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -121,13 +121,13 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
 
         var openFirstResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(targetOne.UserId)),
+            new OpenConversationRequest(targetOne.UserId),
             caller.AccessToken);
         openFirstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var openSecondResponse = await _client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(targetTwo.UserId)),
+            new OpenConversationRequest(targetTwo.UserId),
             caller.AccessToken);
         openSecondResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 

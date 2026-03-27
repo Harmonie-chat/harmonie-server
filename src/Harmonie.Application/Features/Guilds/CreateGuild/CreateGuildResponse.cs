@@ -3,11 +3,11 @@ using Harmonie.Application.Features.Guilds;
 namespace Harmonie.Application.Features.Guilds.CreateGuild;
 
 public sealed record CreateGuildResponse(
-    string GuildId,
+    Guid GuildId,
     string Name,
-    string OwnerUserId,
-    string? IconFileId,
+    Guid OwnerUserId,
+    Guid? IconFileId,
     GuildIconDto? Icon,
-    string DefaultTextChannelId,
-    string DefaultVoiceChannelId,
+    Guid DefaultTextChannelId,
+    Guid DefaultVoiceChannelId,
     DateTime CreatedAtUtc);

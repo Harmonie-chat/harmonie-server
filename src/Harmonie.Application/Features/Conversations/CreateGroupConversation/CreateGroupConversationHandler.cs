@@ -69,10 +69,10 @@ public sealed class CreateGroupConversationHandler : IAuthenticatedHandler<Creat
             conversation.Id);
 
         var payload = new CreateGroupConversationResponse(
-            ConversationId: conversation.Id.ToString(),
+            ConversationId: conversation.Id.Value,
             Type: "group",
             Name: conversation.Name,
-            ParticipantIds: participantUserIds.Select(id => id.ToString()).ToArray(),
+            ParticipantIds: participantUserIds.Select(id => id.Value).ToArray(),
             CreatedAtUtc: conversation.CreatedAtUtc);
 
         return ApplicationResponse<CreateGroupConversationResponse>.Ok(payload);

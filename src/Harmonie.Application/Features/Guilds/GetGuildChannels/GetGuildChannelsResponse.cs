@@ -1,11 +1,11 @@
 namespace Harmonie.Application.Features.Guilds.GetGuildChannels;
 
 public sealed record GetGuildChannelsResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<GetGuildChannelsItemResponse> Channels);
 
 public sealed record GetGuildChannelsItemResponse(
-    string ChannelId,
+    Guid ChannelId,
     string Name,
     string Type,
     bool IsDefault,

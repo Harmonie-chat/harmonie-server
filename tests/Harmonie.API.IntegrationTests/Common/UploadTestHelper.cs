@@ -8,7 +8,7 @@ namespace Harmonie.API.IntegrationTests.Common;
 
 public static class UploadTestHelper
 {
-    public static async Task<string> UploadFileAsync(
+    public static async Task<Guid> UploadFileAsync(
         HttpClient client,
         string accessToken,
         string fileName,
@@ -31,7 +31,7 @@ public static class UploadTestHelper
 
         var payload = await response.Content.ReadFromJsonAsync<UploadFileResponse>();
         payload.Should().NotBeNull();
-        payload!.FileId.Should().NotBeNullOrWhiteSpace();
+        payload!.FileId.Should().NotBeEmpty();
         return payload.FileId;
     }
 }

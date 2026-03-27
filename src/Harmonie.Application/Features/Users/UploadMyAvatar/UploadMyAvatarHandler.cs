@@ -127,7 +127,7 @@ public sealed class UploadMyAvatarHandler
             await _uploadedFileCleanupService.DeleteIfExistsAsync(previousAvatarFileId, cancellationToken);
 
         return ApplicationResponse<UploadMyAvatarResponse>.Ok(
-            new UploadMyAvatarResponse(uploadedFileResult.Value.Id.ToString()));
+            new UploadMyAvatarResponse(uploadedFileResult.Value.Id.Value));
     }
 
     private static async Task<MemoryStream> ResizeImageAsync(

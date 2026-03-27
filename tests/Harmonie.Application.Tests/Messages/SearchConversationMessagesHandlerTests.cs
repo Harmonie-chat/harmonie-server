@@ -110,9 +110,9 @@ public sealed class SearchConversationMessagesHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.ConversationId.Should().Be(conversation.Id.ToString());
+        response.Data!.ConversationId.Should().Be(conversation.Id.Value);
         response.Data.Items.Should().ContainSingle();
-        response.Data.Items[0].AuthorUserId.Should().Be(user2.ToString());
+        response.Data.Items[0].AuthorUserId.Should().Be(user2.Value);
         response.Data.Items[0].AuthorUsername.Should().Be("participant-two");
         response.Data.Items[0].Content.Should().Be("deploy succeeded");
         response.Data.Items[0].Attachments.Should().BeEmpty();

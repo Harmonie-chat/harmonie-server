@@ -25,7 +25,7 @@ public static class GuildTestHelper
         return guild!;
     }
 
-    public static async Task<string> CreateGuildAndGetIdAsync(
+    public static async Task<Guid> CreateGuildAndGetIdAsync(
         HttpClient client,
         string accessToken,
         string guildName)
@@ -36,20 +36,20 @@ public static class GuildTestHelper
 
     public static async Task InviteMemberAsync(
         HttpClient client,
-        string guildId,
-        string userId,
+        Guid guildId,
+        Guid userId,
         string accessToken)
     {
         var response = await client.SendAuthorizedPostAsync(
             $"/api/guilds/{guildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(userId)),
+            new InviteMemberRequest(userId),
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     public static async Task<CreateGuildInviteResponse> CreateInviteAsync(
         HttpClient client,
-        string guildId,
+        Guid guildId,
         string accessToken,
         int? maxUses = null)
     {

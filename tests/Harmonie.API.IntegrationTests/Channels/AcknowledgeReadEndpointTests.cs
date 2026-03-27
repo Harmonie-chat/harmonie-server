@@ -27,7 +27,7 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<HarmonieWebAppl
 
         var response = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -57,13 +57,13 @@ public sealed class AcknowledgeReadEndpointTests : IClassFixture<HarmonieWebAppl
 
         var firstResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var secondResponse = await _client.SendAuthorizedPostAsync(
             $"/api/channels/{channelId}/ack",
-            new AcknowledgeReadRequest(Guid.Parse(message.MessageId)),
+            new AcknowledgeReadRequest(message.MessageId),
             owner.AccessToken);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }

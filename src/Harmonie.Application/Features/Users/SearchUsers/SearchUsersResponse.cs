@@ -4,9 +4,9 @@ public sealed record SearchUsersResponse(
     IReadOnlyList<SearchUsersItemResponse> Users);
 
 public sealed record SearchUsersItemResponse(
-    string UserId,
+    Guid UserId,
     string Username,
     string? DisplayName,
-    string? AvatarFileId,
+    Guid? AvatarFileId,
     string? Bio,
     string Status);

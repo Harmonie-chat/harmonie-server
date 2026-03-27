@@ -1,11 +1,11 @@
 namespace Harmonie.Application.Features.Guilds.ReorderChannels;
 
 public sealed record ReorderChannelsResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<ReorderChannelsItemResponse> Channels);
 
 public sealed record ReorderChannelsItemResponse(
-    string ChannelId,
+    Guid ChannelId,
     string Name,
     string Type,
     bool IsDefault,

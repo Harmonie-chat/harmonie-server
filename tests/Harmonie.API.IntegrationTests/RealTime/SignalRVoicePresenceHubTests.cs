@@ -57,7 +57,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var webhookResponse = await SendLiveKitWebhookAsync(
-            CreateParticipantWebhookBody("participant_joined", voiceChannelId, member.UserId, member.Username));
+            CreateParticipantWebhookBody("participant_joined", voiceChannelId.ToString(), member.UserId.ToString(), member.Username));
         webhookResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -65,9 +65,9 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         completedTask.Should().Be(eventReceived.Task);
 
         var eventPayload = await eventReceived.Task;
-        eventPayload.GuildId.Should().Be(guildId);
-        eventPayload.ChannelId.Should().Be(voiceChannelId);
-        eventPayload.UserId.Should().Be(member.UserId);
+        eventPayload.GuildId.Should().Be(guildId.ToString());
+        eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
+        eventPayload.UserId.Should().Be(member.UserId.ToString());
         eventPayload.ParticipantName.Should().Be(member.Username);
         eventPayload.JoinedAtUtc.Should().NotBe(default);
     }
@@ -96,7 +96,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var webhookResponse = await SendLiveKitWebhookAsync(
-            CreateParticipantWebhookBody("participant_left", voiceChannelId, member.UserId, member.Username));
+            CreateParticipantWebhookBody("participant_left", voiceChannelId.ToString(), member.UserId.ToString(), member.Username));
         webhookResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -104,9 +104,9 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         completedTask.Should().Be(eventReceived.Task);
 
         var eventPayload = await eventReceived.Task;
-        eventPayload.GuildId.Should().Be(guildId);
-        eventPayload.ChannelId.Should().Be(voiceChannelId);
-        eventPayload.UserId.Should().Be(member.UserId);
+        eventPayload.GuildId.Should().Be(guildId.ToString());
+        eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
+        eventPayload.UserId.Should().Be(member.UserId.ToString());
         eventPayload.ParticipantName.Should().Be(member.Username);
         eventPayload.LeftAtUtc.Should().NotBe(default);
     }
@@ -126,7 +126,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
             .Build();
     }
 
-    private async Task<string> CreateGuildAndInviteMemberAsync(RegisterResponse owner, RegisterResponse member)
+    private async Task<Guid> CreateGuildAndInviteMemberAsync(RegisterResponse owner, RegisterResponse member)
     {
         var createGuildResponse = await _client.SendAuthorizedPostAsync(
             "/api/guilds",
@@ -139,14 +139,14 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return createGuildPayload.GuildId;
     }
 
-    private async Task<string> GetVoiceChannelIdAsync(string guildId, string accessToken)
+    private async Task<Guid> GetVoiceChannelIdAsync(Guid guildId, string accessToken)
     {
         var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guildId}/channels",

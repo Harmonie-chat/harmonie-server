@@ -138,8 +138,8 @@ public sealed class AcceptInviteHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(_guildId.ToString());
-        response.Data.UserId.Should().Be(_callerId.ToString());
+        response.Data!.GuildId.Should().Be(_guildId.Value);
+        response.Data.UserId.Should().Be(_callerId.Value);
         response.Data.Role.Should().Be(GuildRole.Member.ToString());
 
         _guildInviteRepositoryMock.Verify(

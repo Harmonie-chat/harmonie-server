@@ -159,13 +159,13 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
             guild.Id);
 
         var payload = new CreateGuildResponse(
-            GuildId: guild.Id.ToString(),
+            GuildId: guild.Id.Value,
             Name: guild.Name.Value,
-            OwnerUserId: guild.OwnerUserId.ToString(),
-            IconFileId: guild.IconFileId?.ToString(),
+            OwnerUserId: guild.OwnerUserId.Value,
+            IconFileId: guild.IconFileId?.Value,
             Icon: BuildIcon(guild),
-            DefaultTextChannelId: defaultTextChannelResult.Value.Id.ToString(),
-            DefaultVoiceChannelId: defaultVoiceChannelResult.Value.Id.ToString(),
+            DefaultTextChannelId: defaultTextChannelResult.Value.Id.Value,
+            DefaultVoiceChannelId: defaultVoiceChannelResult.Value.Id.Value,
             CreatedAtUtc: guild.CreatedAtUtc);
 
         return ApplicationResponse<CreateGuildResponse>.Ok(payload);

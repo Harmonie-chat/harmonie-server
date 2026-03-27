@@ -3,14 +3,14 @@ using Harmonie.Application.Features.Users;
 namespace Harmonie.Application.Features.Guilds.GetGuildMembers;
 
 public sealed record GetGuildMembersResponse(
-    string GuildId,
+    Guid GuildId,
     IReadOnlyList<GetGuildMembersItemResponse> Members);
 
 public sealed record GetGuildMembersItemResponse(
-    string UserId,
+    Guid UserId,
     string Username,
     string? DisplayName,
-    string? AvatarFileId,
+    Guid? AvatarFileId,
     AvatarAppearanceDto? Avatar,
     string? Bio,
     bool IsActive,

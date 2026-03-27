@@ -5,16 +5,16 @@ using Harmonie.Application.Features.Users;
 namespace Harmonie.Application.Features.Conversations.SearchConversationMessages;
 
 public sealed record SearchConversationMessagesResponse(
-    string ConversationId,
+    Guid ConversationId,
     IReadOnlyList<SearchConversationMessagesItemResponse> Items,
     string? NextCursor);
 
 public sealed record SearchConversationMessagesItemResponse(
-    string MessageId,
-    string AuthorUserId,
+    Guid MessageId,
+    Guid AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
-    string? AuthorAvatarFileId,
+    Guid? AuthorAvatarFileId,
     AvatarAppearanceDto? AuthorAvatar,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,

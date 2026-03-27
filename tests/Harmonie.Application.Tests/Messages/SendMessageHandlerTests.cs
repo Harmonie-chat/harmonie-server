@@ -195,7 +195,7 @@ public sealed class SendMessageHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Data!.Attachments.Should().ContainSingle();
-        response.Data.Attachments[0].FileId.Should().Be(attachment.Id.ToString());
+        response.Data.Attachments[0].FileId.Should().Be(attachment.Id.Value);
         persistedMessage.Should().NotBeNull();
         persistedMessage!.Attachments.Should().ContainSingle();
         persistedMessage.Attachments[0].FileId.Should().Be(attachment.Id);

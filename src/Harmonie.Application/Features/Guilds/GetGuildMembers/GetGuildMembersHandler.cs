@@ -42,7 +42,7 @@ public sealed class GetGuildMembersHandler : IAuthenticatedHandler<GuildId, GetG
         var members = await _guildMemberRepository.GetGuildMembersAsync(guildId, cancellationToken);
 
         var payload = new GetGuildMembersResponse(
-            GuildId: guildId.ToString(),
+            GuildId: guildId.Value,
             Members: members.Select(member =>
                 {
                     var avatar = member.AvatarColor is not null || member.AvatarIcon is not null || member.AvatarBg is not null
@@ -50,10 +50,10 @@ public sealed class GetGuildMembersHandler : IAuthenticatedHandler<GuildId, GetG
                         : null;
 
                     return new GetGuildMembersItemResponse(
-                        UserId: member.UserId.ToString(),
+                        UserId: member.UserId.Value,
                         Username: member.Username.Value,
                         DisplayName: member.DisplayName,
-                        AvatarFileId: member.AvatarFileId?.ToString(),
+                        AvatarFileId: member.AvatarFileId?.Value,
                         Avatar: avatar,
                         Bio: member.Bio,
                         IsActive: member.IsActive,

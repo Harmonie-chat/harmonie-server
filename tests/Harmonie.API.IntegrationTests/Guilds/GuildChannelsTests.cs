@@ -47,7 +47,7 @@ public sealed class GuildChannelsTests : IClassFixture<HarmonieWebApplicationFac
         payload.Type.Should().Be("Text");
         payload.IsDefault.Should().BeFalse();
         payload.Position.Should().Be(2);
-        payload.ChannelId.Should().NotBeNullOrEmpty();
+        payload.ChannelId.Should().NotBeEmpty();
     }
 
     [Fact]

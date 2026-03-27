@@ -87,7 +87,7 @@ public sealed class OpenConversationHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.ConversationId.Should().Be(conversation.Id.ToString());
+        response.Data!.ConversationId.Should().Be(conversation.Id.Value);
         response.Data.Created.Should().BeTrue();
         response.Data.Type.Should().Be("direct");
         response.Data.ParticipantIds.Should().HaveCount(2);
@@ -116,7 +116,7 @@ public sealed class OpenConversationHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Data!.Created.Should().BeFalse();
-        response.Data.ConversationId.Should().Be(conversation.Id.ToString());
+        response.Data.ConversationId.Should().Be(conversation.Id.Value);
     }
 
     private static User CreateUser(UserId userId, string suffix)

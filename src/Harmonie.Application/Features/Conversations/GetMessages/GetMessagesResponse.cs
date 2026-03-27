@@ -4,14 +4,14 @@ using Harmonie.Application.Common.Messages;
 namespace Harmonie.Application.Features.Conversations.GetMessages;
 
 public sealed record GetMessagesResponse(
-    string ConversationId,
+    Guid ConversationId,
     IReadOnlyList<GetMessagesItemResponse> Items,
     string? NextCursor,
-    string? LastReadMessageId);
+    Guid? LastReadMessageId);
 
 public sealed record GetMessagesItemResponse(
-    string MessageId,
-    string AuthorUserId,
+    Guid MessageId,
+    Guid AuthorUserId,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     IReadOnlyList<MessageReactionDto> Reactions,

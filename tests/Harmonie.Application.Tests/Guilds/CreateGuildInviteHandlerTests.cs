@@ -98,8 +98,8 @@ public sealed class CreateGuildInviteHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
-        response.Data.CreatorId.Should().Be(callerId.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
+        response.Data.CreatorId.Should().Be(callerId.Value);
         response.Data.MaxUses.Should().Be(10);
         response.Data.UsesCount.Should().Be(0);
         response.Data.ExpiresAtUtc.Should().NotBeNull();

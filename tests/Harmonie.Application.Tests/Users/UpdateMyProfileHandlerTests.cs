@@ -62,7 +62,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.DisplayName.Should().Be("Updated Name");
         response.Data.Bio.Should().Be("Initial bio");
-        response.Data.AvatarFileId.Should().Be(avatarFileId.ToString());
+        response.Data.AvatarFileId.Should().Be(avatarFileId.Value);
 
         _userRepositoryMock.Verify(
             x => x.UpdateProfileAsync(

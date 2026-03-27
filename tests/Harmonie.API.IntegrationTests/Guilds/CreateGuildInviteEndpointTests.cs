@@ -48,7 +48,7 @@ public sealed class CreateGuildInviteEndpointTests : IClassFixture<HarmonieWebAp
         invite.UsesCount.Should().Be(0);
         invite.ExpiresAtUtc.Should().NotBeNull();
         invite.Code.Should().HaveLength(8);
-        invite.InviteId.Should().NotBeNullOrWhiteSpace();
+        invite.InviteId.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class CreateGuildInviteEndpointTests : IClassFixture<HarmonieWebAp
 
         var inviteMemberResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteMemberResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 

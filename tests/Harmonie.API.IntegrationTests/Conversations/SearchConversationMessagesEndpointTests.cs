@@ -111,7 +111,7 @@ public sealed class SearchConversationMessagesEndpointTests : IClassFixture<Harm
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    private async Task SendConversationMessageAsync(string conversationId, string content, string accessToken)
+    private async Task SendConversationMessageAsync(Guid conversationId, string content, string accessToken)
     {
         var response = await _client.SendAuthorizedPostAsync(
             $"/api/conversations/{conversationId}/messages",

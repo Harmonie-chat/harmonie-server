@@ -49,7 +49,7 @@ public sealed class GetGuildVoiceParticipantsHandler : IAuthenticatedHandler<Gui
 
         var payload = new GetGuildVoiceParticipantsResponse(
             channels.Select(channel => new GetGuildVoiceParticipantsChannelResponse(
-                    ChannelId: channel.ChannelId.ToString(),
+                    ChannelId: channel.ChannelId.Value,
                     Participants: channel.Participants
                         .Select(participant =>
                         {
@@ -61,10 +61,10 @@ public sealed class GetGuildVoiceParticipantsHandler : IAuthenticatedHandler<Gui
                                 : null;
 
                             return new GetGuildVoiceParticipantResponse(
-                                UserId: participant.UserId.ToString(),
+                                UserId: participant.UserId.Value,
                                 Username: participant.Username,
                                 DisplayName: member?.DisplayName,
-                                AvatarFileId: member?.AvatarFileId?.ToString(),
+                                AvatarFileId: member?.AvatarFileId?.Value,
                                 Avatar: avatar);
                         })
                         .ToArray()))

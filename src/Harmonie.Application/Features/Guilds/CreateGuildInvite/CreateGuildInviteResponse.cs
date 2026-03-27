@@ -1,10 +1,10 @@
 namespace Harmonie.Application.Features.Guilds.CreateGuildInvite;
 
 public sealed record CreateGuildInviteResponse(
-    string InviteId,
+    Guid InviteId,
     string Code,
-    string GuildId,
-    string CreatorId,
+    Guid GuildId,
+    Guid CreatorId,
     int? MaxUses,
     int UsesCount,
     DateTime? ExpiresAtUtc,

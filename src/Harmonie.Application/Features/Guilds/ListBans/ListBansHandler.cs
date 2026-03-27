@@ -49,17 +49,17 @@ public sealed class ListBansHandler : IAuthenticatedHandler<GuildId, ListBansRes
                 : null;
 
             return new ListBansItemResponse(
-                UserId: b.UserId.ToString(),
+                UserId: b.UserId.Value,
                 Username: b.Username.Value,
                 DisplayName: b.DisplayName,
-                AvatarFileId: b.AvatarFileId?.ToString(),
+                AvatarFileId: b.AvatarFileId?.Value,
                 Avatar: avatar,
                 Reason: b.Reason,
-                BannedBy: b.BannedBy.ToString(),
+                BannedBy: b.BannedBy.Value,
                 CreatedAtUtc: b.CreatedAtUtc);
         }).ToArray();
 
         return ApplicationResponse<ListBansResponse>.Ok(
-            new ListBansResponse(GuildId: guildId.ToString(), Bans: items));
+            new ListBansResponse(GuildId: guildId.Value, Bans: items));
     }
 }

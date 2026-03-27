@@ -217,7 +217,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
     }
 
     private async Task<ConversationSendMessageResponse> SendConversationMessageAsync(
-        string conversationId,
+        Guid conversationId,
         string content,
         string accessToken)
     {

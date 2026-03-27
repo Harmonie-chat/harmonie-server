@@ -58,7 +58,7 @@ public sealed class CreateGuildHandlerTests
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
         response.Data!.Name.Should().Be("Harmonie Team");
-        response.Data.OwnerUserId.Should().Be(userId.ToString());
+        response.Data.OwnerUserId.Should().Be(userId.Value);
         response.Data.IconFileId.Should().BeNull();
         response.Data.Icon.Should().BeNull();
 
@@ -108,7 +108,7 @@ public sealed class CreateGuildHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.IconFileId.Should().Be(iconFileId.ToString());
+        response.Data!.IconFileId.Should().Be(iconFileId.Value);
         response.Data.Icon.Should().NotBeNull();
         response.Data.Icon!.Color.Should().Be("#7C3AED");
         response.Data.Icon.Name.Should().Be("sword");
@@ -147,7 +147,7 @@ public sealed class CreateGuildHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.IconFileId.Should().Be(iconFileId.ToString());
+        response.Data!.IconFileId.Should().Be(iconFileId.Value);
         response.Data.Icon.Should().BeNull();
     }
 }

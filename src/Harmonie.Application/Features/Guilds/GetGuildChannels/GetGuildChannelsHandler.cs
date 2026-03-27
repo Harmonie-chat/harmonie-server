@@ -42,9 +42,9 @@ public sealed class GetGuildChannelsHandler : IAuthenticatedHandler<GuildId, Get
         var channels = await _guildChannelRepository.GetByGuildIdAsync(guildId, cancellationToken);
 
         var payload = new GetGuildChannelsResponse(
-            GuildId: guildId.ToString(),
+            GuildId: guildId.Value,
             Channels: channels.Select(channel => new GetGuildChannelsItemResponse(
-                    ChannelId: channel.Id.ToString(),
+                    ChannelId: channel.Id.Value,
                     Name: channel.Name,
                     Type: channel.Type.ToString(),
                     IsDefault: channel.IsDefault,

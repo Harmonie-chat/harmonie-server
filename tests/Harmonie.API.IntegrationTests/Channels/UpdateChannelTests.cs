@@ -189,7 +189,7 @@ public sealed class UpdateChannelTests : IClassFixture<HarmonieWebApplicationFac
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task CreateChannelInGuildAsync(
-        string guildId,
+        Guid guildId,
         CreateChannelRequest request,
         string accessToken)
     {

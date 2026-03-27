@@ -85,7 +85,7 @@ public sealed class GetGuildChannelsHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Channels.Should().HaveCount(2);
         response.Data.Channels[0].Type.Should().Be("Text");
         response.Data.Channels[1].Type.Should().Be("Voice");

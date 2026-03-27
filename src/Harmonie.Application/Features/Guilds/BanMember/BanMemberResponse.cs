@@ -1,8 +1,8 @@
 namespace Harmonie.Application.Features.Guilds.BanMember;
 
 public sealed record BanMemberResponse(
-    string GuildId,
-    string UserId,
+    Guid GuildId,
+    Guid UserId,
     string? Reason,
-    string BannedBy,
+    Guid BannedBy,
     DateTime CreatedAtUtc);

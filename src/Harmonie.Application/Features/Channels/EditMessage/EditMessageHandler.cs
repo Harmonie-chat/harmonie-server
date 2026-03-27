@@ -118,9 +118,9 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessag
                 updatedAtUtc.Value));
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
-            MessageId: message.Id.ToString(),
-            ChannelId: messageChannelId.ToString(),
-            AuthorUserId: message.AuthorUserId.ToString(),
+            MessageId: message.Id.Value,
+            ChannelId: messageChannelId.Value,
+            AuthorUserId: message.AuthorUserId.Value,
             Content: message.Content.Value,
             Attachments: message.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
             CreatedAtUtc: message.CreatedAtUtc,

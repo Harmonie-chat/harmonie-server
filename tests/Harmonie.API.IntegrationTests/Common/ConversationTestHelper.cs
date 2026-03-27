@@ -9,14 +9,14 @@ namespace Harmonie.API.IntegrationTests.Common;
 
 public static class ConversationTestHelper
 {
-    public static async Task<string> OpenConversationAsync(
+    public static async Task<Guid> OpenConversationAsync(
         HttpClient client,
         string accessToken,
-        string targetUserId)
+        Guid targetUserId)
     {
         var response = await client.SendAuthorizedPostAsync(
             "/api/conversations",
-            new OpenConversationRequest(Guid.Parse(targetUserId)),
+            new OpenConversationRequest(targetUserId),
             accessToken);
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
 
@@ -29,11 +29,11 @@ public static class ConversationTestHelper
         HttpClient client,
         string accessToken,
         string? name,
-        IReadOnlyList<string> participantUserIds)
+        IReadOnlyList<Guid> participantUserIds)
     {
         var response = await client.SendAuthorizedPostAsync(
             "/api/conversations/group",
-            new CreateGroupConversationRequest(name, participantUserIds.Select(Guid.Parse).ToList()),
+            new CreateGroupConversationRequest(name, participantUserIds.ToList()),
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -44,7 +44,7 @@ public static class ConversationTestHelper
 
     public static async Task<SendMessageResponse> SendConversationMessageAsync(
         HttpClient client,
-        string conversationId,
+        Guid conversationId,
         string content,
         string accessToken)
     {

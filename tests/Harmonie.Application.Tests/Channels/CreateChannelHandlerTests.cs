@@ -132,12 +132,12 @@ public sealed class CreateChannelHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.GuildId.Should().Be(guild.Id.ToString());
+        response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Name.Should().Be("announcements");
         response.Data.Type.Should().Be("Text");
         response.Data.IsDefault.Should().BeFalse();
         response.Data.Position.Should().Be(2);
-        response.Data.ChannelId.Should().NotBeNullOrEmpty();
+        response.Data.ChannelId.Should().NotBeEmpty();
     }
 
     [Fact]

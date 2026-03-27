@@ -46,7 +46,7 @@ public sealed class GuildVoiceParticipantsEndpointTests : IClassFixture<Harmonie
 
         var inviteResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(Guid.Parse(member.UserId)),
+            new InviteMemberRequest(member.UserId),
             owner.AccessToken);
         inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -64,12 +64,12 @@ public sealed class GuildVoiceParticipantsEndpointTests : IClassFixture<Harmonie
         voiceChannels.Should().HaveCount(1);
 
         var fakeRoomService = new FakeLiveKitRoomService();
-        fakeRoomService.ResultsByGuildId[createGuildPayload.GuildId] =
+        fakeRoomService.ResultsByGuildId[createGuildPayload.GuildId.ToString()] =
         [
             new GuildVoiceChannelParticipants(
-                GuildChannelId.From(Guid.Parse(voiceChannels[0].ChannelId)),
+                GuildChannelId.From(voiceChannels[0].ChannelId),
                 [
-                    new VoiceChannelParticipant(UserId.From(Guid.Parse(owner.UserId)), owner.Username)
+                    new VoiceChannelParticipant(UserId.From(owner.UserId), owner.Username)
                 ])
         ];
 
