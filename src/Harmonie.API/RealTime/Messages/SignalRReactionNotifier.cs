@@ -20,11 +20,11 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ReactionAddedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            GuildId: notification.GuildId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            GuildId: notification.GuildId.Value,
             ConversationId: null,
-            UserId: notification.UserId.ToString(),
+            UserId: notification.UserId.Value,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -39,11 +39,11 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ReactionAddedEvent(
-            MessageId: notification.MessageId.ToString(),
+            MessageId: notification.MessageId.Value,
             ChannelId: null,
             GuildId: null,
-            ConversationId: notification.ConversationId.ToString(),
-            UserId: notification.UserId.ToString(),
+            ConversationId: notification.ConversationId.Value,
+            UserId: notification.UserId.Value,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -58,11 +58,11 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ReactionRemovedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            GuildId: notification.GuildId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            GuildId: notification.GuildId.Value,
             ConversationId: null,
-            UserId: notification.UserId.ToString(),
+            UserId: notification.UserId.Value,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -77,11 +77,11 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ReactionRemovedEvent(
-            MessageId: notification.MessageId.ToString(),
+            MessageId: notification.MessageId.Value,
             ChannelId: null,
             GuildId: null,
-            ConversationId: notification.ConversationId.ToString(),
-            UserId: notification.UserId.ToString(),
+            ConversationId: notification.ConversationId.Value,
+            UserId: notification.UserId.Value,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -91,17 +91,17 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
 }
 
 public sealed record ReactionAddedEvent(
-    string MessageId,
-    string? ChannelId,
-    string? GuildId,
-    string? ConversationId,
-    string UserId,
+    Guid MessageId,
+    Guid? ChannelId,
+    Guid? GuildId,
+    Guid? ConversationId,
+    Guid UserId,
     string Emoji);
 
 public sealed record ReactionRemovedEvent(
-    string MessageId,
-    string? ChannelId,
-    string? GuildId,
-    string? ConversationId,
-    string UserId,
+    Guid MessageId,
+    Guid? ChannelId,
+    Guid? GuildId,
+    Guid? ConversationId,
+    Guid UserId,
     string Emoji);

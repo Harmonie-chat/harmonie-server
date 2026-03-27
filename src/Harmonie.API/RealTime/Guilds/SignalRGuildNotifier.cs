@@ -20,7 +20,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new GuildDeletedEvent(
-            GuildId: notification.GuildId.ToString());
+            GuildId: notification.GuildId.Value);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
@@ -29,4 +29,4 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 }
 
 public sealed record GuildDeletedEvent(
-    string GuildId);
+    Guid GuildId);

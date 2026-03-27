@@ -21,9 +21,9 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ConversationMessageCreatedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ConversationId: notification.ConversationId.ToString(),
-            AuthorUserId: notification.AuthorUserId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ConversationId: notification.ConversationId.Value,
+            AuthorUserId: notification.AuthorUserId.Value,
             Content: notification.Content,
             Attachments: notification.Attachments,
             CreatedAtUtc: notification.CreatedAtUtc);
@@ -40,8 +40,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ConversationMessageUpdatedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ConversationId: notification.ConversationId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ConversationId: notification.ConversationId.Value,
             Content: notification.Content,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
@@ -57,8 +57,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new ConversationMessageDeletedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ConversationId: notification.ConversationId.ToString());
+            MessageId: notification.MessageId.Value,
+            ConversationId: notification.ConversationId.Value);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
@@ -67,19 +67,19 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 }
 
 public sealed record ConversationMessageCreatedEvent(
-    string MessageId,
-    string ConversationId,
-    string AuthorUserId,
+    Guid MessageId,
+    Guid ConversationId,
+    Guid AuthorUserId,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);
 
 public sealed record ConversationMessageUpdatedEvent(
-    string MessageId,
-    string ConversationId,
+    Guid MessageId,
+    Guid ConversationId,
     string Content,
     DateTime UpdatedAtUtc);
 
 public sealed record ConversationMessageDeletedEvent(
-    string MessageId,
-    string ConversationId);
+    Guid MessageId,
+    Guid ConversationId);

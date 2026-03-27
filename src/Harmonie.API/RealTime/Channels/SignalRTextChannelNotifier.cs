@@ -21,10 +21,10 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new MessageCreatedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            GuildId: notification.GuildId.ToString(),
-            AuthorUserId: notification.AuthorUserId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            GuildId: notification.GuildId.Value,
+            AuthorUserId: notification.AuthorUserId.Value,
             Content: notification.Content,
             Attachments: notification.Attachments,
             CreatedAtUtc: notification.CreatedAtUtc);
@@ -41,9 +41,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new MessageUpdatedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            GuildId: notification.GuildId.ToString(),
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            GuildId: notification.GuildId.Value,
             Content: notification.Content,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
@@ -59,9 +59,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new MessageDeletedEvent(
-            MessageId: notification.MessageId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            GuildId: notification.GuildId.ToString());
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            GuildId: notification.GuildId.Value);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetChannelGroupName(notification.ChannelId))
@@ -70,22 +70,22 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
 }
 
 public sealed record MessageCreatedEvent(
-    string MessageId,
-    string ChannelId,
-    string GuildId,
-    string AuthorUserId,
+    Guid MessageId,
+    Guid ChannelId,
+    Guid GuildId,
+    Guid AuthorUserId,
     string Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);
 
 public sealed record MessageUpdatedEvent(
-    string MessageId,
-    string ChannelId,
-    string GuildId,
+    Guid MessageId,
+    Guid ChannelId,
+    Guid GuildId,
     string Content,
     DateTime UpdatedAtUtc);
 
 public sealed record MessageDeletedEvent(
-    string MessageId,
-    string ChannelId,
-    string GuildId);
+    Guid MessageId,
+    Guid ChannelId,
+    Guid GuildId);

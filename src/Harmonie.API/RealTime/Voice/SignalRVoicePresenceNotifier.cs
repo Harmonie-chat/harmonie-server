@@ -20,9 +20,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new VoiceParticipantJoinedEvent(
-            GuildId: notification.GuildId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            UserId: notification.UserId.ToString(),
+            GuildId: notification.GuildId.Value,
+            ChannelId: notification.ChannelId.Value,
+            UserId: notification.UserId.Value,
             ParticipantName: notification.ParticipantName,
             JoinedAtUtc: notification.JoinedAtUtc);
 
@@ -38,9 +38,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new VoiceParticipantLeftEvent(
-            GuildId: notification.GuildId.ToString(),
-            ChannelId: notification.ChannelId.ToString(),
-            UserId: notification.UserId.ToString(),
+            GuildId: notification.GuildId.Value,
+            ChannelId: notification.ChannelId.Value,
+            UserId: notification.UserId.Value,
             ParticipantName: notification.ParticipantName,
             LeftAtUtc: notification.LeftAtUtc);
 
@@ -51,15 +51,15 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 }
 
 public sealed record VoiceParticipantJoinedEvent(
-    string GuildId,
-    string ChannelId,
-    string UserId,
+    Guid GuildId,
+    Guid ChannelId,
+    Guid UserId,
     string ParticipantName,
     DateTime JoinedAtUtc);
 
 public sealed record VoiceParticipantLeftEvent(
-    string GuildId,
-    string ChannelId,
-    string UserId,
+    Guid GuildId,
+    Guid ChannelId,
+    Guid UserId,
     string ParticipantName,
     DateTime LeftAtUtc);
