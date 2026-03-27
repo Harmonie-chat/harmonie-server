@@ -8,7 +8,6 @@ using Harmonie.Application.Features.Guilds.DeleteGuildIcon;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Features.Guilds.ListBans;
 using Harmonie.Application.Features.Guilds.ListGuildInvites;
@@ -44,7 +43,6 @@ public static class GuildEndpoints
 
         // Members
         GetGuildMembersEndpoint.Map(app);
-        InviteMemberEndpoint.Map(app);
         RemoveMemberEndpoint.Map(app);
         LeaveGuildEndpoint.Map(app);
         UpdateMemberRoleEndpoint.Map(app);

@@ -46,7 +46,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Edit Message Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "edit-auth-channel", guildId: guildId);
         var messageId = await ChannelTestHelper.SendMessageAndGetIdAsync(_client, channelId, "owner's message", owner.AccessToken);

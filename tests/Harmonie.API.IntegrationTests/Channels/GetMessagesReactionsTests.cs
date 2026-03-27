@@ -76,7 +76,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
         var (guildId, channelId) = await ChannelTestHelper.CreateGuildAndChannelAsync(_client, owner.AccessToken);
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var message = await ChannelTestHelper.SendChannelMessageAsync(_client, channelId, "who reacted?", owner.AccessToken);
 

@@ -60,7 +60,7 @@ public sealed class SearchUsersEndpointTests : IClassFixture<HarmonieWebApplicat
         await UpdateDisplayNameAsync(outsider.AccessToken, "Alex Outsider");
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "User Search Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, guildMember.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, guildMember.AccessToken);
 
         var response = await _client.SendAuthorizedGetAsync(
             $"/api/users/search?q=alex&guildId={guildId}",

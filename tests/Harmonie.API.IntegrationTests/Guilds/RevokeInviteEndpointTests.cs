@@ -5,7 +5,6 @@ using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListGuildInvites;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -74,10 +73,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<HarmonieWebApplica
         guild.Should().NotBeNull();
 
         // Add second user as admin
-        await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{guild!.GuildId}/members/invite",
-            new InviteMemberRequest(secondAdmin.UserId),
-            owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild!.GuildId, owner.AccessToken, secondAdmin.AccessToken);
         var promoteResponse = await _client.SendAuthorizedPutAsync(
             $"/api/guilds/{guild.GuildId}/members/{secondAdmin.UserId}/role",
             new UpdateMemberRoleRequest(GuildRoleInput.Admin),
@@ -115,10 +111,7 @@ public sealed class RevokeInviteEndpointTests : IClassFixture<HarmonieWebApplica
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{guild!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild!.GuildId, owner.AccessToken, member.AccessToken);
 
         // Owner creates the invite
         var inviteResponse = await _client.SendAuthorizedPostAsync(

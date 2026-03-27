@@ -26,7 +26,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Search Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var generalChannelId = await GetDefaultTextChannelIdAsync(owner.AccessToken, guildId);
         var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
@@ -59,7 +59,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Search Pagination Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
 

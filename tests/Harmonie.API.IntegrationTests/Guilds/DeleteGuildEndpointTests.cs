@@ -6,7 +6,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -37,11 +36,7 @@ public sealed class DeleteGuildEndpointTests : IClassFixture<HarmonieWebApplicat
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",
@@ -104,11 +99,7 @@ public sealed class DeleteGuildEndpointTests : IClassFixture<HarmonieWebApplicat
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var deleteGuildResponse = await _client.SendAuthorizedDeleteAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",

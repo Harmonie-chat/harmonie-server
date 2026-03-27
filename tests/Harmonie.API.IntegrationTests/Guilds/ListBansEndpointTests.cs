@@ -47,7 +47,7 @@ public sealed class ListBansEndpointTests : IClassFixture<HarmonieWebApplication
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBList{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         // Ban the member
         var banResponse = await _client.SendAuthorizedPostAsync(
@@ -83,7 +83,7 @@ public sealed class ListBansEndpointTests : IClassFixture<HarmonieWebApplication
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBForbid{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         var response = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/bans",
@@ -128,7 +128,7 @@ public sealed class ListBansEndpointTests : IClassFixture<HarmonieWebApplication
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"LBUnban{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         // Ban the member
         var banResponse = await _client.SendAuthorizedPostAsync(

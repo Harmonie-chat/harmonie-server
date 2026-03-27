@@ -5,7 +5,6 @@ using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListGuildInvites;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -139,11 +138,7 @@ public sealed class ListGuildInvitesEndpointTests : IClassFixture<HarmonieWebApp
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var inviteMemberResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{guild!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteMemberResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, guild!.GuildId, owner.AccessToken, member.AccessToken);
 
         var listResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{guild.GuildId}/invites",

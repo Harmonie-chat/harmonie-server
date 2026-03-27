@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.CreateGuildInvite;
-using Harmonie.Application.Features.Guilds.InviteMember;
 
 namespace Harmonie.API.IntegrationTests.Common;
 
@@ -37,14 +36,15 @@ public static class GuildTestHelper
     public static async Task InviteMemberAsync(
         HttpClient client,
         Guid guildId,
-        Guid userId,
-        string accessToken)
+        string ownerAccessToken,
+        string memberAccessToken)
     {
-        var response = await client.SendAuthorizedPostAsync(
-            $"/api/guilds/{guildId}/members/invite",
-            new InviteMemberRequest(userId),
-            accessToken);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var invite = await CreateInviteAsync(client, guildId, ownerAccessToken);
+
+        var acceptResponse = await client.SendAuthorizedPostNoBodyAsync(
+            $"/api/invites/{invite.Code}/accept",
+            memberAccessToken);
+        acceptResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     public static async Task<CreateGuildInviteResponse> CreateInviteAsync(

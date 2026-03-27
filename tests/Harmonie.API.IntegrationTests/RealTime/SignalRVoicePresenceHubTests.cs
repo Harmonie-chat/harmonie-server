@@ -9,7 +9,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
@@ -137,11 +136,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         return createGuildPayload.GuildId;
     }

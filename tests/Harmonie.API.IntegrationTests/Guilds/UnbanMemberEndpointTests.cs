@@ -27,7 +27,7 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"UnbanGld{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         // Ban the member first
         var banResponse = await _client.SendAuthorizedPostAsync(
@@ -52,7 +52,7 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"Rejoin{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         // Ban, then unban
         var banResponse = await _client.SendAuthorizedPostAsync(
@@ -104,8 +104,8 @@ public sealed class UnbanMemberEndpointTests : IClassFixture<HarmonieWebApplicat
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"NoAdmUb{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, target.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, target.AccessToken);
 
         // Ban target
         var banResponse = await _client.SendAuthorizedPostAsync(

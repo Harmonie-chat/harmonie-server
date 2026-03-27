@@ -20,39 +20,6 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         _dbSession = dbSession;
     }
 
-    public async Task<InviteMemberTargetLookup> GetInviteMemberTargetLookupAsync(
-        GuildId guildId,
-        UserId userId,
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-                           SELECT EXISTS(
-                                      SELECT 1
-                                      FROM users
-                                      WHERE id = @UserId
-                                        AND deleted_at IS NULL) AS "UserExists",
-                                  EXISTS(
-                                      SELECT 1
-                                      FROM guild_members
-                                      WHERE guild_id = @GuildId
-                                        AND user_id = @UserId) AS "IsMember"
-                           """;
-
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(
-            sql,
-            new
-            {
-                GuildId = guildId.Value,
-                UserId = userId.Value
-            },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken);
-
-        var row = await connection.QuerySingleAsync<InviteMemberTargetLookupRow>(command);
-        return new InviteMemberTargetLookup(row.UserExists, row.IsMember);
-    }
-
     public async Task<bool> IsMemberAsync(
         GuildId guildId,
         UserId userId,
@@ -327,10 +294,4 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             row.JoinedAtUtc);
     }
 
-    private sealed class InviteMemberTargetLookupRow
-    {
-        public bool UserExists { get; set; }
-
-        public bool IsMember { get; set; }
-    }
 }

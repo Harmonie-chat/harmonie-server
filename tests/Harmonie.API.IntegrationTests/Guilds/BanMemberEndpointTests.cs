@@ -31,7 +31,7 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"BanGuild{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
@@ -66,7 +66,7 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"BanInvite{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, banned.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, banned.AccessToken);
 
         // Ban the member
         var banResponse = await _client.SendAuthorizedPostAsync(
@@ -99,8 +99,8 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"NonAdmBan{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, target.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, target.AccessToken);
 
         var banResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
@@ -124,7 +124,7 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
         // Owner tries to ban themselves (owner check comes before self-ban check in handler)
         // Let's use a second admin to try to ban the owner
         var admin = await AuthTestHelper.RegisterAsync(_client, token + "a");
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, admin.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, admin.AccessToken);
 
         // Promote to admin
         await _client.SendAuthorizedPutAsync(
@@ -152,7 +152,7 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"DblBan{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         var firstBan = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{guild.GuildId}/bans",
@@ -180,7 +180,7 @@ public sealed class BanMemberEndpointTests : IClassFixture<HarmonieWebApplicatio
 
         var guild = await GuildTestHelper.CreateGuildAsync(_client, $"PurgeBan{token}", owner.AccessToken);
 
-        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, owner.AccessToken, member.AccessToken);
 
         // Get text channel
         var channelsResponse = await _client.SendAuthorizedGetAsync(

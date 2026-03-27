@@ -9,7 +9,6 @@ using Harmonie.Application.Features.Guilds.DeleteGuildIcon;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildMembers;
 using Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Features.Guilds.ListBans;
 using Harmonie.Application.Features.Guilds.ListGuildInvites;
@@ -47,7 +46,6 @@ public static class GuildRegistration
 
         // Members
         services.AddAuthenticatedHandler<GuildId, GetGuildMembersResponse, GetGuildMembersHandler>();
-        services.AddAuthenticatedHandler<InviteMemberInput, InviteMemberResponse, InviteMemberHandler>();
         services.AddAuthenticatedHandler<RemoveMemberInput, bool, RemoveMemberHandler>();
         services.AddAuthenticatedHandler<LeaveGuildInput, bool, LeaveGuildHandler>();
         services.AddAuthenticatedHandler<UpdateMemberRoleInput, bool, UpdateMemberRoleHandler>();

@@ -6,7 +6,6 @@ using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -39,17 +38,7 @@ public sealed class CreateGuildTests : IClassFixture<HarmonieWebApplicationFacto
         createGuildPayload!.IconFileId.Should().BeNull();
         createGuildPayload.Icon.Should().BeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(userB.UserId),
-            userA.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var invitePayload = await inviteResponse.Content.ReadFromJsonAsync<InviteMemberResponse>();
-        invitePayload.Should().NotBeNull();
-
-        invitePayload!.UserId.Should().Be(userB.UserId);
-        invitePayload.Role.Should().Be("Member");
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, userA.AccessToken, userB.AccessToken);
 
         var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",
@@ -121,11 +110,7 @@ public sealed class CreateGuildTests : IClassFixture<HarmonieWebApplicationFacto
         var inviterGuild = await inviterGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         inviterGuild.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{inviterGuild!.GuildId}/members/invite",
-            new InviteMemberRequest(owner.UserId),
-            inviter.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, inviterGuild!.GuildId, inviter.AccessToken, owner.AccessToken);
 
         var listResponse = await _client.SendAuthorizedGetAsync("/api/guilds", owner.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);

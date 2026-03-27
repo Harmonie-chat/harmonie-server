@@ -91,7 +91,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Delete Attachment Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "attachment-auth-channel", guildId: guildId);
         var fileId = await UploadTestHelper.UploadFileAsync(_client, owner.AccessToken, "notes.txt", "text/plain", "attachment payload");

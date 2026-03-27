@@ -6,7 +6,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
 using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Harmonie.Application.Features.Guilds.GetGuildVoiceParticipants;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -44,11 +43,7 @@ public sealed class GuildVoiceParticipantsEndpointTests : IClassFixture<Harmonie
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var channelsResponse = await _client.SendAuthorizedGetAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",

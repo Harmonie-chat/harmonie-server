@@ -37,7 +37,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Admin Delete Message Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "admin-delete-channel", guildId: guildId);
         var messageId = await ChannelTestHelper.SendMessageAndGetIdAsync(_client, channelId, "member's message", member.AccessToken);
@@ -55,7 +55,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden Delete Message Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "member-delete-msg-channel", guildId: guildId);
         var messageId = await ChannelTestHelper.SendMessageAndGetIdAsync(_client, channelId, "owner's message", owner.AccessToken);

@@ -91,7 +91,7 @@ public sealed class GuildChannelsTests : IClassFixture<HarmonieWebApplicationFac
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var createChannelResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/channels",

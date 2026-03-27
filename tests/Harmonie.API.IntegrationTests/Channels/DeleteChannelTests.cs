@@ -37,7 +37,7 @@ public sealed class DeleteChannelTests : IClassFixture<HarmonieWebApplicationFac
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden Delete Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "member-delete-channel", guildId: guildId);
 

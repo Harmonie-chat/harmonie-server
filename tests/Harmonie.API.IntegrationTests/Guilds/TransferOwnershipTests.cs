@@ -4,7 +4,6 @@ using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -35,11 +34,7 @@ public sealed class TransferOwnershipTests : IClassFixture<HarmonieWebApplicatio
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var transferResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/owner/transfer",
@@ -64,15 +59,9 @@ public sealed class TransferOwnershipTests : IClassFixture<HarmonieWebApplicatio
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
-        await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload.GuildId}/members/invite",
-            new InviteMemberRequest(otherMember.UserId),
-            owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload.GuildId, owner.AccessToken, otherMember.AccessToken);
 
         var transferResponse = await _client.SendAuthorizedPostAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/owner/transfer",

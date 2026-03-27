@@ -4,7 +4,6 @@ using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateGuild;
-using Harmonie.Application.Features.Guilds.InviteMember;
 using Harmonie.Application.Features.Guilds.ListUserGuilds;
 using Harmonie.Application.Features.Guilds.UpdateGuild;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
@@ -99,11 +98,7 @@ public sealed class UpdateGuildTests : IClassFixture<HarmonieWebApplicationFacto
         createGuildPayload.Should().NotBeNull();
         var iconFileId = await UploadTestHelper.UploadFileAsync(_client, owner.AccessToken, "admin-guild.png", "image/png", "admin guild icon");
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(admin.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, admin.AccessToken);
 
         var promoteResponse = await _client.SendAuthorizedPutAsync(
             $"/api/guilds/{createGuildPayload.GuildId}/members/{admin.UserId}/role",
@@ -216,11 +211,7 @@ public sealed class UpdateGuildTests : IClassFixture<HarmonieWebApplicationFacto
         var guild = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         guild.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{guild!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, guild!.GuildId, owner.AccessToken, member.AccessToken);
 
         var seedResponse = await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{guild.GuildId}",
@@ -254,11 +245,7 @@ public sealed class UpdateGuildTests : IClassFixture<HarmonieWebApplicationFacto
         var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
         createGuildPayload.Should().NotBeNull();
 
-        var inviteResponse = await _client.SendAuthorizedPostAsync(
-            $"/api/guilds/{createGuildPayload!.GuildId}/members/invite",
-            new InviteMemberRequest(member.UserId),
-            owner.AccessToken);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
 
         var response = await _client.SendAuthorizedPatchAsync(
             $"/api/guilds/{createGuildPayload.GuildId}",

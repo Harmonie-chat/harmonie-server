@@ -79,7 +79,7 @@ public sealed class UpdateChannelTests : IClassFixture<HarmonieWebApplicationFac
         var member = await AuthTestHelper.RegisterAsync(_client);
 
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Forbidden Update Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var channelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "member-test-channel", guildId: guildId);
 

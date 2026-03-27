@@ -83,7 +83,7 @@ public sealed class ReorderChannelsTests : IClassFixture<HarmonieWebApplicationF
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
         var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Reorder NonAdmin Guild");
-        await GuildTestHelper.InviteMemberAsync(_client, guildId, member.UserId, owner.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var ch1 = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "noadmin-ch1", guildId, position: 0);
 
