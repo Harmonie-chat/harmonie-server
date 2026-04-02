@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Uploads.DeleteFile;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -12,6 +13,7 @@ public static class UploadRegistration
     {
         services.AddAuthenticatedHandler<UploadFileInput, UploadFileResponse, UploadFileHandler>();
         services.AddAuthenticatedHandler<UploadedFileId, DownloadFileResult, DownloadFileHandler>();
+        services.AddAuthenticatedHandler<DeleteFileInput, bool, DeleteFileHandler>();
 
         return services;
     }

@@ -1,3 +1,4 @@
+using Harmonie.Application.Features.Uploads.DeleteFile;
 using Harmonie.Application.Features.Uploads.DownloadFile;
 using Harmonie.Application.Features.Uploads.UploadFile;
 
@@ -9,5 +10,6 @@ public static class UploadEndpoints
     {
         UploadFileEndpoint.Map(app);
         DownloadFileEndpoint.Map(app);
+        DeleteFileEndpoint.Map(app);
     }
 }
