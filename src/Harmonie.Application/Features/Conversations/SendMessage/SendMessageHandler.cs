@@ -46,15 +46,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         CancellationToken cancellationToken = default)
     {
         MessageContent content;
-        var hasAttachments = request.AttachmentFileIds is { Count: > 0 };
         if (string.IsNullOrWhiteSpace(request.Content))
         {
-            if (!hasAttachments)
-            {
-                return ApplicationResponse<SendMessageResponse>.Fail(
-                    ApplicationErrorCodes.Message.ContentEmpty,
-                    "Message content is required when no attachments are provided");
-            }
             content = MessageContent.Empty;
         }
         else
@@ -106,8 +99,11 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             attachmentResolution.Attachments);
         if (messageResult.IsFailure || messageResult.Value is null)
         {
+            var errorCode = content == MessageContent.Empty && attachmentResolution.Attachments.Count == 0
+                ? ApplicationErrorCodes.Message.ContentEmpty
+                : ApplicationErrorCodes.Common.DomainRuleViolation;
             return ApplicationResponse<SendMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
+                errorCode,
                 messageResult.Error ?? "Unable to create conversation message");
         }
 

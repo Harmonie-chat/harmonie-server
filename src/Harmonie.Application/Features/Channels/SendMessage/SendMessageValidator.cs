@@ -6,11 +6,6 @@ public sealed class SendMessageValidator : AbstractValidator<SendMessageRequest>
 {
     public SendMessageValidator()
     {
-        RuleFor(x => x.Content)
-            .NotEmpty()
-            .WithMessage("Message content is required")
-            .When(x => x.AttachmentFileIds is null || x.AttachmentFileIds.Count == 0);
-
         RuleForEach(x => x.AttachmentFileIds)
             .NotEqual(Guid.Empty)
             .WithMessage("Attachment file IDs must be valid non-empty GUIDs")

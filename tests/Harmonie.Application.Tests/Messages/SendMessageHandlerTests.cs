@@ -114,25 +114,21 @@ public sealed class SendMessageHandlerTests
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
-    public async Task HandleAsync_WithEmptyContent_ShouldReturnMessageContentEmpty()
+    [Theory]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task HandleAsync_WithNoContentAndNoAttachments_ShouldReturnMessageContentEmpty(string? rawContent)
     {
-        var response = await _handler.HandleAsync(
-            new SendChannelMessageInput(GuildChannelId.New(), "   "),
-            UserId.New());
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
 
-        response.Success.Should().BeFalse();
-        response.Error.Should().NotBeNull();
-        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
-        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-    [Fact]
-    public async Task HandleAsync_WithNullContentAndNoAttachments_ShouldReturnMessageContentEmpty()
-    {
         var response = await _handler.HandleAsync(
-            new SendChannelMessageInput(GuildChannelId.New(), null),
-            UserId.New());
+            new SendChannelMessageInput(channel.Id, rawContent),
+            userId);
 
         response.Success.Should().BeFalse();
         response.Error.Should().NotBeNull();

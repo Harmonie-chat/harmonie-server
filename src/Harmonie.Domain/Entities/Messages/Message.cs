@@ -59,6 +59,8 @@ public sealed class Message : Entity<MessageId>
             attachments = Array.Empty<MessageAttachment>();
         if (attachments.Any(attachment => attachment is null))
             return Result.Failure<Message>("Message attachments are invalid");
+        if (content.Value.Length == 0 && attachments.Count == 0)
+            return Result.Failure<Message>("Message must have content or at least one attachment");
 
         return Result.Success(new Message(
             MessageId.New(),
@@ -88,6 +90,8 @@ public sealed class Message : Entity<MessageId>
             attachments = Array.Empty<MessageAttachment>();
         if (attachments.Any(attachment => attachment is null))
             return Result.Failure<Message>("Message attachments are invalid");
+        if (content.Value.Length == 0 && attachments.Count == 0)
+            return Result.Failure<Message>("Message must have content or at least one attachment");
 
         return Result.Success(new Message(
             MessageId.New(),
