@@ -93,12 +93,8 @@ internal static class MessageRepositoryHelpers
         MessageRow row,
         IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> attachmentsByMessageId)
     {
-        MessageContent? messageContent;
-        if (row.Content is null)
-        {
-            messageContent = null;
-        }
-        else
+        MessageContent? messageContent = null;
+        if (row.Content is not null)
         {
             var contentResult = MessageContent.Create(row.Content);
             if (contentResult.IsFailure || contentResult.Value is null)

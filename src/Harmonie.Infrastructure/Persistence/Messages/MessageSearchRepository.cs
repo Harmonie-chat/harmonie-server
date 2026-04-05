@@ -235,12 +235,8 @@ internal sealed class MessageSearchRepository : IMessageSearchRepository
         ChannelMessageSearchRow row,
         IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> attachmentsByMessageId)
     {
-        MessageContent? messageContent;
-        if (row.Content is null)
-        {
-            messageContent = null;
-        }
-        else
+        MessageContent? messageContent = null;
+        if (row.Content is not null)
         {
             var contentResult = MessageContent.Create(row.Content);
             if (contentResult.IsFailure || contentResult.Value is null)
@@ -270,12 +266,8 @@ internal sealed class MessageSearchRepository : IMessageSearchRepository
         ConversationMessageSearchRow row,
         IReadOnlyDictionary<Guid, IReadOnlyList<MessageAttachment>> attachmentsByMessageId)
     {
-        MessageContent? convMessageContent;
-        if (row.Content is null)
-        {
-            convMessageContent = null;
-        }
-        else
+        MessageContent? convMessageContent = null;
+        if (row.Content is not null)
         {
             var contentResult = MessageContent.Create(row.Content);
             if (contentResult.IsFailure || contentResult.Value is null)
