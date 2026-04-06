@@ -4,6 +4,7 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Guilds.TransferOwnership;
 
@@ -12,18 +13,26 @@ public sealed record TransferOwnershipInput(GuildId GuildId, UserId NewOwnerId);
 public sealed class TransferOwnershipHandler
     : IAuthenticatedHandler<TransferOwnershipInput, bool>
 {
+    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
+    private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<TransferOwnershipHandler> _logger;
 
     public TransferOwnershipHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
-        IUnitOfWork unitOfWork)
+        IGuildNotifier guildNotifier,
+        IUnitOfWork unitOfWork,
+        ILogger<TransferOwnershipHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
+        _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -74,6 +83,20 @@ public sealed class TransferOwnershipHandler
 
         await transaction.CommitAsync(cancellationToken);
 
+        await NotifyOwnershipTransferredSafelyAsync(
+            new GuildOwnershipTransferredNotification(request.GuildId, request.NewOwnerId));
+
         return ApplicationResponse<bool>.Ok(true);
+    }
+
+    private async Task NotifyOwnershipTransferredSafelyAsync(
+        GuildOwnershipTransferredNotification notification)
+    {
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            token => _guildNotifier.NotifyGuildOwnershipTransferredAsync(notification, token),
+            NotificationTimeout,
+            _logger,
+            "TransferOwnership notification failed (best-effort). GuildId={GuildId}",
+            notification.GuildId);
     }
 }

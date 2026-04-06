@@ -75,6 +75,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a guild is deleted.")]
     public void OnGuildDeleted() { }
 
+    [Channel("hubs/realtime/GuildOwnershipTransferred")]
+    [SubscribeOperation(typeof(GuildOwnershipTransferredEvent),
+        Summary = "Received when a guild's ownership is transferred to another member.")]
+    public void OnGuildOwnershipTransferred() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]

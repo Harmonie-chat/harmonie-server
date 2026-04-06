@@ -19,6 +19,7 @@ public sealed class TransferOwnershipHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly TransferOwnershipHandler _handler;
@@ -27,15 +28,24 @@ public sealed class TransferOwnershipHandlerTests
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildNotifierMock
+            .Setup(x => x.NotifyGuildOwnershipTransferredAsync(
+                It.IsAny<GuildOwnershipTransferredNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new TransferOwnershipHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _guildNotifierMock.Object,
+            _unitOfWorkMock.Object,
+            NullLogger<TransferOwnershipHandler>.Instance);
     }
 
     [Fact]
@@ -140,6 +150,13 @@ public sealed class TransferOwnershipHandlerTests
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyGuildOwnershipTransferredAsync(
+                It.Is<GuildOwnershipTransferredNotification>(n =>
+                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -164,6 +181,13 @@ public sealed class TransferOwnershipHandlerTests
         var response = await _handler.HandleAsync(new TransferOwnershipInput(guild.Id, newOwnerId), ownerId);
 
         response.Success.Should().BeTrue();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyGuildOwnershipTransferredAsync(
+                It.Is<GuildOwnershipTransferredNotification>(n =>
+                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -192,6 +216,12 @@ public sealed class TransferOwnershipHandlerTests
         response.Error!.Code.Should().Be(ApplicationErrorCodes.Guild.MemberNotFound);
 
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyGuildOwnershipTransferredAsync(
+                It.IsAny<GuildOwnershipTransferredNotification>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
 }
