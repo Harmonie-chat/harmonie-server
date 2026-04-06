@@ -70,6 +70,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a user leaves a voice channel.")]
     public void OnVoiceParticipantLeft() { }
 
+    [Channel("hubs/realtime/ChannelCreated")]
+    [SubscribeOperation(typeof(ChannelCreatedEvent),
+        Summary = "Received when a new channel is created in a guild.")]
+    public void OnChannelCreated() { }
+
     [Channel("hubs/realtime/GuildDeleted")]
     [SubscribeOperation(typeof(GuildDeletedEvent),
         Summary = "Received when a guild is deleted.")]

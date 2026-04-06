@@ -17,6 +17,7 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
+    private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateChannelHandler> _logger;
 
@@ -24,12 +25,14 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
         IRealtimeGroupManager realtimeGroupManager,
+        IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
         ILogger<CreateChannelHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _realtimeGroupManager = realtimeGroupManager;
+        _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -90,6 +93,22 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
                 request.GuildId,
                 channel.Id);
         }
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _guildNotifier.NotifyChannelCreatedAsync(
+                new ChannelCreatedNotification(
+                    GuildId: request.GuildId,
+                    ChannelId: channel.Id,
+                    Name: channel.Name,
+                    Type: channel.Type,
+                    IsDefault: channel.IsDefault,
+                    Position: channel.Position),
+                ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to send ChannelCreated notification for channel {ChannelId} in guild {GuildId}",
+            channel.Id,
+            request.GuildId);
 
         return ApplicationResponse<CreateChannelResponse>.Ok(new CreateChannelResponse(
             ChannelId: channel.Id.Value,

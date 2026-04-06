@@ -20,6 +20,7 @@ public sealed class CreateChannelHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly CreateChannelHandler _handler;
@@ -28,15 +29,23 @@ public sealed class CreateChannelHandlerTests
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildNotifierMock
+            .Setup(x => x.NotifyChannelCreatedAsync(
+                It.IsAny<ChannelCreatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new CreateChannelHandler(
             _guildRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
             NullLogger<CreateChannelHandler>.Instance);
     }
@@ -179,6 +188,60 @@ public sealed class CreateChannelHandlerTests
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminCreatesChannel_ShouldSendChannelCreatedNotification()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var adminId = UserId.New();
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        var response = await _handler.HandleAsync(new CreateChannelInput(guild.Id, "lounge", GuildChannelType.Text, 3), adminId);
+
+        response.Success.Should().BeTrue();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyChannelCreatedAsync(
+                It.Is<ChannelCreatedNotification>(n =>
+                    n.GuildId == guild.Id &&
+                    n.Name == "lounge" &&
+                    n.Type == GuildChannelType.Text &&
+                    n.Position == 3),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenChannelCreationFails_ShouldNotSendNotification()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var adminId = UserId.New();
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                guild.Id,
+                "lounge",
+                It.IsAny<GuildChannelId>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var response = await _handler.HandleAsync(new CreateChannelInput(guild.Id, "lounge", GuildChannelType.Text, 3), adminId);
+
+        response.Success.Should().BeFalse();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyChannelCreatedAsync(
+                It.IsAny<ChannelCreatedNotification>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
 }
