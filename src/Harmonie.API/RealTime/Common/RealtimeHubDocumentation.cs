@@ -75,6 +75,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a new channel is created in a guild.")]
     public void OnChannelCreated() { }
 
+    [Channel("hubs/realtime/ChannelUpdated")]
+    [SubscribeOperation(typeof(ChannelUpdatedEvent),
+        Summary = "Received when a channel's name or position is updated in a guild.")]
+    public void OnChannelUpdated() { }
+
     [Channel("hubs/realtime/GuildDeleted")]
     [SubscribeOperation(typeof(GuildDeletedEvent),
         Summary = "Received when a guild is deleted.")]

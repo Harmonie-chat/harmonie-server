@@ -1,9 +1,11 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.UpdateChannel;
 
@@ -12,14 +14,20 @@ public sealed record UpdateChannelInput(GuildChannelId ChannelId, string? Name =
 public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelInput, UpdateChannelResponse>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateChannelHandler> _logger;
 
     public UpdateChannelHandler(
         IGuildChannelRepository guildChannelRepository,
-        IUnitOfWork unitOfWork)
+        IGuildNotifier guildNotifier,
+        IUnitOfWork unitOfWork,
+        ILogger<UpdateChannelHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
+        _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApplicationResponse<UpdateChannelResponse>> HandleAsync(
@@ -91,6 +99,20 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
             await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
             await _guildChannelRepository.UpdateAsync(channel, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+
+            await BestEffortNotificationHelper.TryNotifyAsync(
+                ct => _guildNotifier.NotifyChannelUpdatedAsync(
+                    new ChannelUpdatedNotification(
+                        GuildId: channel.GuildId,
+                        ChannelId: channel.Id,
+                        Name: channel.Name,
+                        Position: channel.Position),
+                    ct),
+                TimeSpan.FromSeconds(5),
+                _logger,
+                "Failed to send ChannelUpdated notification for channel {ChannelId} in guild {GuildId}",
+                channel.Id,
+                channel.GuildId);
         }
 
         return ApplicationResponse<UpdateChannelResponse>.Ok(new UpdateChannelResponse(

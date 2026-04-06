@@ -3,12 +3,14 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -17,6 +19,7 @@ namespace Harmonie.Application.Tests.Channels;
 public sealed class UpdateChannelHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly UpdateChannelHandler _handler;
@@ -24,14 +27,23 @@ public sealed class UpdateChannelHandlerTests
     public UpdateChannelHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildNotifierMock
+            .Setup(x => x.NotifyChannelUpdatedAsync(
+                It.IsAny<ChannelUpdatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new UpdateChannelHandler(
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _guildNotifierMock.Object,
+            _unitOfWorkMock.Object,
+            NullLogger<UpdateChannelHandler>.Instance);
     }
 
     [Fact]
@@ -244,6 +256,61 @@ public sealed class UpdateChannelHandlerTests
 
         _guildChannelRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminUpdatesChannel_ShouldSendChannelUpdatedNotification()
+    {
+        var channel = CreateChannel("old-name");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                channel.GuildId,
+                "new-name",
+                channel.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new UpdateChannelRequest(Name: "new-name");
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request.Name, request.Position), adminId);
+
+        response.Success.Should().BeTrue();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyChannelUpdatedAsync(
+                It.Is<ChannelUpdatedNotification>(n =>
+                    n.GuildId == channel.GuildId &&
+                    n.ChannelId == channel.Id &&
+                    n.Name == "new-name"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNoFieldsSet_ShouldNotSendNotification()
+    {
+        var channel = CreateChannel("unchanged");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
+
+        var request = new UpdateChannelRequest();
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request.Name, request.Position), adminId);
+
+        response.Success.Should().BeTrue();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyChannelUpdatedAsync(
+                It.IsAny<ChannelUpdatedNotification>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
