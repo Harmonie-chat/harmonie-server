@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Users;
@@ -14,6 +15,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildBanRepository _guildBanRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
+    private readonly IGuildNotifier _guildNotifier;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AcceptInviteHandler> _logger;
 
@@ -22,6 +25,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         IGuildMemberRepository guildMemberRepository,
         IGuildBanRepository guildBanRepository,
         IRealtimeGroupManager realtimeGroupManager,
+        IGuildNotifier guildNotifier,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         ILogger<AcceptInviteHandler> logger)
     {
@@ -29,6 +34,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         _guildMemberRepository = guildMemberRepository;
         _guildBanRepository = guildBanRepository;
         _realtimeGroupManager = realtimeGroupManager;
+        _guildNotifier = guildNotifier;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -111,6 +118,22 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
             "Failed to subscribe user {UserId} to guild {GuildId} SignalR groups",
             currentUserId,
             invite.GuildId);
+
+        var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _guildNotifier.NotifyMemberJoinedAsync(
+                new MemberJoinedNotification(
+                    GuildId: invite.GuildId,
+                    UserId: currentUserId,
+                    DisplayName: user?.DisplayName,
+                    AvatarFileId: user?.AvatarFileId),
+                ct),
+            TimeSpan.FromSeconds(5),
+            _logger,
+            "Failed to notify guild {GuildId} that user {UserId} joined",
+            invite.GuildId,
+            currentUserId);
 
         var payload = new AcceptInviteResponse(
             GuildId: invite.GuildId.Value,

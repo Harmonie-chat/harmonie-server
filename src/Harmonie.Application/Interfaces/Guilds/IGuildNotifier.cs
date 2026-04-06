@@ -1,6 +1,7 @@
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
+using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
 
 namespace Harmonie.Application.Interfaces.Guilds;
@@ -29,6 +30,10 @@ public interface IGuildNotifier
 
     Task NotifyChannelsReorderedAsync(
         ChannelsReorderedNotification notification,
+        CancellationToken cancellationToken = default);
+
+    Task NotifyMemberJoinedAsync(
+        MemberJoinedNotification notification,
         CancellationToken cancellationToken = default);
 }
 
@@ -64,3 +69,9 @@ public sealed record ChannelsReorderedNotification(
 public sealed record ChannelPositionItem(
     GuildChannelId ChannelId,
     int Position);
+
+public sealed record MemberJoinedNotification(
+    GuildId GuildId,
+    UserId UserId,
+    string? DisplayName,
+    UploadedFileId? AvatarFileId);

@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.AcceptInvite;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -43,6 +44,8 @@ public sealed class AcceptInviteHandlerTests
             _guildMemberRepositoryMock.Object,
             _guildBanRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            new Mock<IGuildNotifier>().Object,
+            new Mock<IUserRepository>().Object,
             _unitOfWorkMock.Object,
             NullLogger<AcceptInviteHandler>.Instance);
     }

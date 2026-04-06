@@ -109,6 +109,23 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
             .SendAsync("ChannelsReordered", payload, cancellationToken);
     }
+
+    public async Task NotifyMemberJoinedAsync(
+        MemberJoinedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new MemberJoinedEvent(
+            GuildId: notification.GuildId.Value,
+            UserId: notification.UserId.Value,
+            DisplayName: notification.DisplayName,
+            AvatarFileId: notification.AvatarFileId?.Value);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("MemberJoined", payload, cancellationToken);
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -143,3 +160,9 @@ public sealed record ChannelsReorderedEvent(
 public sealed record ChannelPositionItemEvent(
     Guid ChannelId,
     int Position);
+
+public sealed record MemberJoinedEvent(
+    Guid GuildId,
+    Guid UserId,
+    string? DisplayName,
+    Guid? AvatarFileId);
