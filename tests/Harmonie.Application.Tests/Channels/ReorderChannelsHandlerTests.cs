@@ -22,6 +22,7 @@ public sealed class ReorderChannelsHandlerTests
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly ReorderChannelsHandler _handler;
 
     public ReorderChannelsHandlerTests()
@@ -30,13 +31,15 @@ public sealed class ReorderChannelsHandlerTests
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _handler = new ReorderChannelsHandler(
             _guildRepositoryMock.Object,
             _guildChannelRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            _guildNotifierMock.Object);
     }
 
     [Fact]
@@ -230,6 +233,37 @@ public sealed class ReorderChannelsHandlerTests
 
         _guildChannelRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminReordersChannels_ShouldNotifyChannelsReordered()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var adminId = UserId.New();
+        var ch1 = CreateChannel(guild.Id, "ch1", 0);
+        var ch2 = CreateChannel(guild.Id, "ch2", 1);
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByGuildIdAsync(guild.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([ch1, ch2]);
+
+        var request = new ReorderChannelsRequest([
+            new ReorderChannelsItemRequest(ch1.Id, 5),
+            new ReorderChannelsItemRequest(ch2.Id, 3)
+        ]);
+        await _handler.HandleAsync(new ReorderChannelsInput(guild.Id, request.Channels), adminId);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyChannelsReorderedAsync(
+                It.Is<ChannelsReorderedNotification>(n =>
+                    n.GuildId == guild.Id &&
+                    n.Channels.Count == 2),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

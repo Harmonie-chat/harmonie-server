@@ -16,15 +16,18 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IGuildNotifier _guildNotifier;
 
     public ReorderChannelsHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IGuildNotifier guildNotifier)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _unitOfWork = unitOfWork;
+        _guildNotifier = guildNotifier;
     }
 
     public async Task<ApplicationResponse<ReorderChannelsResponse>> HandleAsync(
@@ -111,6 +114,14 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
                 Type: c.Type.ToString(),
                 IsDefault: c.IsDefault,
                 Position: c.Position)).ToArray());
+
+        await _guildNotifier.NotifyChannelsReorderedAsync(
+            new ChannelsReorderedNotification(
+                GuildId: input.GuildId,
+                Channels: updatedChannels
+                    .Select(c => new ChannelPositionItem(c.Id, c.Position))
+                    .ToArray()),
+            cancellationToken);
 
         return ApplicationResponse<ReorderChannelsResponse>.Ok(payload);
     }

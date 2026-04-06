@@ -26,6 +26,10 @@ public interface IGuildNotifier
     Task NotifyChannelDeletedAsync(
         ChannelDeletedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyChannelsReorderedAsync(
+        ChannelsReorderedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GuildDeletedNotification(
@@ -52,3 +56,11 @@ public sealed record ChannelUpdatedNotification(
 public sealed record ChannelDeletedNotification(
     GuildId GuildId,
     GuildChannelId ChannelId);
+
+public sealed record ChannelsReorderedNotification(
+    GuildId GuildId,
+    IReadOnlyList<ChannelPositionItem> Channels);
+
+public sealed record ChannelPositionItem(
+    GuildChannelId ChannelId,
+    int Position);

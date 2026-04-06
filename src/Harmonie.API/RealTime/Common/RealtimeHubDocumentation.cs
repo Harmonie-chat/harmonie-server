@@ -85,6 +85,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a channel is deleted from a guild.")]
     public void OnChannelDeleted() { }
 
+    [Channel("hubs/realtime/ChannelsReordered")]
+    [SubscribeOperation(typeof(ChannelsReorderedEvent),
+        Summary = "Received when a guild admin reorders channels.")]
+    public void OnChannelsReordered() { }
+
     [Channel("hubs/realtime/GuildDeleted")]
     [SubscribeOperation(typeof(GuildDeletedEvent),
         Summary = "Received when a guild is deleted.")]

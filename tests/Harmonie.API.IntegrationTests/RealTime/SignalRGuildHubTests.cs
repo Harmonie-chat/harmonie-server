@@ -177,6 +177,73 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         eventPayload.ChannelId.Should().Be(channelId.ToString());
     }
 
+    [Fact]
+    public async Task ChannelsReordered_WhenMemberConnected_ShouldReceiveEvent()
+    {
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var member = await AuthTestHelper.RegisterAsync(_client);
+
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest($"SignalR ChannelsReordered Guild {prefix}"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, member.AccessToken);
+
+        var ch1 = await ChannelTestHelper.CreateChannelAndGetIdAsync(
+            _client,
+            owner.AccessToken,
+            $"reorder-a-{prefix}",
+            guildId: createGuildPayload.GuildId,
+            position: 0);
+
+        var ch2 = await ChannelTestHelper.CreateChannelAndGetIdAsync(
+            _client,
+            owner.AccessToken,
+            $"reorder-b-{prefix}",
+            guildId: createGuildPayload.GuildId,
+            position: 1);
+
+        await using var connection = CreateHubConnection(member.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var eventReceived = new TaskCompletionSource<SignalRChannelsReorderedEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On("Ready", () => ready.TrySetResult());
+        connection.On<SignalRChannelsReorderedEvent>("ChannelsReordered", payload =>
+        {
+            eventReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var reorderResponse = await _client.SendAuthorizedPatchAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/channels/reorder",
+            new { channels = new[] { new { channelId = ch2, position = 0 }, new { channelId = ch1, position = 1 } } },
+            owner.AccessToken);
+        reorderResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(eventReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(eventReceived.Task);
+
+        var eventPayload = await eventReceived.Task;
+        eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.Channels.Should().NotBeEmpty();
+
+        var reorderedCh1 = eventPayload.Channels.First(c => c.ChannelId == ch1.ToString());
+        var reorderedCh2 = eventPayload.Channels.First(c => c.ChannelId == ch2.ToString());
+        reorderedCh1.Position.Should().Be(1);
+        reorderedCh2.Position.Should().Be(0);
+    }
+
     private HubConnection CreateHubConnection(string accessToken)
     {
         var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
@@ -203,4 +270,12 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
     private sealed record SignalRChannelDeletedEvent(
         string GuildId,
         string ChannelId);
+
+    private sealed record SignalRChannelsReorderedEvent(
+        string GuildId,
+        SignalRChannelPositionItem[] Channels);
+
+    private sealed record SignalRChannelPositionItem(
+        string ChannelId,
+        int Position);
 }
