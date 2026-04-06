@@ -41,6 +41,25 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
             .SendAsync("GuildOwnershipTransferred", payload, cancellationToken);
     }
+
+    public async Task NotifyChannelCreatedAsync(
+        ChannelCreatedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new ChannelCreatedEvent(
+            GuildId: notification.GuildId.Value,
+            ChannelId: notification.ChannelId.Value,
+            Name: notification.Name,
+            Type: notification.Type.ToString(),
+            IsDefault: notification.IsDefault,
+            Position: notification.Position);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("ChannelCreated", payload, cancellationToken);
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -49,3 +68,11 @@ public sealed record GuildDeletedEvent(
 public sealed record GuildOwnershipTransferredEvent(
     Guid GuildId,
     Guid NewOwnerUserId);
+
+public sealed record ChannelCreatedEvent(
+    Guid GuildId,
+    Guid ChannelId,
+    string Name,
+    string Type,
+    bool IsDefault,
+    int Position);
