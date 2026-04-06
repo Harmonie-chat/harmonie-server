@@ -110,6 +110,16 @@ public class RealtimeHubDocumentation
         Summary = "Received when a member voluntarily leaves a guild.")]
     public void OnMemberLeft() { }
 
+    [Channel("hubs/realtime/MemberBanned")]
+    [SubscribeOperation(typeof(MemberBannedEvent),
+        Summary = "Received when a guild member is banned. Broadcast to all remaining guild members.")]
+    public void OnMemberBanned() { }
+
+    [Channel("hubs/realtime/YouWereBanned")]
+    [SubscribeOperation(typeof(YouWereBannedEvent),
+        Summary = "Received by the banned user when they are removed from a guild via a ban.")]
+    public void OnYouWereBanned() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]
