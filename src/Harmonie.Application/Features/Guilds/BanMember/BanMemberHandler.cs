@@ -19,6 +19,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
     private readonly IGuildBanRepository _guildBanRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
+    private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<BanMemberHandler> _logger;
 
@@ -28,6 +29,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         IGuildBanRepository guildBanRepository,
         IMessageRepository messageRepository,
         IRealtimeGroupManager realtimeGroupManager,
+        IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
         ILogger<BanMemberHandler> logger)
     {
@@ -36,6 +38,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         _guildBanRepository = guildBanRepository;
         _messageRepository = messageRepository;
         _realtimeGroupManager = realtimeGroupManager;
+        _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -119,6 +122,18 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 "Failed to unsubscribe banned user {UserId} from guild {GuildId} SignalR groups",
                 request.TargetId,
                 request.GuildId);
+
+            await BestEffortNotificationHelper.TryNotifyAsync(
+                ct => _guildNotifier.NotifyMemberBannedAsync(
+                    new MemberBannedNotification(
+                        GuildId: request.GuildId,
+                        BannedUserId: request.TargetId),
+                    ct),
+                TimeSpan.FromSeconds(5),
+                _logger,
+                "Failed to notify guild {GuildId} that user {UserId} was banned",
+                request.GuildId,
+                request.TargetId);
         }
 
         var ban = banResult.Value;

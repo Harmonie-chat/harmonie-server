@@ -21,6 +21,7 @@ public sealed class BanMemberHandlerTests
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IGuildBanRepository> _guildBanRepositoryMock;
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly BanMemberHandler _handler;
@@ -31,6 +32,7 @@ public sealed class BanMemberHandlerTests
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _guildBanRepositoryMock = new Mock<IGuildBanRepository>();
         _messageRepositoryMock = new Mock<IMessageRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
 
@@ -42,6 +44,7 @@ public sealed class BanMemberHandlerTests
             _guildBanRepositoryMock.Object,
             _messageRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
             NullLogger<BanMemberHandler>.Instance);
     }
@@ -224,6 +227,36 @@ public sealed class BanMemberHandlerTests
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenBanMember_ShouldNotifyGuildNotifier()
+    {
+        var ownerId = UserId.New();
+        var targetId = UserId.New();
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        _guildBanRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var response = await _handler.HandleAsync(new BanMemberInput(guild.Id, targetId, null, 0), ownerId);
+
+        response.Success.Should().BeTrue();
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberBannedAsync(
+                It.Is<MemberBannedNotification>(n => n.GuildId == guild.Id && n.BannedUserId == targetId),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

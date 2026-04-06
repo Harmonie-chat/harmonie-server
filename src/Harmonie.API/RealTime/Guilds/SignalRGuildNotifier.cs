@@ -1,4 +1,5 @@
 using Harmonie.API.RealTime.Common;
+using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Microsoft.AspNetCore.SignalR;
 
@@ -7,10 +8,12 @@ namespace Harmonie.API.RealTime.Guilds;
 public sealed class SignalRGuildNotifier : IGuildNotifier
 {
     private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IConnectionTracker _connectionTracker;
 
-    public SignalRGuildNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRGuildNotifier(IHubContext<RealtimeHub> hubContext, IConnectionTracker connectionTracker)
     {
         _hubContext = hubContext;
+        _connectionTracker = connectionTracker;
     }
 
     public async Task NotifyGuildDeletedAsync(
@@ -141,6 +144,32 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
             .SendAsync("MemberLeft", payload, cancellationToken);
     }
+
+    public async Task NotifyMemberBannedAsync(
+        MemberBannedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var memberBannedPayload = new MemberBannedEvent(
+            GuildId: notification.GuildId.Value,
+            UserId: notification.BannedUserId.Value);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("MemberBanned", memberBannedPayload, cancellationToken);
+
+        var connectionIds = _connectionTracker.GetConnectionIds(notification.BannedUserId);
+        if (connectionIds.Count > 0)
+        {
+            var youWereBannedPayload = new YouWereBannedEvent(
+                GuildId: notification.GuildId.Value);
+
+            await _hubContext.Clients
+                .Clients(connectionIds)
+                .SendAsync("YouWereBanned", youWereBannedPayload, cancellationToken);
+        }
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -185,3 +214,10 @@ public sealed record MemberJoinedEvent(
 public sealed record MemberLeftEvent(
     Guid GuildId,
     Guid UserId);
+
+public sealed record MemberBannedEvent(
+    Guid GuildId,
+    Guid UserId);
+
+public sealed record YouWereBannedEvent(
+    Guid GuildId);
