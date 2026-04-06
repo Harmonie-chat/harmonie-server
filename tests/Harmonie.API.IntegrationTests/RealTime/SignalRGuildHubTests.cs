@@ -244,6 +244,51 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         reorderedCh2.Position.Should().Be(0);
     }
 
+    [Fact]
+    public async Task MemberJoined_WhenMemberConnected_ShouldReceiveEvent()
+    {
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var existingMember = await AuthTestHelper.RegisterAsync(_client);
+        var joiningMember = await AuthTestHelper.RegisterAsync(_client);
+
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest($"SignalR MemberJoined Guild {prefix}"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, existingMember.AccessToken);
+
+        await using var connection = CreateHubConnection(existingMember.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var eventReceived = new TaskCompletionSource<SignalRMemberJoinedEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On("Ready", () => ready.TrySetResult());
+        connection.On<SignalRMemberJoinedEvent>("MemberJoined", payload =>
+        {
+            eventReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload.GuildId, owner.AccessToken, joiningMember.AccessToken);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(eventReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(eventReceived.Task);
+
+        var eventPayload = await eventReceived.Task;
+        eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.UserId.Should().NotBeNullOrEmpty();
+    }
+
     private HubConnection CreateHubConnection(string accessToken)
     {
         var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
@@ -278,4 +323,10 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
     private sealed record SignalRChannelPositionItem(
         string ChannelId,
         int Position);
+
+    private sealed record SignalRMemberJoinedEvent(
+        string GuildId,
+        string UserId,
+        string? DisplayName,
+        string? AvatarFileId);
 }

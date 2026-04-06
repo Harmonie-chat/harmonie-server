@@ -100,6 +100,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a guild's ownership is transferred to another member.")]
     public void OnGuildOwnershipTransferred() { }
 
+    [Channel("hubs/realtime/MemberJoined")]
+    [SubscribeOperation(typeof(MemberJoinedEvent),
+        Summary = "Received when a new member joins a guild by accepting an invite.")]
+    public void OnMemberJoined() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]
