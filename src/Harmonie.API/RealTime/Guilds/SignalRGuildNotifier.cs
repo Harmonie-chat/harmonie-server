@@ -170,6 +170,32 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
                 .SendAsync("YouWereBanned", youWereBannedPayload, cancellationToken);
         }
     }
+
+    public async Task NotifyMemberRemovedAsync(
+        MemberRemovedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var memberRemovedPayload = new MemberRemovedEvent(
+            GuildId: notification.GuildId.Value,
+            UserId: notification.RemovedUserId.Value);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("MemberRemoved", memberRemovedPayload, cancellationToken);
+
+        var connectionIds = _connectionTracker.GetConnectionIds(notification.RemovedUserId);
+        if (connectionIds.Count > 0)
+        {
+            var youWereKickedPayload = new YouWereKickedEvent(
+                GuildId: notification.GuildId.Value);
+
+            await _hubContext.Clients
+                .Clients(connectionIds)
+                .SendAsync("YouWereKicked", youWereKickedPayload, cancellationToken);
+        }
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -220,4 +246,11 @@ public sealed record MemberBannedEvent(
     Guid UserId);
 
 public sealed record YouWereBannedEvent(
+    Guid GuildId);
+
+public sealed record MemberRemovedEvent(
+    Guid GuildId,
+    Guid UserId);
+
+public sealed record YouWereKickedEvent(
     Guid GuildId);

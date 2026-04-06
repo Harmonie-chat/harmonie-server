@@ -120,6 +120,16 @@ public class RealtimeHubDocumentation
         Summary = "Received by the banned user when they are removed from a guild via a ban.")]
     public void OnYouWereBanned() { }
 
+    [Channel("hubs/realtime/MemberRemoved")]
+    [SubscribeOperation(typeof(MemberRemovedEvent),
+        Summary = "Received when a guild member is kicked by an admin. Broadcast to all remaining guild members.")]
+    public void OnMemberRemoved() { }
+
+    [Channel("hubs/realtime/YouWereKicked")]
+    [SubscribeOperation(typeof(YouWereKickedEvent),
+        Summary = "Received by the kicked user when they are removed from a guild by an admin.")]
+    public void OnYouWereKicked() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]

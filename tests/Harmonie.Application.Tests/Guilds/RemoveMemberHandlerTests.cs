@@ -18,17 +18,20 @@ public sealed class RemoveMemberHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly RemoveMemberHandler _handler;
 
     public RemoveMemberHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
 
         _handler = new RemoveMemberHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            _guildNotifierMock.Object,
             NullLogger<RemoveMemberHandler>.Instance);
     }
 
@@ -158,6 +161,39 @@ public sealed class RemoveMemberHandlerTests
 
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAdminRemovesRegularMember_ShouldCallNotifyMemberRemovedAsync()
+    {
+        var ownerId = UserId.New();
+        var callerId = UserId.New();
+        var targetId = UserId.New();
+        var guild = ApplicationTestBuilders.CreateGuild(ownerId);
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _guildNotifierMock
+            .Setup(x => x.NotifyMemberRemovedAsync(It.IsAny<MemberRemovedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), callerId);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRemovedAsync(
+                It.Is<MemberRemovedNotification>(n => n.GuildId == guild.Id && n.RemovedUserId == targetId),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

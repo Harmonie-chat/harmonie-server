@@ -43,6 +43,10 @@ public interface IGuildNotifier
     Task NotifyMemberBannedAsync(
         MemberBannedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMemberRemovedAsync(
+        MemberRemovedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GuildDeletedNotification(
@@ -91,3 +95,7 @@ public sealed record MemberLeftNotification(
 public sealed record MemberBannedNotification(
     GuildId GuildId,
     UserId BannedUserId);
+
+public sealed record MemberRemovedNotification(
+    GuildId GuildId,
+    UserId RemovedUserId);
