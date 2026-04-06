@@ -130,6 +130,11 @@ public class RealtimeHubDocumentation
         Summary = "Received by the kicked user when they are removed from a guild by an admin.")]
     public void OnYouWereKicked() { }
 
+    [Channel("hubs/realtime/MemberRoleUpdated")]
+    [SubscribeOperation(typeof(MemberRoleUpdatedEvent),
+        Summary = "Received when a guild member's role is changed by an admin. Broadcast to all guild members.")]
+    public void OnMemberRoleUpdated() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]
