@@ -30,6 +30,7 @@ public sealed class LeaveGuildHandlerTests
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            new Mock<IGuildNotifier>().Object,
             NullLogger<LeaveGuildHandler>.Instance);
     }
 

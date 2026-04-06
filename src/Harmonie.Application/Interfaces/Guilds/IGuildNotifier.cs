@@ -35,6 +35,10 @@ public interface IGuildNotifier
     Task NotifyMemberJoinedAsync(
         MemberJoinedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMemberLeftAsync(
+        MemberLeftNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GuildDeletedNotification(
@@ -75,3 +79,7 @@ public sealed record MemberJoinedNotification(
     UserId UserId,
     string? DisplayName,
     UploadedFileId? AvatarFileId);
+
+public sealed record MemberLeftNotification(
+    GuildId GuildId,
+    UserId UserId);

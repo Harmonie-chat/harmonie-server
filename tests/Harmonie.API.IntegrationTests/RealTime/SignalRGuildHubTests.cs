@@ -289,6 +289,56 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         eventPayload.UserId.Should().NotBeNullOrEmpty();
     }
 
+    [Fact]
+    public async Task MemberLeft_WhenMemberConnected_ShouldReceiveEvent()
+    {
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var remainingMember = await AuthTestHelper.RegisterAsync(_client);
+        var leavingMember = await AuthTestHelper.RegisterAsync(_client);
+
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+
+        var createGuildResponse = await _client.SendAuthorizedPostAsync(
+            "/api/guilds",
+            new CreateGuildRequest($"SignalR MemberLeft Guild {prefix}"),
+            owner.AccessToken);
+        createGuildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var createGuildPayload = await createGuildResponse.Content.ReadFromJsonAsync<CreateGuildResponse>();
+        createGuildPayload.Should().NotBeNull();
+
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload!.GuildId, owner.AccessToken, remainingMember.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, createGuildPayload.GuildId, owner.AccessToken, leavingMember.AccessToken);
+
+        await using var connection = CreateHubConnection(remainingMember.AccessToken);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var eventReceived = new TaskCompletionSource<SignalRMemberLeftEvent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.On("Ready", () => ready.TrySetResult());
+        connection.On<SignalRMemberLeftEvent>("MemberLeft", payload =>
+        {
+            eventReceived.TrySetResult(payload);
+        });
+
+        await connection.StartAsync();
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var leaveResponse = await _client.SendAuthorizedPostAsync(
+            $"/api/guilds/{createGuildPayload.GuildId}/leave",
+            new { },
+            leavingMember.AccessToken);
+        leaveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var completedTask = await Task.WhenAny(eventReceived.Task, Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token));
+        completedTask.Should().Be(eventReceived.Task);
+
+        var eventPayload = await eventReceived.Task;
+        eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.UserId.Should().NotBeNullOrEmpty();
+    }
+
     private HubConnection CreateHubConnection(string accessToken)
     {
         var baseAddress = _client.BaseAddress ?? new Uri("http://localhost");
@@ -329,4 +379,8 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
         string UserId,
         string? DisplayName,
         string? AvatarFileId);
+
+    private sealed record SignalRMemberLeftEvent(
+        string GuildId,
+        string UserId);
 }

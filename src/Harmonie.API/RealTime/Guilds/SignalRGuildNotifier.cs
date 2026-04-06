@@ -126,6 +126,21 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
             .SendAsync("MemberJoined", payload, cancellationToken);
     }
+
+    public async Task NotifyMemberLeftAsync(
+        MemberLeftNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new MemberLeftEvent(
+            GuildId: notification.GuildId.Value,
+            UserId: notification.UserId.Value);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("MemberLeft", payload, cancellationToken);
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -166,3 +181,7 @@ public sealed record MemberJoinedEvent(
     Guid UserId,
     string? DisplayName,
     Guid? AvatarFileId);
+
+public sealed record MemberLeftEvent(
+    Guid GuildId,
+    Guid UserId);

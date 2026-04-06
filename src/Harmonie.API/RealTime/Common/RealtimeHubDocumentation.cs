@@ -105,6 +105,11 @@ public class RealtimeHubDocumentation
         Summary = "Received when a new member joins a guild by accepting an invite.")]
     public void OnMemberJoined() { }
 
+    [Channel("hubs/realtime/MemberLeft")]
+    [SubscribeOperation(typeof(MemberLeftEvent),
+        Summary = "Received when a member voluntarily leaves a guild.")]
+    public void OnMemberLeft() { }
+
     [Channel("hubs/realtime/UserTyping")]
     [SubscribeOperation(typeof(UserTypingEvent),
         Summary = "Received when a user starts typing in a guild text channel.")]
