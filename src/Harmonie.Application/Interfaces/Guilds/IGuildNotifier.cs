@@ -18,6 +18,10 @@ public interface IGuildNotifier
     Task NotifyChannelCreatedAsync(
         ChannelCreatedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyChannelUpdatedAsync(
+        ChannelUpdatedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GuildDeletedNotification(
@@ -33,4 +37,10 @@ public sealed record ChannelCreatedNotification(
     string Name,
     GuildChannelType Type,
     bool IsDefault,
+    int Position);
+
+public sealed record ChannelUpdatedNotification(
+    GuildId GuildId,
+    GuildChannelId ChannelId,
+    string Name,
     int Position);
