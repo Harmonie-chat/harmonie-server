@@ -52,7 +52,8 @@ public sealed class DeleteGuildIconHandlerTests
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
-            _guildNotifierMock.Object);
+            _guildNotifierMock.Object,
+            NullLogger<DeleteGuildIconHandler>.Instance);
     }
 
     [Fact]

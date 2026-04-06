@@ -46,7 +46,8 @@ public sealed class UpdateGuildHandlerTests
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
-            _guildNotifierMock.Object);
+            _guildNotifierMock.Object,
+            NullLogger<UpdateGuildHandler>.Instance);
     }
 
     [Fact]
