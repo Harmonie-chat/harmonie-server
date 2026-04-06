@@ -13,13 +13,16 @@ public sealed class UpdateMemberRoleHandler
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
+    private readonly IGuildNotifier _guildNotifier;
 
     public UpdateMemberRoleHandler(
         IGuildRepository guildRepository,
-        IGuildMemberRepository guildMemberRepository)
+        IGuildMemberRepository guildMemberRepository,
+        IGuildNotifier guildNotifier)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
+        _guildNotifier = guildNotifier;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -58,6 +61,10 @@ public sealed class UpdateMemberRoleHandler
         }
 
         await _guildMemberRepository.UpdateRoleAsync(request.GuildId, request.TargetId, request.NewRole, cancellationToken);
+
+        await _guildNotifier.NotifyMemberRoleUpdatedAsync(
+            new MemberRoleUpdatedNotification(request.GuildId, request.TargetId, request.NewRole),
+            cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);
     }

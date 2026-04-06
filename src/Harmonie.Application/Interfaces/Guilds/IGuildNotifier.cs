@@ -47,6 +47,10 @@ public interface IGuildNotifier
     Task NotifyMemberRemovedAsync(
         MemberRemovedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMemberRoleUpdatedAsync(
+        MemberRoleUpdatedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GuildDeletedNotification(
@@ -99,3 +103,8 @@ public sealed record MemberBannedNotification(
 public sealed record MemberRemovedNotification(
     GuildId GuildId,
     UserId RemovedUserId);
+
+public sealed record MemberRoleUpdatedNotification(
+    GuildId GuildId,
+    UserId UserId,
+    GuildRole NewRole);

@@ -17,16 +17,19 @@ public sealed class UpdateMemberRoleHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
+    private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly UpdateMemberRoleHandler _handler;
 
     public UpdateMemberRoleHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
+        _guildNotifierMock = new Mock<IGuildNotifier>();
 
         _handler = new UpdateMemberRoleHandler(
             _guildRepositoryMock.Object,
-            _guildMemberRepositoryMock.Object);
+            _guildMemberRepositoryMock.Object,
+            _guildNotifierMock.Object);
     }
 
     [Fact]
@@ -184,6 +187,41 @@ public sealed class UpdateMemberRoleHandlerTests
 
         _guildMemberRepositoryMock.Verify(
             x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Member, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenRoleUpdated_ShouldCallNotifyMemberRoleUpdatedAsync()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var callerId = UserId.New();
+        var targetId = UserId.New();
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GuildRole.Member);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Admin, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        _guildNotifierMock
+            .Setup(x => x.NotifyMemberRoleUpdatedAsync(It.IsAny<MemberRoleUpdatedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _handler.HandleAsync(new UpdateMemberRoleInput(guild.Id, targetId, GuildRole.Admin), callerId);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRoleUpdatedAsync(
+                It.Is<MemberRoleUpdatedNotification>(n =>
+                    n.GuildId == guild.Id &&
+                    n.UserId == targetId &&
+                    n.NewRole == GuildRole.Admin),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

@@ -196,6 +196,22 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
                 .SendAsync("YouWereKicked", youWereKickedPayload, cancellationToken);
         }
     }
+
+    public async Task NotifyMemberRoleUpdatedAsync(
+        MemberRoleUpdatedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new MemberRoleUpdatedEvent(
+            GuildId: notification.GuildId.Value,
+            UserId: notification.UserId.Value,
+            NewRole: notification.NewRole.ToString());
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
+            .SendAsync("MemberRoleUpdated", payload, cancellationToken);
+    }
 }
 
 public sealed record GuildDeletedEvent(
@@ -254,3 +270,8 @@ public sealed record MemberRemovedEvent(
 
 public sealed record YouWereKickedEvent(
     Guid GuildId);
+
+public sealed record MemberRoleUpdatedEvent(
+    Guid GuildId,
+    Guid UserId,
+    string NewRole);
