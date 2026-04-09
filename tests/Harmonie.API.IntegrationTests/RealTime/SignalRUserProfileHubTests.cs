@@ -58,7 +58,7 @@ public sealed class SignalRUserProfileHubTests : IClassFixture<HarmonieWebApplic
 
         var updateResponse = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
-            new { displayName = $"Updated-{prefix}", displayNameIsSet = true },
+            new { displayName = $"Updated-{prefix}" },
             updatingUser.AccessToken);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -107,7 +107,7 @@ public sealed class SignalRUserProfileHubTests : IClassFixture<HarmonieWebApplic
 
         var updateResponse = await _client.SendAuthorizedPatchAsync(
             "/api/users/me",
-            new { theme = "dark", themeIsSet = true },
+            new { theme = "dark" },
             updatingUser.AccessToken);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
