@@ -63,13 +63,21 @@ public sealed class SearchUsersHandler
             cancellationToken);
 
         var payload = new SearchUsersResponse(
-            users.Select(user => new SearchUsersItemResponse(
-                UserId: user.UserId.Value,
-                Username: user.Username.Value,
-                DisplayName: user.DisplayName,
-                AvatarFileId: user.AvatarFileId?.Value,
-                Bio: user.Bio,
-                Status: user.IsActive ? "Active" : "Blocked"))
+            users.Select(user =>
+            {
+                var avatar = user.AvatarColor is not null || user.AvatarIcon is not null || user.AvatarBg is not null
+                    ? new AvatarAppearanceDto(user.AvatarColor, user.AvatarIcon, user.AvatarBg)
+                    : null;
+
+                return new SearchUsersItemResponse(
+                    UserId: user.UserId.Value,
+                    Username: user.Username.Value,
+                    DisplayName: user.DisplayName,
+                    AvatarFileId: user.AvatarFileId?.Value,
+                    Avatar: avatar,
+                    Bio: user.Bio,
+                    Status: user.IsActive ? "Active" : "Blocked");
+            })
             .ToArray());
 
         return ApplicationResponse<SearchUsersResponse>.Ok(payload);

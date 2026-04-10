@@ -117,6 +117,33 @@ public sealed class SearchUsersEndpointTests : IClassFixture<HarmonieWebApplicat
     }
 
     [Fact]
+    public async Task SearchUsers_WhenUserHasAvatarAppearance_ShouldReturnAvatarDto()
+    {
+        var caller = await RegisterAsync();
+        var token = Guid.NewGuid().ToString("N")[..8];
+        var target = await RegisterAsync(usernamePrefix: $"{token}av");
+
+        await _client.SendAuthorizedPatchAsync(
+            "/api/users/me",
+            new { avatar = new { color = "#FFF4D6", icon = "star", bg = "#1F2937" } },
+            target.AccessToken);
+
+        var response = await _client.SendAuthorizedGetAsync(
+            $"/api/users/search?q={token}av",
+            caller.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<SearchUsersResponse>();
+        payload.Should().NotBeNull();
+        var user = payload!.Users.Should().ContainSingle(u => u.UserId == target.UserId).Subject;
+        user.Avatar.Should().NotBeNull();
+        user.Avatar!.Color.Should().Be("#FFF4D6");
+        user.Avatar.Icon.Should().Be("star");
+        user.Avatar.Bg.Should().Be("#1F2937");
+    }
+
+    [Fact]
     public async Task SearchUsers_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         var response = await _client.GetAsync("/api/users/search?q=al");

@@ -115,7 +115,43 @@ public sealed class SearchUsersHandlerTests
         response.Data.Users[0].Status.Should().Be("Active");
     }
 
-    private static SearchUserResult CreateSearchUser(string username, string? displayName, bool isActive)
+    [Fact]
+    public async Task HandleAsync_WithAvatarAppearance_ShouldMapAvatarDto()
+    {
+        var currentUserId = UserId.New();
+        var userWithAvatar = CreateSearchUser("bob", null, isActive: true, avatarColor: "#ff0000", avatarIcon: "cat", avatarBg: "#ffffff");
+        var userWithoutAvatar = CreateSearchUser("alice", null, isActive: true);
+
+        _userRepositoryMock
+            .Setup(x => x.SearchUsersAsync(
+                It.IsAny<SearchUsersQuery>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([userWithAvatar, userWithoutAvatar]);
+
+        var response = await _handler.HandleAsync(
+            new SearchUsersRequest { Q = "b" },
+            currentUserId);
+
+        response.Success.Should().BeTrue();
+        var users = response.Data!.Users;
+
+        var mappedWithAvatar = users.First(u => u.Username == "bob");
+        mappedWithAvatar.Avatar.Should().NotBeNull();
+        mappedWithAvatar.Avatar!.Color.Should().Be("#ff0000");
+        mappedWithAvatar.Avatar.Icon.Should().Be("cat");
+        mappedWithAvatar.Avatar.Bg.Should().Be("#ffffff");
+
+        var mappedWithoutAvatar = users.First(u => u.Username == "alice");
+        mappedWithoutAvatar.Avatar.Should().BeNull();
+    }
+
+    private static SearchUserResult CreateSearchUser(
+        string username,
+        string? displayName,
+        bool isActive,
+        string? avatarColor = null,
+        string? avatarIcon = null,
+        string? avatarBg = null)
     {
         var usernameResult = Username.Create(username);
         if (usernameResult.IsFailure || usernameResult.Value is null)
@@ -126,6 +162,9 @@ public sealed class SearchUsersHandlerTests
             Username: usernameResult.Value,
             DisplayName: displayName,
             AvatarFileId: UploadedFileId.From(Guid.Parse("9b46d971-3590-4f09-bce6-2a218fc8a8ec")),
+            AvatarColor: avatarColor,
+            AvatarIcon: avatarIcon,
+            AvatarBg: avatarBg,
             Bio: null,
             IsActive: isActive);
     }
