@@ -22,29 +22,19 @@ public sealed class UserSubscriptionRepository : IUserSubscriptionRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT 'guild'   AS "Kind",
-                                  g.id      AS "Id1",
-                                  NULL::uuid AS "Id2"
+                           SELECT g.id
                            FROM guild_members gm
                            JOIN guilds g ON g.id = gm.guild_id
-                           WHERE gm.user_id = @UserId
+                           WHERE gm.user_id = @UserId;
 
-                           UNION ALL
-
-                           SELECT 'channel' AS "Kind",
-                                  gc.id     AS "Id1",
-                                  NULL::uuid AS "Id2"
+                           SELECT gc.id
                            FROM guild_members gm
                            JOIN guild_channels gc ON gc.guild_id = gm.guild_id AND gc.type = 1
-                           WHERE gm.user_id = @UserId
+                           WHERE gm.user_id = @UserId;
 
-                           UNION ALL
-
-                           SELECT 'conversation' AS "Kind",
-                                  cp.conversation_id AS "Id1",
-                                  NULL::uuid         AS "Id2"
+                           SELECT cp.conversation_id
                            FROM conversation_participants cp
-                           WHERE cp.user_id = @UserId
+                           WHERE cp.user_id = @UserId;
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -54,34 +44,11 @@ public sealed class UserSubscriptionRepository : IUserSubscriptionRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<SubscriptionRow>(command);
-
-        var guildIds = new List<GuildId>();
-        var channelIds = new List<GuildChannelId>();
-        var conversationIds = new List<ConversationId>();
-
-        foreach (var row in rows)
-        {
-            switch (row.Kind)
-            {
-                case "guild":
-                    guildIds.Add(GuildId.From(row.Id1));
-                    break;
-                case "channel":
-                    channelIds.Add(GuildChannelId.From(row.Id1));
-                    break;
-                case "conversation":
-                    conversationIds.Add(ConversationId.From(row.Id1));
-                    break;
-            }
-        }
+        using var multi = await connection.QueryMultipleAsync(command);
+        var guildIds = (await multi.ReadAsync<Guid>()).Select(GuildId.From).ToArray();
+        var channelIds = (await multi.ReadAsync<Guid>()).Select(GuildChannelId.From).ToArray();
+        var conversationIds = (await multi.ReadAsync<Guid>()).Select(ConversationId.From).ToArray();
 
         return new UserSubscriptions(guildIds, channelIds, conversationIds);
-    }
-
-    private sealed class SubscriptionRow
-    {
-        public string Kind { get; init; } = string.Empty;
-        public Guid Id1 { get; init; }
     }
 }
