@@ -29,7 +29,7 @@ public sealed class UpdateMyProfileHandlerTests
 
         _userRepositoryMock
             .Setup(x => x.GetUserNotificationContextAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()) });
+            .ReturnsAsync(new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()));
 
         _handler = new UpdateMyProfileHandler(
             _userRepositoryMock.Object,

@@ -362,7 +362,7 @@ public sealed class UserRepository : IUserRepository
         await conn.ExecuteAsync(cmd);
     }
 
-    public async Task<IReadOnlyList<UserNotificationContext>> GetUserNotificationContextAsync(
+  public async Task<UserNotificationContext> GetUserNotificationContextAsync(
         UserId userId,
         CancellationToken ct = default)
     {
@@ -387,6 +387,7 @@ public sealed class UserRepository : IUserRepository
         var conn = await _dbSession.GetOpenConnectionAsync(ct);
         var cmd = new CommandDefinition(
             sql,
+
             new { UserId = userId.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
@@ -396,7 +397,7 @@ public sealed class UserRepository : IUserRepository
         var guildIds = rows.Select(r => r.GuildId).Where(id => id is not null).Select(id => id!.Value).ToArray();
         var conversationIds = rows.Select(r => r.ConversationId).Where(id => id is not null).Select(id => id!.Value).ToArray();
 
-        return new[] { new UserNotificationContext(guildIds, conversationIds) };
+        return new UserNotificationContext(guildIds, conversationIds);
     }
 
     private static User MapToUser(UserRow userRow)

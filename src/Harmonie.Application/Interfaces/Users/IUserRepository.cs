@@ -105,7 +105,7 @@ public interface IUserRepository
     /// <summary>
     /// Get the notification context for a user (guilds and conversations they belong to).
     /// </summary>
-    Task<IReadOnlyList<UserNotificationContext>> GetUserNotificationContextAsync(
+    Task<UserNotificationContext> GetUserNotificationContextAsync(
         UserId userId,
         CancellationToken cancellationToken = default);
 }

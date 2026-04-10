@@ -44,7 +44,7 @@ public sealed class DeleteMyAvatarHandlerTests
 
         _userRepositoryMock
             .Setup(x => x.GetUserNotificationContextAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()) });
+            .ReturnsAsync(new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()));
 
         _handler = new DeleteMyAvatarHandler(
             _userRepositoryMock.Object,

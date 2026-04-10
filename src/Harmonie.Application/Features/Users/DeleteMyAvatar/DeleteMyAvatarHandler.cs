@@ -80,14 +80,11 @@ public sealed class DeleteMyAvatarHandler : IAuthenticatedHandler<Unit, bool>
 
         await _uploadedFileCleanupService.DeleteIfExistsAsync(previousAvatarFileId, cancellationToken);
 
-        var notificationContexts = await _userRepository.GetUserNotificationContextAsync(
+        var notificationContext = await _userRepository.GetUserNotificationContextAsync(
             currentUserId, cancellationToken);
 
-        var firstContext = notificationContexts.FirstOrDefault();
-        var guildIds = (firstContext?.GuildIds ?? Array.Empty<Guid>())
-            .Select(id => GuildId.From(id)).ToArray();
-        var conversationIds = (firstContext?.ConversationIds ?? Array.Empty<Guid>())
-            .Select(id => ConversationId.From(id)).ToArray();
+        var guildIds = notificationContext.GuildIds.Select(id => GuildId.From(id)).ToArray();
+        var conversationIds = notificationContext.ConversationIds.Select(id => ConversationId.From(id)).ToArray();
 
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _userProfileNotifier.NotifyProfileUpdatedAsync(

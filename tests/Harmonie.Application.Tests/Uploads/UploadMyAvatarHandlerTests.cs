@@ -37,7 +37,7 @@ public sealed class UploadMyAvatarHandlerTests
 
         _userRepositoryMock
             .Setup(x => x.GetUserNotificationContextAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()) });
+            .ReturnsAsync(new UserNotificationContext(Array.Empty<Guid>(), Array.Empty<Guid>()));
 
         _handler = new UploadMyAvatarHandler(
             _userRepositoryMock.Object,
