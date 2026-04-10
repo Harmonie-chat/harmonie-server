@@ -18,6 +18,9 @@ public sealed record SearchUserResult(
     Username Username,
     string? DisplayName,
     UploadedFileId? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg,
     string? Bio,
     bool IsActive);
 

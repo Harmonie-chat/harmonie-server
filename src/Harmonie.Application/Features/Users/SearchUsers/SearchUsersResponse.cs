@@ -1,3 +1,5 @@
+using Harmonie.Application.Features.Users;
+
 namespace Harmonie.Application.Features.Users.SearchUsers;
 
 public sealed record SearchUsersResponse(
@@ -8,5 +10,6 @@ public sealed record SearchUsersItemResponse(
     string Username,
     string? DisplayName,
     Guid? AvatarFileId,
+    AvatarAppearanceDto? Avatar,
     string? Bio,
     string Status);

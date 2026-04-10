@@ -146,6 +146,9 @@ public sealed class UserRepository : IUserRepository
                    u.username AS "Username",
                    u.display_name AS "DisplayName",
                    u.avatar_file_id AS "AvatarFileId",
+                   u.avatar_color AS "AvatarColor",
+                   u.avatar_icon AS "AvatarIcon",
+                   u.avatar_bg AS "AvatarBg",
                    u.bio AS "Bio",
                    u.is_active AS "IsActive"
             FROM users u
@@ -434,6 +437,9 @@ public sealed class UserRepository : IUserRepository
             Username: usernameResult.Value,
             DisplayName: row.DisplayName,
             AvatarFileId: row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
+            AvatarColor: row.AvatarColor,
+            AvatarIcon: row.AvatarIcon,
+            AvatarBg: row.AvatarBg,
             Bio: row.Bio,
             IsActive: row.IsActive);
     }
