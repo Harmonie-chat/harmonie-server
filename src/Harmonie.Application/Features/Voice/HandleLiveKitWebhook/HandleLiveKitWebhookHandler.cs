@@ -60,45 +60,44 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
         }
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
-        {
-            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
-        }
-
-        if (channel.Type != GuildChannelType.Voice)
-        {
-            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
-        }
-
         if (!TryParseUserId(webhookEvent.ParticipantIdentity, out var participantUserId) || participantUserId is null)
         {
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
         }
 
-        var participantName = string.IsNullOrWhiteSpace(webhookEvent.ParticipantName)
-            ? participantUserId.ToString()
-            : webhookEvent.ParticipantName;
+        var result = await _guildChannelRepository.GetWithParticipantAsync(channelId, participantUserId, cancellationToken);
+        if (result is null)
+        {
+            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
+        }
+
+        if (result.Channel.Type != GuildChannelType.Voice)
+        {
+            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
+        }
 
         if (eventType == ParticipantJoinedEvent)
         {
             await _voicePresenceNotifier.NotifyParticipantJoinedAsync(
                 new VoiceParticipantJoinedNotification(
-                    channel.GuildId,
-                    channel.Id,
-                    participantUserId,
-                    participantName,
-                    webhookEvent.OccurredAtUtc),
+                    GuildId: result.Channel.GuildId,
+                    ChannelId: result.Channel.Id,
+                    UserId: participantUserId,
+                    DisplayName: result.Participant?.DisplayName,
+                    AvatarFileId: result.Participant?.AvatarFileId,
+                    AvatarColor: result.Participant?.AvatarColor,
+                    AvatarIcon: result.Participant?.AvatarIcon,
+                    AvatarBg: result.Participant?.AvatarBg,
+                    JoinedAtUtc: webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
         else
         {
             await _voicePresenceNotifier.NotifyParticipantLeftAsync(
                 new VoiceParticipantLeftNotification(
-                    channel.GuildId,
-                    channel.Id,
+                    result.Channel.GuildId,
+                    result.Channel.Id,
                     participantUserId,
-                    participantName,
                     webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
