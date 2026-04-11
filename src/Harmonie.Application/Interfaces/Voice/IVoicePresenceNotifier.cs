@@ -20,7 +20,6 @@ public sealed record VoiceParticipantJoinedNotification(
     GuildId GuildId,
     GuildChannelId ChannelId,
     UserId UserId,
-    string ParticipantName,
     string? DisplayName,
     UploadedFileId? AvatarFileId,
     string? AvatarColor,
@@ -32,5 +31,4 @@ public sealed record VoiceParticipantLeftNotification(
     GuildId GuildId,
     GuildChannelId ChannelId,
     UserId UserId,
-    string ParticipantName,
     DateTime LeftAtUtc);

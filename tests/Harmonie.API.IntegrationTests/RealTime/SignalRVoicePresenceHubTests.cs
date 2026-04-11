@@ -67,9 +67,7 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         eventPayload.GuildId.Should().Be(guildId.ToString());
         eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
         eventPayload.UserId.Should().Be(member.UserId.ToString());
-        eventPayload.ParticipantName.Should().Be(member.Username);
         eventPayload.JoinedAtUtc.Should().NotBe(default);
-        // Avatar fields originate from the user profile fetched during webhook processing.
         // A freshly registered user has no avatar set, so all fields are null.
         eventPayload.DisplayName.Should().BeNull();
         eventPayload.AvatarFileId.Should().BeNull();
@@ -113,7 +111,6 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         eventPayload.GuildId.Should().Be(guildId.ToString());
         eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
         eventPayload.UserId.Should().Be(member.UserId.ToString());
-        eventPayload.ParticipantName.Should().Be(member.Username);
         eventPayload.LeftAtUtc.Should().NotBe(default);
     }
 
@@ -204,7 +201,6 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         string GuildId,
         string ChannelId,
         string UserId,
-        string ParticipantName,
         string? DisplayName,
         Guid? AvatarFileId,
         string? AvatarColor,
@@ -216,6 +212,5 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
         string GuildId,
         string ChannelId,
         string UserId,
-        string ParticipantName,
         DateTime LeftAtUtc);
 }

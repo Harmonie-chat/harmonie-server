@@ -76,11 +76,6 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
         }
 
-        var participantName = result.Participant?.Username.Value
-            ?? (string.IsNullOrWhiteSpace(webhookEvent.ParticipantName)
-                ? participantUserId.ToString()
-                : webhookEvent.ParticipantName);
-
         if (eventType == ParticipantJoinedEvent)
         {
             await _voicePresenceNotifier.NotifyParticipantJoinedAsync(
@@ -88,7 +83,6 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
                     GuildId: result.Channel.GuildId,
                     ChannelId: result.Channel.Id,
                     UserId: participantUserId,
-                    ParticipantName: participantName,
                     DisplayName: result.Participant?.DisplayName,
                     AvatarFileId: result.Participant?.AvatarFileId,
                     AvatarColor: result.Participant?.AvatarColor,
@@ -104,7 +98,6 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
                     result.Channel.GuildId,
                     result.Channel.Id,
                     participantUserId,
-                    participantName,
                     webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
