@@ -46,14 +46,9 @@ public sealed class GetGuildChannelsHandler : IAuthenticatedHandler<GuildId, Get
 
         var channels = await _guildChannelRepository.GetByGuildIdAsync(guildId, cancellationToken);
 
-        var voiceChannels = channels.Where(c => c.Type == GuildChannelType.Voice).ToArray();
-        var participantTasks = voiceChannels
-            .Select(c => _voiceParticipantCache.GetAsync(c.Id, cancellationToken))
-            .ToArray();
-        var participantResults = await Task.WhenAll(participantTasks);
-        var participantsByChannelId = voiceChannels
-            .Select((c, i) => (ChannelId: c.Id.Value, Participants: participantResults[i]))
-            .ToDictionary(x => x.ChannelId, x => x.Participants);
+        var participantsByChannelId = new Dictionary<Guid, IReadOnlyList<CachedVoiceParticipant>>();
+        foreach (var c in channels.Where(c => c.Type == GuildChannelType.Voice))
+            participantsByChannelId[c.Id.Value] = await _voiceParticipantCache.GetAsync(c.Id, cancellationToken);
 
         var payload = new GetGuildChannelsResponse(
             GuildId: guildId.Value,
