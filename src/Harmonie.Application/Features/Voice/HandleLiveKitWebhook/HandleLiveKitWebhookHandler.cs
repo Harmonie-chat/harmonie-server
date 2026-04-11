@@ -1,5 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -15,15 +16,18 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
 
     private readonly ILiveKitWebhookReceiver _webhookReceiver;
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IVoicePresenceNotifier _voicePresenceNotifier;
 
     public HandleLiveKitWebhookHandler(
         ILiveKitWebhookReceiver webhookReceiver,
         IGuildChannelRepository guildChannelRepository,
+        IUserRepository userRepository,
         IVoicePresenceNotifier voicePresenceNotifier)
     {
         _webhookReceiver = webhookReceiver;
         _guildChannelRepository = guildChannelRepository;
+        _userRepository = userRepository;
         _voicePresenceNotifier = voicePresenceNotifier;
     }
 
@@ -82,13 +86,20 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
 
         if (eventType == ParticipantJoinedEvent)
         {
+            var user = await _userRepository.GetByIdAsync(participantUserId, cancellationToken);
+
             await _voicePresenceNotifier.NotifyParticipantJoinedAsync(
                 new VoiceParticipantJoinedNotification(
-                    channel.GuildId,
-                    channel.Id,
-                    participantUserId,
-                    participantName,
-                    webhookEvent.OccurredAtUtc),
+                    GuildId: channel.GuildId,
+                    ChannelId: channel.Id,
+                    UserId: participantUserId,
+                    ParticipantName: participantName,
+                    DisplayName: user?.DisplayName,
+                    AvatarFileId: user?.AvatarFileId,
+                    AvatarColor: user?.AvatarColor,
+                    AvatarIcon: user?.AvatarIcon,
+                    AvatarBg: user?.AvatarBg,
+                    JoinedAtUtc: webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
         else

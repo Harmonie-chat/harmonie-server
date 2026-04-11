@@ -24,6 +24,11 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
             ChannelId: notification.ChannelId.Value,
             UserId: notification.UserId.Value,
             ParticipantName: notification.ParticipantName,
+            DisplayName: notification.DisplayName,
+            AvatarFileId: notification.AvatarFileId?.Value,
+            AvatarColor: notification.AvatarColor,
+            AvatarIcon: notification.AvatarIcon,
+            AvatarBg: notification.AvatarBg,
             JoinedAtUtc: notification.JoinedAtUtc);
 
         await _hubContext.Clients
@@ -55,6 +60,11 @@ public sealed record VoiceParticipantJoinedEvent(
     Guid ChannelId,
     Guid UserId,
     string ParticipantName,
+    string? DisplayName,
+    Guid? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg,
     DateTime JoinedAtUtc);
 
 public sealed record VoiceParticipantLeftEvent(
