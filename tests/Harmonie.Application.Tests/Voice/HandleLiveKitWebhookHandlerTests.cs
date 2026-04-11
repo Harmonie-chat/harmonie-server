@@ -3,7 +3,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Voice.HandleLiveKitWebhook;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -20,7 +19,6 @@ public sealed class HandleLiveKitWebhookHandlerTests
 {
     private readonly Mock<ILiveKitWebhookReceiver> _webhookReceiverMock;
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
-    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IVoicePresenceNotifier> _voicePresenceNotifierMock;
     private readonly HandleLiveKitWebhookHandler _handler;
 
@@ -28,13 +26,11 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         _webhookReceiverMock = new Mock<ILiveKitWebhookReceiver>();
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
-        _userRepositoryMock = new Mock<IUserRepository>();
         _voicePresenceNotifierMock = new Mock<IVoicePresenceNotifier>();
 
         _handler = new HandleLiveKitWebhookHandler(
             _webhookReceiverMock.Object,
             _guildChannelRepositoryMock.Object,
-            _userRepositoryMock.Object,
             _voicePresenceNotifierMock.Object);
     }
 
@@ -109,7 +105,17 @@ public sealed class HandleLiveKitWebhookHandlerTests
     public async Task HandleAsync_WhenParticipantJoined_ShouldNotifyWithAvatarData()
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
-        var user = ApplicationTestBuilders.CreateUser();
+        var participantUserId = UserId.New();
+        var avatarFileId = UploadedFileId.New();
+        var usernameResult = Username.Create("alice");
+        var username = usernameResult.Value!;
+        var profile = new ChannelParticipantProfile(
+            username,
+            DisplayName: "Alice",
+            AvatarFileId: avatarFileId,
+            AvatarColor: "#ff0000",
+            AvatarIcon: "star",
+            AvatarBg: "#000000");
         var occurredAtUtc = DateTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
 
@@ -119,17 +125,13 @@ public sealed class HandleLiveKitWebhookHandlerTests
                 new LiveKitWebhookEvent(
                     "participant_joined",
                     $"channel:{channel.Id}",
-                    user.Id.ToString(),
-                    user.Username.Value,
+                    participantUserId.ToString(),
+                    username.Value,
                     occurredAtUtc)));
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
-
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
+            .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelWithParticipant(channel, profile));
 
         var response = await _handler.HandleAsync(request);
 
@@ -143,20 +145,20 @@ public sealed class HandleLiveKitWebhookHandlerTests
                 It.Is<VoiceParticipantJoinedNotification>(notification =>
                     notification.GuildId == channel.GuildId
                     && notification.ChannelId == channel.Id
-                    && notification.UserId == user.Id
-                    && notification.ParticipantName == user.Username.Value
-                    && notification.DisplayName == user.DisplayName
-                    && notification.AvatarFileId == user.AvatarFileId
-                    && notification.AvatarColor == user.AvatarColor
-                    && notification.AvatarIcon == user.AvatarIcon
-                    && notification.AvatarBg == user.AvatarBg
+                    && notification.UserId == participantUserId
+                    && notification.ParticipantName == username.Value
+                    && notification.DisplayName == profile.DisplayName
+                    && notification.AvatarFileId == profile.AvatarFileId
+                    && notification.AvatarColor == profile.AvatarColor
+                    && notification.AvatarIcon == profile.AvatarIcon
+                    && notification.AvatarBg == profile.AvatarBg
                     && notification.JoinedAtUtc == occurredAtUtc),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_WhenParticipantJoinedAndUserNotFound_ShouldNotifyWithNullAvatarData()
+    public async Task HandleAsync_WhenParticipantJoinedAndNotGuildMember_ShouldNotifyWithNullAvatarDataAndWebhookName()
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
@@ -174,12 +176,8 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     occurredAtUtc)));
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
-
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Harmonie.Domain.Entities.Users.User?)null);
+            .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelWithParticipant(channel, null));
 
         var response = await _handler.HandleAsync(request);
 
@@ -190,6 +188,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyParticipantJoinedAsync(
                 It.Is<VoiceParticipantJoinedNotification>(notification =>
                     notification.UserId == participantUserId
+                    && notification.ParticipantName == "ghost"
                     && notification.DisplayName == null
                     && notification.AvatarFileId == null
                     && notification.AvatarColor == null
@@ -204,6 +203,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
+        var usernameResult = Username.Create("alice");
+        var username = usernameResult.Value!;
+        var profile = new ChannelParticipantProfile(username, null, null, null, null, null);
         var occurredAtUtc = DateTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
 
@@ -214,12 +216,12 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     "participant_left",
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
-                    "alice",
+                    username.Value,
                     occurredAtUtc)));
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByIdAsync(channel.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(channel);
+            .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelWithParticipant(channel, profile));
 
         var response = await _handler.HandleAsync(request);
 
@@ -234,7 +236,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     notification.GuildId == channel.GuildId
                     && notification.ChannelId == channel.Id
                     && notification.UserId == participantUserId
-                    && notification.ParticipantName == "alice"
+                    && notification.ParticipantName == username.Value
                     && notification.LeftAtUtc == occurredAtUtc),
                 It.IsAny<CancellationToken>()),
             Times.Once);

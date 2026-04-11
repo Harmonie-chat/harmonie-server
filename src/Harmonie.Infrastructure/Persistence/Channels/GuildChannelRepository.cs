@@ -4,6 +4,7 @@ using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Channels;
+using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
 using Harmonie.Infrastructure.Persistence.Common;
 using Harmonie.Infrastructure.Rows.Channels;
@@ -189,6 +190,66 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         return count > 0;
     }
 
+    public async Task<ChannelWithParticipant?> GetWithParticipantAsync(
+        GuildChannelId channelId,
+        UserId participantId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT gc.id             AS "Id",
+                                  gc.guild_id       AS "GuildId",
+                                  gc.name           AS "Name",
+                                  gc.type           AS "Type",
+                                  gc.is_default     AS "IsDefault",
+                                  gc.position       AS "Position",
+                                  gc.created_at_utc AS "CreatedAtUtc",
+                                  u.username        AS "Username",
+                                  u.display_name    AS "DisplayName",
+                                  u.avatar_file_id  AS "AvatarFileId",
+                                  u.avatar_color    AS "AvatarColor",
+                                  u.avatar_icon     AS "AvatarIcon",
+                                  u.avatar_bg       AS "AvatarBg"
+                           FROM guild_channels gc
+                           LEFT JOIN guild_members gm
+                                  ON gm.guild_id = gc.guild_id
+                                 AND gm.user_id = @ParticipantId
+                           LEFT JOIN users u
+                                  ON u.id = gm.user_id
+                                 AND u.deleted_at IS NULL
+                           WHERE gc.id = @ChannelId
+                           LIMIT 1
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ChannelId = channelId.Value, ParticipantId = participantId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QueryFirstOrDefaultAsync<ChannelWithParticipantDto>(command);
+        if (row is null)
+            return null;
+
+        ChannelParticipantProfile? profile = null;
+        if (row.Username is not null)
+        {
+            var usernameResult = Username.Create(row.Username);
+            if (usernameResult.IsFailure || usernameResult.Value is null)
+                throw new InvalidOperationException("Stored username is invalid.");
+
+            profile = new ChannelParticipantProfile(
+                usernameResult.Value,
+                row.DisplayName,
+                row.AvatarFileId.HasValue ? UploadedFileId.From(row.AvatarFileId.Value) : null,
+                row.AvatarColor,
+                row.AvatarIcon,
+                row.AvatarBg);
+        }
+
+        return new ChannelWithParticipant(MapToGuildChannel(row), profile);
+    }
+
     public async Task<ChannelAccessContext?> GetWithCallerRoleAsync(
         GuildChannelId channelId,
         UserId callerId,
@@ -256,6 +317,21 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             row.CreatedAtUtc);
     }
 
+    private static GuildChannel MapToGuildChannel(ChannelWithParticipantDto row)
+    {
+        if (!Enum.IsDefined(typeof(GuildChannelType), row.Type))
+            throw new InvalidOperationException("Stored channel type is invalid.");
+
+        return GuildChannel.Rehydrate(
+            GuildChannelId.From(row.Id),
+            GuildId.From(row.GuildId),
+            row.Name,
+            (GuildChannelType)row.Type,
+            row.IsDefault,
+            row.Position,
+            row.CreatedAtUtc);
+    }
+
     private sealed class ChannelWithRoleDto
     {
         public Guid Id { get; init; }
@@ -266,5 +342,22 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         public int Position { get; init; }
         public DateTime CreatedAtUtc { get; init; }
         public short? Role { get; init; }
+    }
+
+    private sealed class ChannelWithParticipantDto
+    {
+        public Guid Id { get; init; }
+        public Guid GuildId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public short Type { get; init; }
+        public bool IsDefault { get; init; }
+        public int Position { get; init; }
+        public DateTime CreatedAtUtc { get; init; }
+        public string? Username { get; init; }
+        public string? DisplayName { get; init; }
+        public Guid? AvatarFileId { get; init; }
+        public string? AvatarColor { get; init; }
+        public string? AvatarIcon { get; init; }
+        public string? AvatarBg { get; init; }
     }
 }

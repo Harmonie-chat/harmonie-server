@@ -1,6 +1,5 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Interfaces.Voice;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -16,18 +15,15 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
 
     private readonly ILiveKitWebhookReceiver _webhookReceiver;
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IVoicePresenceNotifier _voicePresenceNotifier;
 
     public HandleLiveKitWebhookHandler(
         ILiveKitWebhookReceiver webhookReceiver,
         IGuildChannelRepository guildChannelRepository,
-        IUserRepository userRepository,
         IVoicePresenceNotifier voicePresenceNotifier)
     {
         _webhookReceiver = webhookReceiver;
         _guildChannelRepository = guildChannelRepository;
-        _userRepository = userRepository;
         _voicePresenceNotifier = voicePresenceNotifier;
     }
 
@@ -64,41 +60,40 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
         }
 
-        var channel = await _guildChannelRepository.GetByIdAsync(channelId, cancellationToken);
-        if (channel is null)
-        {
-            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
-        }
-
-        if (channel.Type != GuildChannelType.Voice)
-        {
-            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
-        }
-
         if (!TryParseUserId(webhookEvent.ParticipantIdentity, out var participantUserId) || participantUserId is null)
         {
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
         }
 
-        var participantName = string.IsNullOrWhiteSpace(webhookEvent.ParticipantName)
-            ? participantUserId.ToString()
-            : webhookEvent.ParticipantName;
+        var result = await _guildChannelRepository.GetWithParticipantAsync(channelId, participantUserId, cancellationToken);
+        if (result is null)
+        {
+            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
+        }
+
+        if (result.Channel.Type != GuildChannelType.Voice)
+        {
+            return ApplicationResponse<HandleLiveKitWebhookResponse>.Ok(new(false, eventType));
+        }
+
+        var participantName = result.Participant?.Username.Value
+            ?? (string.IsNullOrWhiteSpace(webhookEvent.ParticipantName)
+                ? participantUserId.ToString()
+                : webhookEvent.ParticipantName);
 
         if (eventType == ParticipantJoinedEvent)
         {
-            var user = await _userRepository.GetByIdAsync(participantUserId, cancellationToken);
-
             await _voicePresenceNotifier.NotifyParticipantJoinedAsync(
                 new VoiceParticipantJoinedNotification(
-                    GuildId: channel.GuildId,
-                    ChannelId: channel.Id,
+                    GuildId: result.Channel.GuildId,
+                    ChannelId: result.Channel.Id,
                     UserId: participantUserId,
                     ParticipantName: participantName,
-                    DisplayName: user?.DisplayName,
-                    AvatarFileId: user?.AvatarFileId,
-                    AvatarColor: user?.AvatarColor,
-                    AvatarIcon: user?.AvatarIcon,
-                    AvatarBg: user?.AvatarBg,
+                    DisplayName: result.Participant?.DisplayName,
+                    AvatarFileId: result.Participant?.AvatarFileId,
+                    AvatarColor: result.Participant?.AvatarColor,
+                    AvatarIcon: result.Participant?.AvatarIcon,
+                    AvatarBg: result.Participant?.AvatarBg,
                     JoinedAtUtc: webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
@@ -106,8 +101,8 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
         {
             await _voicePresenceNotifier.NotifyParticipantLeftAsync(
                 new VoiceParticipantLeftNotification(
-                    channel.GuildId,
-                    channel.Id,
+                    result.Channel.GuildId,
+                    result.Channel.Id,
                     participantUserId,
                     participantName,
                     webhookEvent.OccurredAtUtc),
