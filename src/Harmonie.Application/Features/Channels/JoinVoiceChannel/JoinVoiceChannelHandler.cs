@@ -73,14 +73,19 @@ public sealed class JoinVoiceChannelHandler : IAuthenticatedHandler<GuildChannel
                 "User profile was not found");
         }
 
-        var roomToken = await _liveKitTokenService.GenerateRoomTokenAsync(
+        var roomTokenTask = _liveKitTokenService.GenerateRoomTokenAsync(
             request,
             currentUserId,
             user.Username.Value,
             cancellationToken);
+        var liveKitParticipantsTask = _liveKitRoomService.ListChannelParticipantsAsync(request, cancellationToken);
+        var cachedParticipantsTask = _voiceParticipantCache.GetAsync(request, cancellationToken);
 
-        var liveKitParticipants = await _liveKitRoomService.ListChannelParticipantsAsync(request, cancellationToken);
-        var cachedParticipants = await _voiceParticipantCache.GetAsync(request, cancellationToken);
+        await Task.WhenAll(roomTokenTask, liveKitParticipantsTask, cachedParticipantsTask);
+
+        var roomToken = roomTokenTask.Result;
+        var liveKitParticipants = liveKitParticipantsTask.Result;
+        var cachedParticipants = cachedParticipantsTask.Result;
 
         var cachedById = cachedParticipants.ToDictionary(p => p.UserId.Value);
         var liveKitIds = liveKitParticipants.Select(p => p.UserId.Value).ToHashSet();
