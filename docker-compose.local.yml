@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: harmonie
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "54321:5432"
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -47,15 +47,12 @@ services:
           api_key: devkey
           urls:
             - http://harmonie-api:80/api/webhooks/livekit
-        rtc:
-          use_external_ip: false
-          node_ip: 192.168.1.67
-          port_range_start: 55000
-          port_range_end: 55010
+    command:
+      - --dev
     ports:
       - "7880:7880"
       - "7881:7881"
-      - "55000-55010:55000-55010/udp"
+      - "50000-60000:50000-60000/udp"
     networks:
       - harmonie-network
 
@@ -69,15 +66,15 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
-      - LiveKit__PublicUrl=ws://192.168.1.67:7880
+      - LiveKit__PublicUrl=ws://localhost:7880
       - LiveKit__InternalUrl=http://livekit:7880
       - LiveKit__ApiKey=devkey
       - LiveKit__ApiSecret=devsecret-that-is-long-enough-for-hmac-signing
       - Uploads__MaxFileSizeBytes=26214400
       - ObjectStorage__LocalBasePath=/app/uploads
-      - ObjectStorage__LocalBaseUrl=http://192.168.1.67:55401/files
+      - ObjectStorage__LocalBaseUrl=http://localhost:5001/files
     ports:
-      - "55401:80"
+      - "5001:80"
     volumes:
       - uploads-data:/app/uploads
     depends_on:
