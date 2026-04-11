@@ -142,6 +142,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     notification.GuildId == channel.GuildId
                     && notification.ChannelId == channel.Id
                     && notification.UserId == participantUserId
+                    && notification.Username == profile.Username.Value
                     && notification.DisplayName == profile.DisplayName
                     && notification.AvatarFileId == profile.AvatarFileId
                     && notification.AvatarColor == profile.AvatarColor
@@ -183,6 +184,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyParticipantJoinedAsync(
                 It.Is<VoiceParticipantJoinedNotification>(notification =>
                     notification.UserId == participantUserId
+                    && notification.Username == null
                     && notification.DisplayName == null
                     && notification.AvatarFileId == null
                     && notification.AvatarColor == null
@@ -226,6 +228,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     notification.GuildId == channel.GuildId
                     && notification.ChannelId == channel.Id
                     && notification.UserId == participantUserId
+                    && notification.Username == null
                     && notification.LeftAtUtc == occurredAtUtc),
                 It.IsAny<CancellationToken>()),
             Times.Once);

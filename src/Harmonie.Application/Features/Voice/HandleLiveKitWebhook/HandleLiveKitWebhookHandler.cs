@@ -83,6 +83,7 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
                     GuildId: result.Channel.GuildId,
                     ChannelId: result.Channel.Id,
                     UserId: participantUserId,
+                    Username: result.Participant?.Username.Value,
                     DisplayName: result.Participant?.DisplayName,
                     AvatarFileId: result.Participant?.AvatarFileId,
                     AvatarColor: result.Participant?.AvatarColor,
@@ -98,6 +99,7 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
                     result.Channel.GuildId,
                     result.Channel.Id,
                     participantUserId,
+                    result.Participant?.Username.Value,
                     webhookEvent.OccurredAtUtc),
                 cancellationToken);
         }
