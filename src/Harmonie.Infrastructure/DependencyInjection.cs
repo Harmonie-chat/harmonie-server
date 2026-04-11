@@ -56,7 +56,7 @@ public static class DependencyInjection
             _ = sp.GetRequiredService<IOptions<LiveKitSettings>>().Value;
             return new HttpClient();
         });
-        services.AddScoped<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
+        services.AddSingleton<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
         services.AddScoped<ILiveKitRoomService, LiveKitRoomService>();
         services.AddScoped<IObjectStorageService, LocalFileSystemObjectStorageService>();
 
