@@ -5,6 +5,7 @@ using Harmonie.API.RealTime.Guilds;
 using Harmonie.API.RealTime.Messages;
 using Harmonie.API.RealTime.Users;
 using Harmonie.API.RealTime.Voice;
+using Harmonie.API.SignalRDoc.Extensions;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
@@ -12,6 +13,7 @@ using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Interfaces.Voice;
+
 namespace Harmonie.API.Configuration;
 
 public static class RealTimeConfiguration
@@ -31,6 +33,15 @@ public static class RealTimeConfiguration
         services.AddScoped<IReactionNotifier, SignalRReactionNotifier>();
         services.AddSingleton<IConnectionTracker, ConnectionTracker>();
         services.AddScoped<IRealtimeGroupManager, SignalRRealtimeGroupManager>();
+
+        services.AddSignalRAsyncApiDoc(options =>
+        {
+            options.Title = "Harmonie SignalR API";
+            options.Version = "1.0.0";
+            options.Description = "Real-time events for the Harmonie chat platform.";
+            options.HubRoutes[typeof(RealtimeHub)] = "/hubs/realtime";
+            options.Assemblies.Add(typeof(RealtimeHub).Assembly);
+        });
 
         return services;
     }

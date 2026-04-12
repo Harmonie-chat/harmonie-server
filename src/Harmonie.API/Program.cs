@@ -3,6 +3,7 @@ using Harmonie.API.Configuration;
 using Harmonie.API.Endpoints;
 using Harmonie.API.Middleware;
 using Harmonie.API.RealTime.Common;
+using Harmonie.API.SignalRDoc.Extensions;
 using Harmonie.Application;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Infrastructure;
@@ -44,6 +45,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.MapSignalRAsyncApiDoc();
 }
 
 app.UseMiddleware<GlobalExceptionHandler>();

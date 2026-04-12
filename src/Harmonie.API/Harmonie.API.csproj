@@ -7,6 +7,10 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Harmonie.API.IntegrationTests" />
+    <InternalsVisibleTo Include="Harmonie.API.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SignalRDoc/Assets/asyncapi-ui.html" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Harmonie.Application\Harmonie.Application.csproj" />
