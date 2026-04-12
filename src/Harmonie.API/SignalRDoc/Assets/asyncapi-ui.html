@@ -45,10 +45,26 @@
     .chevron { margin-left: auto; color: var(--muted); transition: transform 0.2s; }
     .chevron.open { transform: rotate(90deg); }
 
-    /* Operation tags */
+    /* Direction tags */
     .tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
     .tag.send { background: #064e3b; color: var(--send); }
     .tag.receive { background: #451a03; color: var(--receive); }
+
+    /* Domain tags (filter buttons) */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .filter-bar-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-right: 4px; }
+    .filter-btn {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--tag-bg); color: var(--muted);
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .domain-pill {
+      font-size: 11px; padding: 1px 7px; border-radius: 10px;
+      background: #1e2540; border: 1px solid #3a4470; color: #9aadff;
+      font-weight: 600;
+    }
 
     /* Channel pill */
     .channel-pill { font-size: 12px; color: var(--muted); background: var(--tag-bg); border-radius: 4px; padding: 2px 6px; font-family: monospace; }
@@ -65,11 +81,13 @@
     td code { font-family: monospace; font-size: 12px; color: var(--accent); background: var(--tag-bg); padding: 1px 5px; border-radius: 3px; }
 
     /* Server */
-    .server-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; }
     .server-host { font-family: monospace; color: var(--send); }
 
     /* No payload */
     .no-payload { color: var(--muted); font-style: italic; font-size: 13px; }
+
+    /* Hidden by filter */
+    .op-card.filtered-out { display: none; }
   </style>
 </head>
 <body>
@@ -80,6 +98,49 @@
       const chev = document.getElementById('chev-' + id);
       if (body) body.classList.toggle('open');
       if (chev) chev.classList.toggle('open');
+    }
+
+    let _activeTag = null;
+
+    function filterByTag(tag) {
+      const btn = document.querySelector(`.filter-btn[data-tag="${tag}"]`);
+      const isActive = btn && btn.classList.contains('active');
+
+      // Reset all buttons
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+
+      if (isActive) {
+        // Toggle off — show all
+        _activeTag = null;
+        document.querySelectorAll('.op-card').forEach(c => c.classList.remove('filtered-out'));
+        updateChannelCounts();
+        return;
+      }
+
+      _activeTag = tag;
+      if (btn) btn.classList.add('active');
+
+      document.querySelectorAll('.op-card').forEach(card => {
+        const tags = (card.dataset.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        if (tags.includes(tag)) {
+          card.classList.remove('filtered-out');
+        } else {
+          card.classList.add('filtered-out');
+        }
+      });
+
+      updateChannelCounts();
+    }
+
+    function updateChannelCounts() {
+      document.querySelectorAll('.ch-count').forEach(counter => {
+        const chKey = counter.dataset.ch;
+        const total = document.querySelectorAll(`.op-card[data-channel="${chKey}"]`).length;
+        const visible = document.querySelectorAll(`.op-card[data-channel="${chKey}"]:not(.filtered-out)`).length;
+        counter.textContent = _activeTag
+          ? `${visible} / ${total} operation${total !== 1 ? 's' : ''}`
+          : `${total} operation${total !== 1 ? 's' : ''}`;
+      });
     }
 
     (async () => {
@@ -101,7 +162,6 @@
       const operations = doc.operations || {};
       const components = doc.components || {};
       const schemas = components.schemas || {};
-      const messages = components.messages || {};
 
       function esc(s) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -144,6 +204,11 @@
         return `<table><thead><tr><th>Property</th><th>Type</th></tr></thead><tbody>${rows}</tbody></table>`;
       }
 
+      // Collect all tags across all operations
+      const allTags = [...new Set(
+        Object.values(operations).flatMap(op => (op.tags || []).map(t => t.name))
+      )].sort();
+
       let html = `
         <div class="header">
           <h1>${esc(info.title || 'SignalR API')}</h1>
@@ -171,7 +236,18 @@
       // Channels & Operations
       const channelEntries = Object.entries(channels);
       if (channelEntries.length > 0) {
-        html += `<div class="section"><div class="section-title">Channels &amp; Operations</div>`;
+        html += `<div class="section">`;
+        html += `<div class="section-title">Channels &amp; Operations</div>`;
+
+        // Tag filter bar
+        if (allTags.length > 0) {
+          html += `<div class="filter-bar">
+            <span class="filter-bar-label">Filter:</span>`;
+          for (const tag of allTags) {
+            html += `<button class="filter-btn" data-tag="${esc(tag)}" onclick="filterByTag('${esc(tag)}')">${esc(tag)}</button>`;
+          }
+          html += `</div>`;
+        }
 
         for (const [chKey, channel] of channelEntries) {
           const chOps = Object.entries(operations).filter(([, op]) => {
@@ -183,7 +259,7 @@
             <div class="card-header" onclick="toggle('ch-${esc(chKey)}')">
               <span class="op-name">${esc(chKey)}</span>
               <span class="channel-pill">${esc(channel.address)}</span>
-              <span class="badge">${chOps.length} operation${chOps.length !== 1 ? 's' : ''}</span>
+              <span class="badge ch-count" data-ch="${esc(chKey)}">${chOps.length} operation${chOps.length !== 1 ? 's' : ''}</span>
               <span class="chevron" id="chev-ch-${esc(chKey)}">&#9654;</span>
             </div>
             <div class="card-body" id="body-ch-${esc(chKey)}">`;
@@ -193,11 +269,16 @@
             const msg = msgRef ? resolveRef(msgRef) : null;
             const payload = msg?.payload;
             const opId = opKey.replace(/\./g, '-');
+            const opTags = (op.tags || []).map(t => t.name);
+            const tagsAttr = opTags.join(',');
 
-            html += `<div class="card" style="margin-bottom:10px">
+            const domainPills = opTags.map(t => `<span class="domain-pill">${esc(t)}</span>`).join(' ');
+
+            html += `<div class="card op-card" style="margin-bottom:10px" data-tags="${esc(tagsAttr)}" data-channel="${esc(chKey)}">
               <div class="card-header" onclick="toggle('op-${esc(opId)}')">
                 <span class="tag ${op.action === 'send' ? 'send' : 'receive'}">${esc(op.action === 'send' ? '→ client' : '← client')}</span>
                 <span class="op-name">${esc(opKey.split('.').slice(1).join('.'))}</span>
+                ${domainPills}
                 ${op.summary ? `<span style="color:var(--muted);font-size:13px">${esc(op.summary)}</span>` : ''}
                 <span class="chevron" id="chev-op-${esc(opId)}">&#9654;</span>
               </div>

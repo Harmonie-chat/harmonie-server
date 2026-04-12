@@ -86,6 +86,16 @@ public sealed class AsyncApiOperation
     [JsonPropertyName("description")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
+
+    [JsonPropertyName("tags")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<AsyncApiTag>? Tags { get; set; }
+}
+
+public sealed class AsyncApiTag
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
 }
 
 public sealed class AsyncApiMessage

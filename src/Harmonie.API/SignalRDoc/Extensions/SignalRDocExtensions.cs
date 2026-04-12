@@ -48,4 +48,11 @@ public sealed class SignalRDocOptions
     public string? ServerHost { get; set; }
     public Dictionary<Type, string> HubRoutes { get; set; } = new();
     public List<Assembly> Assemblies { get; set; } = new();
+
+    /// <summary>
+    /// Maps tag names to method name prefixes (case-insensitive StartsWith).
+    /// Operations whose method name starts with any prefix get the corresponding tag.
+    /// Example: { "Guild" = ["Guild", "Member", "Channel"] }
+    /// </summary>
+    public Dictionary<string, string[]> MethodTags { get; set; } = new();
 }

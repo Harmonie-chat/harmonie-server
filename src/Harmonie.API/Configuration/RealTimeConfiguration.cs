@@ -41,6 +41,14 @@ public static class RealTimeConfiguration
             options.Description = "Real-time events for the Harmonie chat platform.";
             options.HubRoutes[typeof(RealtimeHub)] = "/hubs/realtime";
             options.Assemblies.Add(typeof(RealtimeHub).Assembly);
+
+            options.MethodTags["Guilds"] = ["Guild", "Member", "YouWere", "Channel"];
+            options.MethodTags["Conversations"] = ["Conversation", "StartTypingConversation"];
+            options.MethodTags["Voice"] = ["Voice"];
+            options.MethodTags["Messages"] = ["Message", "Reaction"];
+            options.MethodTags["Users"] = ["User", "Presence", "Profile"];
+            options.MethodTags["Typing"] = ["StartTypingChannel", "UserTyping"];
+            options.MethodTags["Lifecycle"] = ["Ready"];
         });
 
         return services;

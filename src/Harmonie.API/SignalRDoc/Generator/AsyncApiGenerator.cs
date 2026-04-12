@@ -3,6 +3,7 @@ using Harmonie.API.SignalRDoc.Extensions;
 using Harmonie.API.SignalRDoc.Models;
 using Microsoft.Extensions.Options;
 
+
 namespace Harmonie.API.SignalRDoc.Generator;
 
 public sealed class AsyncApiGenerator
@@ -36,10 +37,10 @@ public sealed class AsyncApiGenerator
             var channelMessages = new Dictionary<string, AsyncApiRef>();
 
             foreach (var method in hub.ClientToServerMethods)
-                AddMethodToDocument(hub, method, channelKey, "receive", channelMessages, operations, componentMessages, componentSchemas, schemaGenerator);
+                AddMethodToDocument(hub, method, channelKey, "receive", channelMessages, operations, componentMessages, componentSchemas, schemaGenerator, options.MethodTags);
 
             foreach (var method in hub.ServerToClientMethods)
-                AddMethodToDocument(hub, method, channelKey, "send", channelMessages, operations, componentMessages, componentSchemas, schemaGenerator);
+                AddMethodToDocument(hub, method, channelKey, "send", channelMessages, operations, componentMessages, componentSchemas, schemaGenerator, options.MethodTags);
 
             channels[channelKey] = new AsyncApiChannel
             {
@@ -92,7 +93,8 @@ public sealed class AsyncApiGenerator
         Dictionary<string, AsyncApiOperation> operations,
         Dictionary<string, AsyncApiMessage> componentMessages,
         Dictionary<string, AsyncApiSchema> componentSchemas,
-        SchemaGenerator schemaGenerator)
+        SchemaGenerator schemaGenerator,
+        IReadOnlyDictionary<string, string[]> methodTags)
     {
         var operationKey = $"{channelKey}.{JsonNamingPolicy.CamelCase.ConvertName(method.Name)}";
         var messageKey = $"{operationKey}.Message";
@@ -107,12 +109,15 @@ public sealed class AsyncApiGenerator
 
         channelMessages[messageKey] = new AsyncApiRef { Ref = $"#/components/messages/{messageKey}" };
 
+        var tags = ResolveMethodTags(method.Name, methodTags);
+
         operations[operationKey] = new AsyncApiOperation
         {
             Action = action,
             Channel = new AsyncApiRef { Ref = $"#/channels/{channelKey}" },
             Messages = new[] { new AsyncApiRef { Ref = $"#/components/messages/{messageKey}" } },
             Summary = method.Summary,
+            Tags = tags,
         };
     }
 
@@ -144,6 +149,29 @@ public sealed class AsyncApiGenerator
         var objectSchema = new AsyncApiSchema { Type = "object", Properties = props.Count > 0 ? props : null };
         schemas[schemaKey] = objectSchema;
         return new AsyncApiSchema { Ref = $"#/components/schemas/{schemaKey}" };
+    }
+
+    private static IReadOnlyList<AsyncApiTag>? ResolveMethodTags(
+        string methodName,
+        IReadOnlyDictionary<string, string[]> methodTags)
+    {
+        if (methodTags.Count == 0)
+            return null;
+
+        var matched = new List<AsyncApiTag>();
+        foreach (var (tag, prefixes) in methodTags)
+        {
+            foreach (var prefix in prefixes)
+            {
+                if (methodName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    matched.Add(new AsyncApiTag { Name = tag });
+                    break;
+                }
+            }
+        }
+
+        return matched.Count > 0 ? matched : null;
     }
 
     internal static string HubChannelKey(Type hubType)
