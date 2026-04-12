@@ -75,6 +75,13 @@
 <body>
   <div id="app"><div id="loading">Loading AsyncAPI document…</div></div>
   <script>
+    function toggle(id) {
+      const body = document.getElementById('body-' + id);
+      const chev = document.getElementById('chev-' + id);
+      if (body) body.classList.toggle('open');
+      if (chev) chev.classList.toggle('open');
+    }
+
     (async () => {
       const app = document.getElementById('app');
 
@@ -135,13 +142,6 @@
           `<tr><td><code>${esc(name)}</code></td><td><code>${schemaToType(s)}</code></td></tr>`
         ).join('');
         return `<table><thead><tr><th>Property</th><th>Type</th></tr></thead><tbody>${rows}</tbody></table>`;
-      }
-
-      function toggle(id) {
-        const body = document.getElementById('body-' + id);
-        const chev = document.getElementById('chev-' + id);
-        if (body) { body.classList.toggle('open'); }
-        if (chev) { chev.classList.toggle('open'); }
       }
 
       let html = `
