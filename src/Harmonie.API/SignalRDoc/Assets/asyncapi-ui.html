@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignalR AsyncAPI</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #232635;
+      --border: #2e3347;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --accent: #6c8ef7;
+      --send: #34d399;
+      --receive: #f59e0b;
+      --tag-bg: #2e3347;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    #app { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    #loading { text-align: center; color: var(--muted); padding: 80px 0; font-size: 16px; }
+    #error { background: #3b1c1c; border: 1px solid #7f1d1d; border-radius: 8px; padding: 16px; color: #fca5a5; }
+
+    /* Header */
+    .header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
+    .header h1 { font-size: 28px; font-weight: 700; color: var(--text); }
+    .header .meta { margin-top: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .badge { background: var(--tag-bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 12px; color: var(--muted); }
+    .badge.version { color: var(--accent); border-color: var(--accent); }
+    .description { margin-top: 12px; color: var(--muted); }
+
+    /* Sections */
+    .section { margin-bottom: 40px; }
+    .section-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+    .card-header { padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 12px; user-select: none; }
+    .card-header:hover { background: var(--surface2); }
+    .card-body { padding: 16px 18px; border-top: 1px solid var(--border); display: none; }
+    .card-body.open { display: block; }
+    .chevron { margin-left: auto; color: var(--muted); transition: transform 0.2s; }
+    .chevron.open { transform: rotate(90deg); }
+
+    /* Direction tags */
+    .tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .tag.send { background: #064e3b; color: var(--send); }
+    .tag.receive { background: #451a03; color: var(--receive); }
+
+    /* Domain tags (filter buttons) */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .filter-bar-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-right: 4px; }
+    .filter-btn {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--tag-bg); color: var(--muted);
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .domain-pill {
+      font-size: 11px; padding: 1px 7px; border-radius: 10px;
+      background: #1e2540; border: 1px solid #3a4470; color: #9aadff;
+      font-weight: 600;
+    }
+
+    /* Channel pill */
+    .channel-pill { font-size: 12px; color: var(--muted); background: var(--tag-bg); border-radius: 4px; padding: 2px 6px; font-family: monospace; }
+
+    /* Op name */
+    .op-name { font-family: monospace; font-size: 14px; font-weight: 600; }
+
+    /* Schema table */
+    .schema-block { margin-top: 12px; }
+    .schema-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; background: var(--surface2); }
+    td code { font-family: monospace; font-size: 12px; color: var(--accent); background: var(--tag-bg); padding: 1px 5px; border-radius: 3px; }
+
+    /* Server */
+    .server-host { font-family: monospace; color: var(--send); }
+
+    /* No payload */
+    .no-payload { color: var(--muted); font-style: italic; font-size: 13px; }
+
+    /* Hidden by filter */
+    .op-card.filtered-out { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app"><div id="loading">Loading AsyncAPI document…</div></div>
+  <script>
+    function toggle(id) {
+      const body = document.getElementById('body-' + id);
+      const chev = document.getElementById('chev-' + id);
+      if (body) body.classList.toggle('open');
+      if (chev) chev.classList.toggle('open');
+    }
+
+    let _activeTag = null;
+
+    function filterByTag(tag) {
+      const btn = document.querySelector(`.filter-btn[data-tag="${tag}"]`);
+      const isActive = btn && btn.classList.contains('active');
+
+      // Reset all buttons
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+
+      if (isActive) {
+        // Toggle off — show all
+        _activeTag = null;
+        document.querySelectorAll('.op-card').forEach(c => c.classList.remove('filtered-out'));
+        updateChannelCounts();
+        return;
+      }
+
+      _activeTag = tag;
+      if (btn) btn.classList.add('active');
+
+      document.querySelectorAll('.op-card').forEach(card => {
+        const tags = (card.dataset.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        if (tags.includes(tag)) {
+          card.classList.remove('filtered-out');
+        } else {
+          card.classList.add('filtered-out');
+        }
+      });
+
+      updateChannelCounts();
+    }
+
+    function updateChannelCounts() {
+      document.querySelectorAll('.ch-count').forEach(counter => {
+        const chKey = counter.dataset.ch;
+        const total = document.querySelectorAll(`.op-card[data-channel="${chKey}"]`).length;
+        const visible = document.querySelectorAll(`.op-card[data-channel="${chKey}"]:not(.filtered-out)`).length;
+        counter.textContent = _activeTag
+          ? `${visible} / ${total} operation${total !== 1 ? 's' : ''}`
+          : `${total} operation${total !== 1 ? 's' : ''}`;
+      });
+    }
+
+    (async () => {
+      const app = document.getElementById('app');
+
+      let doc;
+      try {
+        const res = await fetch('/asyncapi/v1.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        doc = await res.json();
+      } catch (e) {
+        app.innerHTML = `<div id="error">Failed to load /asyncapi/v1.json: ${e.message}</div>`;
+        return;
+      }
+
+      const info = doc.info || {};
+      const servers = doc.servers || {};
+      const channels = doc.channels || {};
+      const operations = doc.operations || {};
+      const components = doc.components || {};
+      const schemas = components.schemas || {};
+
+      function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function resolveRef(ref) {
+        if (!ref) return null;
+        const parts = ref.replace(/^#\//, '').split('/');
+        let cur = doc;
+        for (const p of parts) { cur = cur?.[p]; if (!cur) return null; }
+        return cur;
+      }
+
+      function schemaToType(schema) {
+        if (!schema) return '—';
+        if (schema['$ref']) {
+          const name = schema['$ref'].split('/').pop();
+          return `<a href="#schema-${esc(name)}">${esc(name)}</a>${schema.nullable ? '?' : ''}`;
+        }
+        if (schema.type === 'array') return `${schemaToType(schema.items)}[]`;
+        if (schema.type === 'string' && schema.format) return `${esc(schema.format)}${schema.nullable ? '?' : ''}`;
+        if (schema.type) return `${esc(schema.type)}${schema.nullable ? '?' : ''}`;
+        if (schema.enum) return schema.enum.map(esc).join(' | ');
+        return 'object';
+      }
+
+      function renderSchemaProperties(schema) {
+        if (!schema) return '<span class="no-payload">No payload</span>';
+        const resolved = schema['$ref'] ? resolveRef(schema['$ref']) : schema;
+        if (!resolved || (!resolved.properties && !resolved.enum)) {
+          return `<code>${schemaToType(schema)}</code>`;
+        }
+        if (resolved.enum) {
+          return `<code>string</code> — values: ${resolved.enum.map(v => `<code>${esc(v)}</code>`).join(', ')}`;
+        }
+        const props = resolved.properties || {};
+        const rows = Object.entries(props).map(([name, s]) =>
+          `<tr><td><code>${esc(name)}</code></td><td><code>${schemaToType(s)}</code></td></tr>`
+        ).join('');
+        return `<table><thead><tr><th>Property</th><th>Type</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      // Collect all tags across all operations
+      const allTags = [...new Set(
+        Object.values(operations).flatMap(op => (op.tags || []).map(t => t.name))
+      )].sort();
+
+      let html = `
+        <div class="header">
+          <h1>${esc(info.title || 'SignalR API')}</h1>
+          <div class="meta">
+            <span class="badge">asyncapi ${esc(doc.asyncapi || '3.1.0')}</span>
+            <span class="badge version">v${esc(info.version || '1.0.0')}</span>
+          </div>
+          ${info.description ? `<p class="description">${esc(info.description)}</p>` : ''}
+        </div>`;
+
+      // Servers
+      const serverEntries = Object.entries(servers);
+      if (serverEntries.length > 0) {
+        html += `<div class="section"><div class="section-title">Servers</div>`;
+        for (const [key, srv] of serverEntries) {
+          html += `<div class="card"><div class="card-header">
+            <span class="op-name">${esc(key)}</span>
+            <span class="server-host">${esc(srv.host)}</span>
+            <span class="badge">${esc(srv.protocol)}</span>
+          </div></div>`;
+        }
+        html += `</div>`;
+      }
+
+      // Channels & Operations
+      const channelEntries = Object.entries(channels);
+      if (channelEntries.length > 0) {
+        html += `<div class="section">`;
+        html += `<div class="section-title">Channels &amp; Operations</div>`;
+
+        // Tag filter bar
+        if (allTags.length > 0) {
+          html += `<div class="filter-bar">
+            <span class="filter-bar-label">Filter:</span>`;
+          for (const tag of allTags) {
+            html += `<button class="filter-btn" data-tag="${esc(tag)}" onclick="filterByTag('${esc(tag)}')">${esc(tag)}</button>`;
+          }
+          html += `</div>`;
+        }
+
+        for (const [chKey, channel] of channelEntries) {
+          const chOps = Object.entries(operations).filter(([, op]) => {
+            const ref = op.channel?.['$ref'] || '';
+            return ref.endsWith('/' + chKey);
+          });
+
+          html += `<div class="card">
+            <div class="card-header" onclick="toggle('ch-${esc(chKey)}')">
+              <span class="op-name">${esc(chKey)}</span>
+              <span class="channel-pill">${esc(channel.address)}</span>
+              <span class="badge ch-count" data-ch="${esc(chKey)}">${chOps.length} operation${chOps.length !== 1 ? 's' : ''}</span>
+              <span class="chevron" id="chev-ch-${esc(chKey)}">&#9654;</span>
+            </div>
+            <div class="card-body" id="body-ch-${esc(chKey)}">`;
+
+          for (const [opKey, op] of chOps) {
+            const msgRef = op.messages?.[0]?.['$ref'];
+            const msg = msgRef ? resolveRef(msgRef) : null;
+            const payload = msg?.payload;
+            const opId = opKey.replace(/\./g, '-');
+            const opTags = (op.tags || []).map(t => t.name);
+            const tagsAttr = opTags.join(',');
+
+            const domainPills = opTags.map(t => `<span class="domain-pill">${esc(t)}</span>`).join(' ');
+
+            html += `<div class="card op-card" style="margin-bottom:10px" data-tags="${esc(tagsAttr)}" data-channel="${esc(chKey)}">
+              <div class="card-header" onclick="toggle('op-${esc(opId)}')">
+                <span class="tag ${op.action === 'send' ? 'send' : 'receive'}">${esc(op.action === 'send' ? '→ client' : '← client')}</span>
+                <span class="op-name">${esc(opKey.split('.').slice(1).join('.'))}</span>
+                ${domainPills}
+                ${op.summary ? `<span style="color:var(--muted);font-size:13px">${esc(op.summary)}</span>` : ''}
+                <span class="chevron" id="chev-op-${esc(opId)}">&#9654;</span>
+              </div>
+              <div class="card-body" id="body-op-${esc(opId)}">
+                <div class="schema-block">
+                  <div class="schema-label">Payload</div>
+                  ${payload ? renderSchemaProperties(payload) : '<span class="no-payload">No payload</span>'}
+                </div>
+              </div>
+            </div>`;
+          }
+
+          html += `</div></div>`;
+        }
+
+        html += `</div>`;
+      }
+
+      // Schemas
+      const schemaEntries = Object.entries(schemas);
+      if (schemaEntries.length > 0) {
+        html += `<div class="section"><div class="section-title">Schemas</div>`;
+        for (const [name, schema] of schemaEntries) {
+          const props = schema.properties || {};
+          const propEntries = Object.entries(props);
+          const id = name.replace(/\./g, '-');
+          html += `<div class="card" id="schema-${esc(name)}">
+            <div class="card-header" onclick="toggle('sc-${esc(id)}')">
+              <span class="op-name">${esc(name)}</span>
+              <span class="badge">${schema.type || 'object'}</span>
+              ${propEntries.length > 0 ? `<span class="badge">${propEntries.length} propert${propEntries.length !== 1 ? 'ies' : 'y'}</span>` : ''}
+              <span class="chevron" id="chev-sc-${esc(id)}">&#9654;</span>
+            </div>
+            <div class="card-body" id="body-sc-${esc(id)}">`;
+
+          if (schema.enum) {
+            html += `<p>Values: ${schema.enum.map(v => `<code>${esc(v)}</code>`).join(', ')}</p>`;
+          } else if (propEntries.length > 0) {
+            html += `<table><thead><tr><th>Property</th><th>Type</th></tr></thead><tbody>`;
+            for (const [pname, pschema] of propEntries) {
+              html += `<tr><td><code>${esc(pname)}</code></td><td><code>${schemaToType(pschema)}</code></td></tr>`;
+            }
+            html += `</tbody></table>`;
+          } else {
+            html += `<span class="no-payload">No properties</span>`;
+          }
+
+          html += `</div></div>`;
+        }
+        html += `</div>`;
+      }
+
+      app.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>
