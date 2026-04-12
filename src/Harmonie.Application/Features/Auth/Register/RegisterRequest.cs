@@ -1,3 +1,5 @@
+using Harmonie.Application.Features.Users;
+
 namespace Harmonie.Application.Features.Auth.Register;
 
 /// <summary>
@@ -6,4 +8,6 @@ namespace Harmonie.Application.Features.Auth.Register;
 public sealed record RegisterRequest(
     string Email,
     string Username,
-    string Password);
+    string Password,
+    AvatarAppearanceDto? Avatar = null,
+    string? Theme = null);

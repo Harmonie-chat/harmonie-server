@@ -1,3 +1,5 @@
+using Harmonie.Application.Features.Users;
+
 namespace Harmonie.Application.Features.Auth.Register;
 
 /// <summary>
@@ -9,4 +11,6 @@ public sealed record RegisterResponse(
     string Username,
     string AccessToken,
     string RefreshToken,
-    DateTime ExpiresAt);
+    DateTime ExpiresAt,
+    AvatarAppearanceDto? Avatar,
+    string Theme);

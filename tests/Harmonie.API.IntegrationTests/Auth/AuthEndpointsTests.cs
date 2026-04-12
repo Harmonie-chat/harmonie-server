@@ -7,6 +7,7 @@ using Harmonie.Application.Features.Auth.Login;
 using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
+using Harmonie.Application.Features.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -406,5 +407,77 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+    }
+
+    [Fact]
+    public async Task Register_WithoutAvatarAndTheme_ReturnsNullAvatarAndDefaultTheme()
+    {
+        // Arrange
+        var request = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#");
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        result.Should().NotBeNull();
+        result!.Avatar.Should().BeNull();
+        result.Theme.Should().Be("default");
+    }
+
+    [Fact]
+    public async Task Register_WithFullAvatarAndTheme_ReturnsAvatarAndTheme()
+    {
+        // Arrange
+        var request = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#",
+            Avatar: new AvatarAppearanceDto("#ff0000", "star", "#0000ff"),
+            Theme: "dark");
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        result.Should().NotBeNull();
+        result!.Avatar.Should().NotBeNull();
+        result.Avatar!.Color.Should().Be("#ff0000");
+        result.Avatar.Icon.Should().Be("star");
+        result.Avatar.Bg.Should().Be("#0000ff");
+        result.Theme.Should().Be("dark");
+    }
+
+    [Fact]
+    public async Task Register_WithPartialAvatar_ReturnsPartialAvatarAndDefaultTheme()
+    {
+        // Arrange
+        var request = new RegisterRequest(
+            Email: $"test{Guid.NewGuid()}@harmonie.chat",
+            Username: $"testuser{Guid.NewGuid():N}"[..20],
+            Password: "Test123!@#",
+            Avatar: new AvatarAppearanceDto("#ff0000", null, null));
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        result.Should().NotBeNull();
+        result!.Avatar.Should().NotBeNull();
+        result.Avatar!.Color.Should().Be("#ff0000");
+        result.Avatar.Icon.Should().BeNull();
+        result.Avatar.Bg.Should().BeNull();
+        result.Theme.Should().Be("default");
     }
 }

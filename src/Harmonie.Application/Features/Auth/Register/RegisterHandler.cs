@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Users;
@@ -90,6 +91,54 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
 
         var user = userResult.Value;
 
+        // Apply optional avatar fields
+        if (request.Avatar is not null)
+        {
+            var colorResult = user.UpdateAvatarColor(request.Avatar.Color);
+            if (colorResult.IsFailure)
+                return ApplicationResponse<RegisterResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        "Avatar.Color",
+                        ApplicationErrorCodes.Validation.Invalid,
+                        colorResult.Error ?? "Avatar color is invalid"));
+
+            var iconResult = user.UpdateAvatarIcon(request.Avatar.Icon);
+            if (iconResult.IsFailure)
+                return ApplicationResponse<RegisterResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        "Avatar.Icon",
+                        ApplicationErrorCodes.Validation.Invalid,
+                        iconResult.Error ?? "Avatar icon is invalid"));
+
+            var bgResult = user.UpdateAvatarBg(request.Avatar.Bg);
+            if (bgResult.IsFailure)
+                return ApplicationResponse<RegisterResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        "Avatar.Bg",
+                        ApplicationErrorCodes.Validation.Invalid,
+                        bgResult.Error ?? "Avatar background is invalid"));
+        }
+
+        // Apply optional theme
+        if (request.Theme is not null)
+        {
+            var themeResult = user.UpdateTheme(request.Theme);
+            if (themeResult.IsFailure)
+                return ApplicationResponse<RegisterResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        nameof(request.Theme),
+                        ApplicationErrorCodes.Validation.Invalid,
+                        themeResult.Error ?? "Theme is invalid"));
+        }
+
         // Generate tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(
             user.Id,
@@ -110,13 +159,19 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
             cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
+        var avatar = user.AvatarColor is not null || user.AvatarIcon is not null || user.AvatarBg is not null
+            ? new AvatarAppearanceDto(user.AvatarColor, user.AvatarIcon, user.AvatarBg)
+            : null;
+
         var payload = new RegisterResponse(
             UserId: user.Id.Value,
             Email: user.Email,
             Username: user.Username,
             AccessToken: accessToken,
             RefreshToken: refreshToken,
-            ExpiresAt: accessTokenExpiresAt
+            ExpiresAt: accessTokenExpiresAt,
+            Avatar: avatar,
+            Theme: user.Theme
         );
 
         return ApplicationResponse<RegisterResponse>.Ok(payload);
