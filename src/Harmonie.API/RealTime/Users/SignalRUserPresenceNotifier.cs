@@ -6,9 +6,9 @@ namespace Harmonie.API.RealTime.Users;
 
 public sealed class SignalRUserPresenceNotifier : IUserPresenceNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
 
-    public SignalRUserPresenceNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRUserPresenceNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext)
     {
         _hubContext = hubContext;
     }
@@ -26,7 +26,7 @@ public sealed class SignalRUserPresenceNotifier : IUserPresenceNotifier
         var broadcastTasks = notification.GuildIds.Select(guildId =>
             _hubContext.Clients
                 .Group(RealtimeHub.GetGuildGroupName(guildId))
-                .SendAsync("UserPresenceChanged", payload, cancellationToken));
+                .UserPresenceChanged(payload, cancellationToken));
 
         await Task.WhenAll(broadcastTasks);
     }

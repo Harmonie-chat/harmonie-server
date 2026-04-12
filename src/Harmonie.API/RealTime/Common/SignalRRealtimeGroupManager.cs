@@ -13,14 +13,14 @@ namespace Harmonie.API.RealTime.Common;
 
 public sealed class SignalRRealtimeGroupManager : IRealtimeGroupManager
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
     private readonly IConnectionTracker _connectionTracker;
     private readonly IUserSubscriptionRepository _userSubscriptionRepository;
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
 
     public SignalRRealtimeGroupManager(
-        IHubContext<RealtimeHub> hubContext,
+        IHubContext<RealtimeHub, IRealtimeClient> hubContext,
         IConnectionTracker connectionTracker,
         IUserSubscriptionRepository userSubscriptionRepository,
         IGuildChannelRepository guildChannelRepository,

@@ -20,7 +20,7 @@ namespace Harmonie.API.IntegrationTests;
 
 public sealed class SignalRRealtimeGroupManagerTests
 {
-    private readonly Mock<IHubContext<RealtimeHub>> _hubContextMock;
+    private readonly Mock<IHubContext<RealtimeHub, IRealtimeClient>> _hubContextMock;
     private readonly Mock<IGroupManager> _groupManagerMock;
     private readonly Mock<IConnectionTracker> _connectionTrackerMock;
     private readonly Mock<IUserSubscriptionRepository> _userSubscriptionRepositoryMock;
@@ -30,7 +30,7 @@ public sealed class SignalRRealtimeGroupManagerTests
 
     public SignalRRealtimeGroupManagerTests()
     {
-        _hubContextMock = new Mock<IHubContext<RealtimeHub>>();
+        _hubContextMock = new Mock<IHubContext<RealtimeHub, IRealtimeClient>>();
         _groupManagerMock = new Mock<IGroupManager>();
         _connectionTrackerMock = new Mock<IConnectionTracker>();
         _userSubscriptionRepositoryMock = new Mock<IUserSubscriptionRepository>();

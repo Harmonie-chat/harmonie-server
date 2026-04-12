@@ -7,7 +7,6 @@ using Harmonie.Application;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Infrastructure;
 using Scalar.AspNetCore;
-using Saunter;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,8 +44,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.MapAsyncApiDocuments();
-    app.MapAsyncApiUi();
 }
 
 app.UseMiddleware<GlobalExceptionHandler>();

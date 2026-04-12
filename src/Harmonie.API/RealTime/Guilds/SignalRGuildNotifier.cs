@@ -7,10 +7,10 @@ namespace Harmonie.API.RealTime.Guilds;
 
 public sealed class SignalRGuildNotifier : IGuildNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
     private readonly IConnectionTracker _connectionTracker;
 
-    public SignalRGuildNotifier(IHubContext<RealtimeHub> hubContext, IConnectionTracker connectionTracker)
+    public SignalRGuildNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext, IConnectionTracker connectionTracker)
     {
         _hubContext = hubContext;
         _connectionTracker = connectionTracker;
@@ -27,7 +27,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("GuildDeleted", payload, cancellationToken);
+            .GuildDeleted(payload, cancellationToken);
     }
 
     public async Task NotifyGuildOwnershipTransferredAsync(
@@ -42,7 +42,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("GuildOwnershipTransferred", payload, cancellationToken);
+            .GuildOwnershipTransferred(payload, cancellationToken);
     }
 
     public async Task NotifyChannelCreatedAsync(
@@ -61,7 +61,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("ChannelCreated", payload, cancellationToken);
+            .ChannelCreated(payload, cancellationToken);
     }
 
     public async Task NotifyChannelUpdatedAsync(
@@ -78,7 +78,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("ChannelUpdated", payload, cancellationToken);
+            .ChannelUpdated(payload, cancellationToken);
     }
 
     public async Task NotifyChannelDeletedAsync(
@@ -93,7 +93,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("ChannelDeleted", payload, cancellationToken);
+            .ChannelDeleted(payload, cancellationToken);
     }
 
     public async Task NotifyChannelsReorderedAsync(
@@ -110,7 +110,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("ChannelsReordered", payload, cancellationToken);
+            .ChannelsReordered(payload, cancellationToken);
     }
 
     public async Task NotifyMemberJoinedAsync(
@@ -127,7 +127,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("MemberJoined", payload, cancellationToken);
+            .MemberJoined(payload, cancellationToken);
     }
 
     public async Task NotifyMemberLeftAsync(
@@ -142,7 +142,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("MemberLeft", payload, cancellationToken);
+            .MemberLeft(payload, cancellationToken);
     }
 
     public async Task NotifyMemberBannedAsync(
@@ -157,7 +157,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("MemberBanned", memberBannedPayload, cancellationToken);
+            .MemberBanned(memberBannedPayload, cancellationToken);
 
         var connectionIds = _connectionTracker.GetConnectionIds(notification.BannedUserId);
         if (connectionIds.Count > 0)
@@ -167,7 +167,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
             await _hubContext.Clients
                 .Clients(connectionIds)
-                .SendAsync("YouWereBanned", youWereBannedPayload, cancellationToken);
+                .YouWereBanned(youWereBannedPayload, cancellationToken);
         }
     }
 
@@ -183,7 +183,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("MemberRemoved", memberRemovedPayload, cancellationToken);
+            .MemberRemoved(memberRemovedPayload, cancellationToken);
 
         var connectionIds = _connectionTracker.GetConnectionIds(notification.RemovedUserId);
         if (connectionIds.Count > 0)
@@ -193,7 +193,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
             await _hubContext.Clients
                 .Clients(connectionIds)
-                .SendAsync("YouWereKicked", youWereKickedPayload, cancellationToken);
+                .YouWereKicked(youWereKickedPayload, cancellationToken);
         }
     }
 
@@ -210,7 +210,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("MemberRoleUpdated", payload, cancellationToken);
+            .MemberRoleUpdated(payload, cancellationToken);
     }
 
     public async Task NotifyGuildUpdatedAsync(
@@ -226,7 +226,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("GuildUpdated", payload, cancellationToken);
+            .GuildUpdated(payload, cancellationToken);
     }
 }
 

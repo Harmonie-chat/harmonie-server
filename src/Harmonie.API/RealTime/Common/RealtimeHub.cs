@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace Harmonie.API.RealTime.Common;
 
 [Authorize]
-public sealed class RealtimeHub : Hub
+public sealed class RealtimeHub : Hub<IRealtimeClient>
 {
     private static readonly ConcurrentDictionary<string, DateTime> _typingThrottles = new();
     private static readonly TimeSpan TypingThrottleInterval = TimeSpan.FromSeconds(5);
@@ -52,7 +52,7 @@ public sealed class RealtimeHub : Hub
                 userId, Context.ConnectionId, Context.ConnectionAborted);
         }
 
-        await Clients.Caller.SendAsync("Ready", Context.ConnectionAborted);
+        await Clients.Caller.Ready(Context.ConnectionAborted);
 
         await base.OnConnectedAsync();
     }
@@ -103,7 +103,7 @@ public sealed class RealtimeHub : Hub
         await Clients.GroupExcept(
             GetChannelGroupName(parsedChannelId),
             Context.ConnectionId)
-            .SendAsync("UserTyping", payload, Context.ConnectionAborted);
+            .UserTyping(payload, Context.ConnectionAborted);
     }
 
     public async Task StartTypingConversation(Guid conversationId)
@@ -138,7 +138,7 @@ public sealed class RealtimeHub : Hub
         await Clients.GroupExcept(
             GetConversationGroupName(parsedConversationId),
             Context.ConnectionId)
-            .SendAsync("ConversationUserTyping", payload, Context.ConnectionAborted);
+            .ConversationUserTyping(payload, Context.ConnectionAborted);
     }
 
     internal static string GetChannelGroupName(GuildChannelId channelId)

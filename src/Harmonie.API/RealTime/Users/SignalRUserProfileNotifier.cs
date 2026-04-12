@@ -6,9 +6,9 @@ namespace Harmonie.API.RealTime.Users;
 
 public sealed class SignalRUserProfileNotifier : IUserProfileNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
 
-    public SignalRUserProfileNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRUserProfileNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext)
     {
         _hubContext = hubContext;
     }
@@ -28,12 +28,12 @@ public sealed class SignalRUserProfileNotifier : IUserProfileNotifier
             .Select(guildId =>
                 _hubContext.Clients
                     .Group(RealtimeHub.GetGuildGroupName(guildId))
-                    .SendAsync("UserProfileUpdated", payload, cancellationToken))
+                    .UserProfileUpdated(payload, cancellationToken))
             .Concat(notification.ConversationIds
                 .Select(conversationId =>
                     _hubContext.Clients
                         .Group(RealtimeHub.GetConversationGroupName(conversationId))
-                        .SendAsync("UserProfileUpdated", payload, cancellationToken)));
+                        .UserProfileUpdated(payload, cancellationToken)));
 
         await Task.WhenAll(broadcastTasks);
     }

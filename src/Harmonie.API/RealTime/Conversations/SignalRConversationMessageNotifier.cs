@@ -7,9 +7,9 @@ namespace Harmonie.API.RealTime.Conversations;
 
 public sealed class SignalRConversationMessageNotifier : IConversationMessageNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
 
-    public SignalRConversationMessageNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRConversationMessageNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext)
     {
         _hubContext = hubContext;
     }
@@ -30,7 +30,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
-            .SendAsync("ConversationMessageCreated", payload, cancellationToken);
+            .ConversationMessageCreated(payload, cancellationToken);
     }
 
     public async Task NotifyMessageUpdatedAsync(
@@ -47,7 +47,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
-            .SendAsync("ConversationMessageUpdated", payload, cancellationToken);
+            .ConversationMessageUpdated(payload, cancellationToken);
     }
 
     public async Task NotifyMessageDeletedAsync(
@@ -62,7 +62,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
-            .SendAsync("ConversationMessageDeleted", payload, cancellationToken);
+            .ConversationMessageDeleted(payload, cancellationToken);
     }
 }
 

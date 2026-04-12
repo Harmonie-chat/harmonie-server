@@ -8,9 +8,9 @@ namespace Harmonie.API.RealTime.Conversations;
 
 public sealed class SignalRConversationNotifier : IConversationNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
 
-    public SignalRConversationNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRConversationNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext)
     {
         _hubContext = hubContext;
     }
@@ -37,7 +37,7 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
-            .SendAsync("ConversationCreated", payload, cancellationToken);
+            .ConversationCreated(payload, cancellationToken);
     }
 
     public async Task NotifyParticipantLeftAsync(
@@ -52,7 +52,7 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
-            .SendAsync("ConversationParticipantLeft", payload, cancellationToken);
+            .ConversationParticipantLeft(payload, cancellationToken);
     }
 }
 

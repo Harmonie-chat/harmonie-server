@@ -6,9 +6,9 @@ namespace Harmonie.API.RealTime.Voice;
 
 public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 {
-    private readonly IHubContext<RealtimeHub> _hubContext;
+    private readonly IHubContext<RealtimeHub, IRealtimeClient> _hubContext;
 
-    public SignalRVoicePresenceNotifier(IHubContext<RealtimeHub> hubContext)
+    public SignalRVoicePresenceNotifier(IHubContext<RealtimeHub, IRealtimeClient> hubContext)
     {
         _hubContext = hubContext;
     }
@@ -33,7 +33,7 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("VoiceParticipantJoined", payload, cancellationToken);
+            .VoiceParticipantJoined(payload, cancellationToken);
     }
 
     public async Task NotifyParticipantLeftAsync(
@@ -51,7 +51,7 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
-            .SendAsync("VoiceParticipantLeft", payload, cancellationToken);
+            .VoiceParticipantLeft(payload, cancellationToken);
     }
 }
 
