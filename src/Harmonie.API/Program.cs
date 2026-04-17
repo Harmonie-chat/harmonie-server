@@ -48,6 +48,7 @@ if (app.Environment.IsDevelopment())
     app.MapSignalRAsyncApiDoc();
 }
 
+app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandler>();
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
