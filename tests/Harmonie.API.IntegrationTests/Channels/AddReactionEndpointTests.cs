@@ -65,7 +65,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
     }
@@ -84,7 +84,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
@@ -101,7 +101,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
     }
@@ -111,7 +111,8 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
     {
         var response = await _client.PutAsync(
             $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%F0%9F%91%8D",
-            null);
+            null,
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -163,7 +164,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
     }
@@ -183,7 +184,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
     }
@@ -201,7 +202,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
     }
@@ -211,7 +212,8 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
     {
         var response = await _client.PutAsync(
             $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%E2%9D%A4",
-            null);
+            null,
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -227,7 +229,7 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         return payload!;
     }
@@ -238,6 +240,6 @@ public sealed class AddReactionEndpointTests : IClassFixture<HarmonieWebApplicat
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 }

@@ -31,7 +31,7 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
             owner.AccessToken);
         joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await joinResponse.Content.ReadFromJsonAsync<JoinVoiceChannelResponse>();
+        var payload = await joinResponse.Content.ReadFromJsonAsync<JoinVoiceChannelResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Token.Should().NotBeNullOrWhiteSpace();
         payload.Url.Should().Be("ws://localhost:7880");
@@ -50,7 +50,7 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
             owner.AccessToken);
         joinResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotVoice);
     }
@@ -68,7 +68,7 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
             outsider.AccessToken);
         joinResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
@@ -83,7 +83,7 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
             user.AccessToken);
         joinResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await joinResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
     }
@@ -93,7 +93,8 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
     {
         var response = await _client.PostAsync(
             $"/api/channels/{Guid.NewGuid()}/voice/join",
-            content: null);
+            content: null,
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -109,7 +110,7 @@ public sealed class JoinVoiceChannelTests : IClassFixture<HarmonieWebApplication
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
 
         return payload!.Channels.First(channel => channel.Type == "Voice").ChannelId;

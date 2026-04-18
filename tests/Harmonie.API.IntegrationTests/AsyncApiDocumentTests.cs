@@ -22,7 +22,7 @@ public sealed class AsyncApiDocumentTests : IClassFixture<HarmonieWebApplication
         using var factory = _factory.WithWebHostBuilder(b => b.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/asyncapi/v1.json");
+        var response = await client.GetAsync("/asyncapi/v1.json", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
@@ -34,8 +34,8 @@ public sealed class AsyncApiDocumentTests : IClassFixture<HarmonieWebApplication
         using var factory = _factory.WithWebHostBuilder(b => b.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/asyncapi/v1.json");
-        var body = await response.Content.ReadAsStringAsync();
+        var response = await client.GetAsync("/asyncapi/v1.json", TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         var document = JsonNode.Parse(body);
         document.Should().NotBeNull();
@@ -50,8 +50,8 @@ public sealed class AsyncApiDocumentTests : IClassFixture<HarmonieWebApplication
         using var factory = _factory.WithWebHostBuilder(b => b.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/asyncapi/v1.json");
-        var body = await response.Content.ReadAsStringAsync();
+        var response = await client.GetAsync("/asyncapi/v1.json", TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var document = JsonNode.Parse(body);
 
         document!["channels"]!["Realtime"].Should().NotBeNull();
@@ -64,7 +64,7 @@ public sealed class AsyncApiDocumentTests : IClassFixture<HarmonieWebApplication
         using var factory = _factory.WithWebHostBuilder(b => b.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/asyncapi/ui");
+        var response = await client.GetAsync("/asyncapi/ui", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.Should().Be("text/html");

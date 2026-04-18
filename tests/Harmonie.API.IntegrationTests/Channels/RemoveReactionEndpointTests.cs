@@ -65,7 +65,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
     }
@@ -84,7 +84,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
@@ -101,7 +101,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
     }
@@ -110,7 +110,8 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
     public async Task RemoveChannelReaction_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         var response = await _client.DeleteAsync(
-            $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%F0%9F%91%8D");
+            $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%F0%9F%91%8D",
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -162,7 +163,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
     }
@@ -182,7 +183,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
     }
@@ -200,7 +201,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Reaction.MessageNotFound);
     }
@@ -209,7 +210,8 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
     public async Task RemoveConversationReaction_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         var response = await _client.DeleteAsync(
-            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%E2%9D%A4");
+            $"/api/conversations/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/reactions/%E2%9D%A4",
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -227,7 +229,7 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         return payload!;
     }
@@ -238,6 +240,6 @@ public sealed class RemoveReactionEndpointTests : IClassFixture<HarmonieWebAppli
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 }

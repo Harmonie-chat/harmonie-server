@@ -32,7 +32,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>(TestContext.Current.CancellationToken);
         sendPayload.Should().NotBeNull();
         sendPayload!.Content.Should().BeNull();
         sendPayload.Attachments.Should().ContainSingle();
@@ -43,7 +43,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>();
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>(TestContext.Current.CancellationToken);
         listPayload.Should().NotBeNull();
         listPayload!.Items.Should().ContainSingle();
         listPayload.Items[0].Content.Should().BeNull();
@@ -78,7 +78,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>(TestContext.Current.CancellationToken);
         sendPayload.Should().NotBeNull();
         sendPayload!.Attachments.Should().ContainSingle();
     }
@@ -96,7 +96,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>(TestContext.Current.CancellationToken);
         sendPayload.Should().NotBeNull();
         sendPayload!.Attachments.Should().ContainSingle();
         sendPayload.Attachments[0].FileId.Should().Be(fileId);
@@ -106,7 +106,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>();
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>(TestContext.Current.CancellationToken);
         listPayload.Should().NotBeNull();
         listPayload!.Items.Should().ContainSingle();
         listPayload.Items[0].Attachments.Should().ContainSingle();
@@ -126,7 +126,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>(TestContext.Current.CancellationToken);
         sendPayload.Should().NotBeNull();
 
         var deleteResponse = await _client.SendAuthorizedDeleteAsync(
@@ -139,7 +139,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>();
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetMessagesResponse>(TestContext.Current.CancellationToken);
         listPayload.Should().NotBeNull();
         listPayload!.Items.Should().ContainSingle();
         listPayload.Items[0].Attachments.Should().BeEmpty();
@@ -166,7 +166,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             owner.AccessToken);
         sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>();
+        var sendPayload = await sendResponse.Content.ReadFromJsonAsync<SendMessageResponse>(TestContext.Current.CancellationToken);
         sendPayload.Should().NotBeNull();
 
         var deleteResponse = await _client.SendAuthorizedDeleteAsync(
@@ -174,7 +174,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             member.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.DeleteForbidden);
     }
@@ -192,7 +192,7 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
             author.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.AttachmentNotFound);
     }
@@ -201,7 +201,8 @@ public sealed class MessageAttachmentsTests : IClassFixture<HarmonieWebApplicati
     public async Task DeleteMessageAttachment_WhenNotAuthenticated_ShouldReturn401()
     {
         var deleteResponse = await _client.DeleteAsync(
-            $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/attachments/{Guid.NewGuid()}");
+            $"/api/channels/{Guid.NewGuid()}/messages/{Guid.NewGuid()}/attachments/{Guid.NewGuid()}",
+            TestContext.Current.CancellationToken);
 
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

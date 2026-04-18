@@ -31,13 +31,13 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.UserId.Should().Be(user.UserId);
         payload.Status.Should().Be("dnd");
 
         var profileResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
-        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>(TestContext.Current.CancellationToken);
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("dnd");
     }
@@ -54,13 +54,13 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Status.Should().Be("invisible");
 
         // Verify persistence via GET profile
         var profileResponse = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
-        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        var profile = await profileResponse.Content.ReadFromJsonAsync<GetMyProfileResponse>(TestContext.Current.CancellationToken);
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("invisible");
     }
@@ -77,7 +77,7 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
@@ -94,7 +94,7 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
@@ -104,7 +104,8 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
     {
         var response = await _client.PutAsJsonAsync(
             "/api/users/me/status",
-            new { status = "online" });
+            new { status = "online" },
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -123,7 +124,7 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-            var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>();
+            var payload = await response.Content.ReadFromJsonAsync<UpdateUserStatusResponse>(TestContext.Current.CancellationToken);
             payload.Should().NotBeNull();
             payload!.Status.Should().Be(status);
         }
@@ -137,7 +138,7 @@ public sealed class UserStatusTests : IClassFixture<HarmonieWebApplicationFactor
         var response = await _client.SendAuthorizedGetAsync("/api/users/me", user.AccessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var profile = await response.Content.ReadFromJsonAsync<GetMyProfileResponse>();
+        var profile = await response.Content.ReadFromJsonAsync<GetMyProfileResponse>(TestContext.Current.CancellationToken);
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("online");
     }

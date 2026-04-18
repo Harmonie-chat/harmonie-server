@@ -36,7 +36,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().ContainSingle();
         payload.Items[0].Reactions.Should().BeEmpty();
@@ -59,7 +59,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().ContainSingle();
 
@@ -89,14 +89,14 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
         var ownerResponse = await _client.SendAuthorizedGetAsync(
             $"/api/channels/{channelId}/messages",
             owner.AccessToken);
-        var ownerPayload = await ownerResponse.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>();
+        var ownerPayload = await ownerResponse.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>(TestContext.Current.CancellationToken);
         ownerPayload!.Items[0].Reactions[0].ReactedByMe.Should().BeTrue();
 
         // Member sees reactedByMe = false
         var memberResponse = await _client.SendAuthorizedGetAsync(
             $"/api/channels/{channelId}/messages",
             member.AccessToken);
-        var memberPayload = await memberResponse.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>();
+        var memberPayload = await memberResponse.Content.ReadFromJsonAsync<ChannelGetMessagesResponse>(TestContext.Current.CancellationToken);
         memberPayload!.Items[0].Reactions[0].ReactedByMe.Should().BeFalse();
         memberPayload.Items[0].Reactions[0].Count.Should().Be(1);
     }
@@ -117,7 +117,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().ContainSingle();
         payload.Items[0].Reactions.Should().BeEmpty();
@@ -141,7 +141,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().ContainSingle();
 
@@ -169,14 +169,14 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
         var callerResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             caller.AccessToken);
-        var callerPayload = await callerResponse.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>();
+        var callerPayload = await callerResponse.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>(TestContext.Current.CancellationToken);
         callerPayload!.Items[0].Reactions[0].ReactedByMe.Should().BeTrue();
 
         // Target sees reactedByMe = false
         var targetResponse = await _client.SendAuthorizedGetAsync(
             $"/api/conversations/{conversationId}/messages",
             target.AccessToken);
-        var targetPayload = await targetResponse.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>();
+        var targetPayload = await targetResponse.Content.ReadFromJsonAsync<ConversationGetMessagesResponse>(TestContext.Current.CancellationToken);
         targetPayload!.Items[0].Reactions[0].ReactedByMe.Should().BeFalse();
         targetPayload.Items[0].Reactions[0].Count.Should().Be(1);
     }
@@ -194,7 +194,7 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<ConversationSendMessageResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         return payload!;
     }
@@ -205,6 +205,6 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await _client.SendAsync(request);
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 }

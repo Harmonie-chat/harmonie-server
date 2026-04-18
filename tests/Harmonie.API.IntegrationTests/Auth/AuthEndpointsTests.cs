@@ -35,12 +35,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Password: "Test123!@#");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.Email.Should().Be(request.Email);
@@ -59,12 +59,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Password: "Test123!@#");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var result = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
@@ -79,19 +79,19 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
 
         var loginRequest = new LoginRequest(
             EmailOrUsername: registerRequest.Email,
             Password: registerRequest.Password);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.Email.Should().Be(registerRequest.Email);
@@ -107,19 +107,19 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
 
         var loginRequest = new LoginRequest(
             EmailOrUsername: registerRequest.Username,
             Password: registerRequest.Password);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.Username.Should().Be(registerRequest.Username);
@@ -135,21 +135,21 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
         var refreshRequest = new RefreshTokenRequest(registerPayload!.RefreshToken);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshRequest);
+        var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshRequest, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.AccessToken.Should().NotBeNullOrEmpty();
@@ -166,49 +166,54 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(registerRequest.Email, registerRequest.Password));
+            new LoginRequest(registerRequest.Email, registerRequest.Password),
+            TestContext.Current.CancellationToken);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
         loginPayload.Should().NotBeNull();
 
         var firstRefreshResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload!.RefreshToken));
+            new RefreshTokenRequest(registerPayload!.RefreshToken),
+            TestContext.Current.CancellationToken);
         firstRefreshResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var firstRefreshPayload = await firstRefreshResponse.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        var firstRefreshPayload = await firstRefreshResponse.Content.ReadFromJsonAsync<RefreshTokenResponse>(TestContext.Current.CancellationToken);
         firstRefreshPayload.Should().NotBeNull();
 
         // Act - reuse rotated token
         var reuseResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken));
+            new RefreshTokenRequest(registerPayload.RefreshToken),
+            TestContext.Current.CancellationToken);
 
         // Assert - reuse is treated as security incident
         reuseResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        var reuseError = await reuseResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var reuseError = await reuseResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         reuseError.Should().NotBeNull();
         reuseError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         // The associated active descendant session is revoked
         var descendantResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(firstRefreshPayload!.RefreshToken));
+            new RefreshTokenRequest(firstRefreshPayload!.RefreshToken),
+            TestContext.Current.CancellationToken);
         descendantResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        var descendantError = await descendantResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var descendantError = await descendantResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         descendantError.Should().NotBeNull();
         descendantError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         // Unrelated active session remains valid
         var unrelatedResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(loginPayload!.RefreshToken));
+            new RefreshTokenRequest(loginPayload!.RefreshToken),
+            TestContext.Current.CancellationToken);
         unrelatedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -221,12 +226,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Password: "WrongPassword123!@#");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        var result = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var result = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
 
         result!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidCredentials);
@@ -241,10 +246,10 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
         // Act - Logout current session
@@ -258,11 +263,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         var refreshResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken));
+            new RefreshTokenRequest(registerPayload.RefreshToken),
+            TestContext.Current.CancellationToken);
 
         refreshResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        var refreshError = await refreshResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var refreshError = await refreshResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         refreshError.Should().NotBeNull();
         refreshError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
     }
@@ -281,13 +287,13 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var userAResponse = await _client.PostAsJsonAsync("/api/auth/register", userARequest);
-        var userBResponse = await _client.PostAsJsonAsync("/api/auth/register", userBRequest);
+        var userAResponse = await _client.PostAsJsonAsync("/api/auth/register", userARequest, TestContext.Current.CancellationToken);
+        var userBResponse = await _client.PostAsJsonAsync("/api/auth/register", userBRequest, TestContext.Current.CancellationToken);
         userAResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         userBResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var userAPayload = await userAResponse.Content.ReadFromJsonAsync<RegisterResponse>();
-        var userBPayload = await userBResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var userAPayload = await userAResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
+        var userBPayload = await userBResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         userAPayload.Should().NotBeNull();
         userBPayload.Should().NotBeNull();
 
@@ -300,7 +306,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         // Assert
         logoutResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        var error = await logoutResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await logoutResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Auth.InvalidRefreshToken);
     }
@@ -312,7 +318,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         var request = new LogoutRequest("any_refresh_token");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/logout", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/logout", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -327,18 +333,19 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(registerRequest.Email, registerRequest.Password));
+            new LoginRequest(registerRequest.Email, registerRequest.Password),
+            TestContext.Current.CancellationToken);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
         loginPayload.Should().NotBeNull();
 
         // Act
@@ -351,21 +358,23 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         var refreshWithRegisterTokenResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken));
+            new RefreshTokenRequest(registerPayload.RefreshToken),
+            TestContext.Current.CancellationToken);
         refreshWithRegisterTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var refreshWithRegisterTokenError =
-            await refreshWithRegisterTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
+            await refreshWithRegisterTokenResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         refreshWithRegisterTokenError.Should().NotBeNull();
         refreshWithRegisterTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         var refreshWithLoginTokenResponse = await _client.PostAsJsonAsync(
             "/api/auth/refresh",
-            new RefreshTokenRequest(loginPayload!.RefreshToken));
+            new RefreshTokenRequest(loginPayload!.RefreshToken),
+            TestContext.Current.CancellationToken);
         refreshWithLoginTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var refreshWithLoginTokenError =
-            await refreshWithLoginTokenResponse.Content.ReadFromJsonAsync<ApplicationError>();
+            await refreshWithLoginTokenResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         refreshWithLoginTokenError.Should().NotBeNull();
         refreshWithLoginTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
     }
@@ -374,7 +383,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
     public async Task LogoutAll_WithoutAuthentication_ReturnsUnauthorized()
     {
         // Act
-        var response = await _client.PostAsync("/api/auth/logout-all", content: null);
+        var response = await _client.PostAsync("/api/auth/logout-all", content: null, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -389,10 +398,10 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
         // Act
@@ -404,7 +413,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }
@@ -419,12 +428,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Password: "Test123!@#");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Avatar.Should().BeNull();
         result.Theme.Should().Be("default");
@@ -442,12 +451,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Theme: "dark");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Avatar.Should().NotBeNull();
         result.Avatar!.Color.Should().Be("#ff0000");
@@ -467,12 +476,12 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             Avatar: new AvatarAppearanceDto("#ff0000", null, null));
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await _client.PostAsJsonAsync("/api/auth/register", request, TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Avatar.Should().NotBeNull();
         result.Avatar!.Color.Should().Be("#ff0000");

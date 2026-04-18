@@ -32,9 +32,9 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
 
         await SendMessageAsync(generalChannelId, "deploy alpha", owner.AccessToken);
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
         await SendMessageAsync(generalChannelId, "random chatter", owner.AccessToken);
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
         await SendMessageAsync(deploymentsChannelId, "deploy beta", member.AccessToken);
 
         var response = await _client.SendAuthorizedGetAsync(
@@ -43,7 +43,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<SearchMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<SearchMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.GuildId.Should().Be(guildId);
         payload.Items.Should().HaveCount(2);
@@ -64,11 +64,11 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
         var deploymentsChannelId = await ChannelTestHelper.CreateChannelAndGetIdAsync(_client, owner.AccessToken, "deployments", guildId, 10);
 
         await SendMessageAsync(deploymentsChannelId, "incident one", owner.AccessToken);
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
         await SendMessageAsync(deploymentsChannelId, "incident two", member.AccessToken);
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
         await SendMessageAsync(deploymentsChannelId, "incident three", owner.AccessToken);
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
         await SendMessageAsync(deploymentsChannelId, "incident four", owner.AccessToken);
 
         var firstResponse = await _client.SendAuthorizedGetAsync(
@@ -82,7 +82,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
 
         firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var firstPayload = await firstResponse.Content.ReadFromJsonAsync<SearchMessagesResponse>();
+        var firstPayload = await firstResponse.Content.ReadFromJsonAsync<SearchMessagesResponse>(TestContext.Current.CancellationToken);
         firstPayload.Should().NotBeNull();
         firstPayload!.Items.Select(item => item.Content).Should().Equal("incident four", "incident three");
         firstPayload.NextCursor.Should().NotBeNullOrWhiteSpace();
@@ -99,7 +99,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
 
         secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var secondPayload = await secondResponse.Content.ReadFromJsonAsync<SearchMessagesResponse>();
+        var secondPayload = await secondResponse.Content.ReadFromJsonAsync<SearchMessagesResponse>(TestContext.Current.CancellationToken);
         secondPayload.Should().NotBeNull();
         secondPayload!.Items.Select(item => item.Content).Should().Equal("incident one");
         secondPayload.NextCursor.Should().BeNull();
@@ -118,7 +118,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await response.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Guild.AccessDenied);
     }
@@ -130,7 +130,7 @@ public sealed class SearchMessagesEndpointTests : IClassFixture<HarmonieWebAppli
             accessToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
 
         return payload!.Channels.First(channel => channel.Type == "Text").ChannelId;

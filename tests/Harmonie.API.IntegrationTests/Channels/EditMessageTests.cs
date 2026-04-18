@@ -31,7 +31,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             author.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await editResponse.Content.ReadFromJsonAsync<EditMessageResponse>();
+        var payload = await editResponse.Content.ReadFromJsonAsync<EditMessageResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.MessageId.Should().Be(messageId);
         payload.Content.Should().Be("updated content");
@@ -57,7 +57,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             member.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.EditForbidden);
     }
@@ -77,7 +77,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             outsider.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
@@ -95,7 +95,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             author.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
     }
@@ -113,7 +113,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             author.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
     }
@@ -126,7 +126,8 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
 
         var editResponse = await _client.PatchAsJsonAsync(
             $"/api/channels/{channelId}/messages/{messageId}",
-            new { content = "anon edit" });
+            new { content = "anon edit" },
+            TestContext.Current.CancellationToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -143,7 +144,7 @@ public sealed class EditMessageTests : IClassFixture<HarmonieWebApplicationFacto
             author.AccessToken);
         editResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await editResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
     }

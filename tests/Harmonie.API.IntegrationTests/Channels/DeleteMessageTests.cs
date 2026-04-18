@@ -65,7 +65,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
             member.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.DeleteForbidden);
     }
@@ -84,7 +84,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
             outsider.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.AccessDenied);
     }
@@ -101,7 +101,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
             author.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
     }
@@ -118,7 +118,7 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
             author.AccessToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>();
+        var error = await deleteResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NotFound);
     }
@@ -130,7 +130,8 @@ public sealed class DeleteMessageTests : IClassFixture<HarmonieWebApplicationFac
         var messageId = Guid.NewGuid();
 
         var deleteResponse = await _client.DeleteAsync(
-            $"/api/channels/{channelId}/messages/{messageId}");
+            $"/api/channels/{channelId}/messages/{messageId}",
+            TestContext.Current.CancellationToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
