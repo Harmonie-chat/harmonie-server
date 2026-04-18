@@ -5,14 +5,10 @@ using System.Text.Json;
 using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace Harmonie.API.IntegrationTests.Middleware;
 
-/// <summary>
-/// Integration tests for TraceIdMiddleware
-/// </summary>
 public sealed class TraceIdMiddlewareTests : IClassFixture<HarmonieWebApplicationFactory>
 {
     private readonly HttpClient _client;

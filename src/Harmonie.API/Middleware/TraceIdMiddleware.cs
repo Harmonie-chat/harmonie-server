@@ -5,7 +5,6 @@ namespace Harmonie.API.Middleware;
 
 public sealed class TraceIdMiddleware
 {
-    private const string TraceParentHeaderName = "traceparent";
     private const string TraceIdItemKey = "TraceId";
     private const string ResponseHeaderName = "X-Trace-Id";
     private readonly RequestDelegate _next;
@@ -17,17 +16,8 @@ public sealed class TraceIdMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        string traceId;
-
-        var traceParent = context.Request.Headers[TraceParentHeaderName].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(traceParent) && TryParseTraceParent(traceParent, out var parsedTraceId))
-        {
-            traceId = parsedTraceId;
-        }
-        else
-        {
-            traceId = ActivityTraceId.CreateRandom().ToHexString();
-        }
+        var traceId = Activity.Current?.TraceId.ToHexString()
+                      ?? ActivityTraceId.CreateRandom().ToHexString();
 
         using (LogContext.PushProperty("TraceId", traceId))
         {
@@ -35,40 +25,5 @@ public sealed class TraceIdMiddleware
             context.Response.Headers[ResponseHeaderName] = traceId;
             await _next(context);
         }
-    }
-
-    private static bool TryParseTraceParent(string traceParent, out string traceId)
-    {
-        // W3C traceparent format: "00-traceId-spanId-flags"
-        var parts = traceParent.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 4)
-        {
-            traceId = default!;
-            return false;
-        }
-
-        traceId = parts[1].ToLowerInvariant();
-        return IsValidTraceId(traceId);
-    }
-
-    private static bool IsValidTraceId(string traceId)
-    {
-        if (traceId.Length != 32)
-            return false;
-
-        foreach (char c in traceId)
-        {
-            if (!IsHex(c))
-                return false;
-        }
-
-        return true;
-    }
-
-    private static bool IsHex(char c)
-    {
-        return (c >= '0' && c <= '9')
-            || (c >= 'a' && c <= 'f')
-            || (c >= 'A' && c <= 'F');
     }
 }
