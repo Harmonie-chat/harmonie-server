@@ -39,7 +39,7 @@ public static class TransferOwnershipEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<bool>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<bool>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -48,6 +48,6 @@ public static class TransferOwnershipEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

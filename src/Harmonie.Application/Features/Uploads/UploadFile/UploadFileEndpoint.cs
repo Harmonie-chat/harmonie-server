@@ -37,14 +37,14 @@ public static class UploadFileEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UploadFileResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UploadFileResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         if (request.File is not IFormFile file)
         {
             return ApplicationResponse<UploadFileResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Request validation succeeded but file binding is missing.")
-                .ToHttpResult();
+                .ToHttpResult(httpContext);
         }
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
@@ -56,7 +56,7 @@ public static class UploadFileEndpoint
             return ApplicationResponse<UploadFileResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Request validation succeeded but file metadata is invalid.")
-                .ToHttpResult();
+                .ToHttpResult(httpContext);
         }
 
         var purpose = UploadPurpose.Attachment;
@@ -67,6 +67,6 @@ public static class UploadFileEndpoint
         var input = new UploadFileInput(fileName, contentType, file.Length, stream, purpose);
         var response = await handler.HandleAsync(input, currentUserId, cancellationToken);
 
-        return response.ToCreatedHttpResult(data => $"/api/files/{data.FileId}");
+        return response.ToCreatedHttpResult(data => $"/api/files/{data.FileId}", httpContext);
     }
 }

@@ -62,7 +62,7 @@ public static class UpdateGuildEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UpdateGuildResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UpdateGuildResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -81,7 +81,7 @@ public static class UpdateGuildEndpoint
                 request.IconBgIsSet),
             callerId,
             cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 
     internal sealed record UpdateGuildOpenApiRequest(

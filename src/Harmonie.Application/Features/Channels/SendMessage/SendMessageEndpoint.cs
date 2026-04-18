@@ -43,11 +43,11 @@ public static class SendMessageEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<SendMessageResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<SendMessageResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new SendChannelMessageInput(channelId, request.Content, request.AttachmentFileIds), currentUserId, cancellationToken);
-        return response.ToCreatedHttpResult(data => $"/api/channels/{data.ChannelId}/messages/{data.MessageId}");
+        return response.ToCreatedHttpResult(data => $"/api/channels/{data.ChannelId}/messages/{data.MessageId}", httpContext);
     }
 }

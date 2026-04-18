@@ -2,7 +2,6 @@ using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi;
-using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -50,7 +49,7 @@ public static class EndpointExtensions
     /// <summary>
     /// Convert an application response to a standardized HTTP response.
     /// </summary>
-    public static IResult ToHttpResult<T>(this ApplicationResponse<T> response)
+    public static IResult ToHttpResult<T>(this ApplicationResponse<T> response, HttpContext httpContext)
     {
         if (response.Success)
         {
@@ -64,7 +63,7 @@ public static class EndpointExtensions
                     EnrichError(
                         failurePayload,
                         StatusCodes.Status500InternalServerError,
-                        Activity.Current?.Id),
+                        httpContext),
                     statusCode: StatusCodes.Status500InternalServerError);
             }
 
@@ -77,7 +76,7 @@ public static class EndpointExtensions
 
         var statusCode = (int)MapStatusCode(error.Code);
         return Results.Json(
-            EnrichError(error, statusCode, Activity.Current?.Id),
+            EnrichError(error, statusCode, httpContext),
             statusCode: statusCode);
     }
 
@@ -86,10 +85,11 @@ public static class EndpointExtensions
     /// </summary>
     public static IResult ToCreatedHttpResult<T>(
         this ApplicationResponse<T> response,
-        Func<T, string> locationFactory)
+        Func<T, string> locationFactory,
+        HttpContext httpContext)
     {
         if (!response.Success)
-            return response.ToHttpResult();
+            return response.ToHttpResult(httpContext);
 
         if (response.Data is null)
         {
@@ -101,7 +101,7 @@ public static class EndpointExtensions
                 EnrichError(
                     payload,
                     StatusCodes.Status500InternalServerError,
-                    Activity.Current?.Id),
+                    httpContext),
                 statusCode: StatusCodes.Status500InternalServerError);
         }
 
@@ -116,7 +116,7 @@ public static class EndpointExtensions
         var statusCode = (int)MapStatusCode(error.Code);
         response.StatusCode = statusCode;
         return response.WriteAsJsonAsync(
-            EnrichError(error, statusCode, response.HttpContext.TraceIdentifier));
+            EnrichError(error, statusCode, response.HttpContext));
     }
 
     public static IReadOnlyDictionary<string, ApplicationValidationError[]> SingleValidationError(
@@ -181,10 +181,7 @@ public static class EndpointExtensions
                     {
                         Summary = code,
                         Value = ToOpenApiJsonNode(
-                            EnrichError(
-                                new ApplicationError(code, BuildExampleDetail(code), errors),
-                                status,
-                                "trace-id"))
+                            new ApplicationError(code, BuildExampleDetail(code), errors, status, "trace-id"))
                     };
                 }
             }
@@ -262,11 +259,11 @@ public static class EndpointExtensions
     private static ApplicationError EnrichError(
         ApplicationError error,
         int status,
-        string? traceId)
+        HttpContext? httpContext)
         => error with
         {
             Status = status,
-            TraceId = string.IsNullOrWhiteSpace(traceId) ? error.TraceId : traceId
+            TraceId = (httpContext?.Items["TraceId"] as string) ?? error.TraceId
         };
 
     private static JsonNode? ToOpenApiJsonNode(object? value)

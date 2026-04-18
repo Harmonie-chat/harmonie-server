@@ -38,7 +38,7 @@ public static class CreateChannelEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<CreateChannelResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<CreateChannelResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -47,6 +47,6 @@ public static class CreateChannelEndpoint
             callerId,
             cancellationToken);
 
-        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/channels/{data.ChannelId}");
+        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/channels/{data.ChannelId}", httpContext);
     }
 }

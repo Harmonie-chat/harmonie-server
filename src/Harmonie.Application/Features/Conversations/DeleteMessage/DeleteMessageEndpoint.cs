@@ -41,6 +41,6 @@ public static class DeleteMessageEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

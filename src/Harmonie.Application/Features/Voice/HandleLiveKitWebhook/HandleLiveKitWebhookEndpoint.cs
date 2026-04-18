@@ -28,6 +28,7 @@ public static class HandleLiveKitWebhookEndpoint
         [FromHeader(Name = "Authorization")] string? authorizationHeader,
         [FromServices] IHandler<HandleLiveKitWebhookRequest, HandleLiveKitWebhookResponse> handler,
         [FromServices] IValidator<HandleLiveKitWebhookRequest> validator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(httpRequest.Body);
@@ -36,9 +37,9 @@ public static class HandleLiveKitWebhookEndpoint
         var request = new HandleLiveKitWebhookRequest(rawBody, authorizationHeader);
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<HandleLiveKitWebhookResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<HandleLiveKitWebhookResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var response = await handler.HandleAsync(request, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

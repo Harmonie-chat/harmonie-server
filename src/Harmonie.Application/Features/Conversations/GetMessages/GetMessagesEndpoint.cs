@@ -36,11 +36,11 @@ public static class GetMessagesEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<GetMessagesResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<GetMessagesResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new GetConversationMessagesInput(conversationId, request.Cursor, request.Limit), currentUserId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

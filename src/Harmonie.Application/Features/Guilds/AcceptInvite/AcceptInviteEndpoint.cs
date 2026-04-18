@@ -37,11 +37,11 @@ public static class AcceptInviteEndpoint
     {
         var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
         if (routeValidationError is not null)
-            return ApplicationResponse<AcceptInviteResponse>.Fail(routeValidationError).ToHttpResult();
+            return ApplicationResponse<AcceptInviteResponse>.Fail(routeValidationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(routeRequest.InviteCode!, currentUserId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

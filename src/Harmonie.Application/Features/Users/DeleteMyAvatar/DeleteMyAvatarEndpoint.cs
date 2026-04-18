@@ -34,6 +34,6 @@ public static class DeleteMyAvatarEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

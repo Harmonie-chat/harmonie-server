@@ -38,11 +38,11 @@ public static class ReorderChannelsEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<ReorderChannelsResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<ReorderChannelsResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new ReorderChannelsInput(guildId, request.Channels), callerId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

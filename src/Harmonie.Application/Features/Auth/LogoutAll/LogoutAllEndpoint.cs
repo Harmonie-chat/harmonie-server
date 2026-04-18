@@ -33,7 +33,7 @@ public static class LogoutAllEndpoint
 
         var response = await handler.HandleAsync(Unit.Value, currentUserId, cancellationToken);
         if (!response.Success)
-            return response.ToHttpResult();
+            return response.ToHttpResult(httpContext);
 
         return Results.NoContent();
     }

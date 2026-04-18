@@ -37,6 +37,6 @@ public static class DeleteGuildEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

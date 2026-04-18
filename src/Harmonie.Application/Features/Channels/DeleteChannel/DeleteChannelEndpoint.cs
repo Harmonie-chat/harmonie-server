@@ -40,6 +40,6 @@ public static class DeleteChannelEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

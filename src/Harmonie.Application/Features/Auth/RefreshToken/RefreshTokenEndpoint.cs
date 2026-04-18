@@ -31,13 +31,14 @@ public static class RefreshTokenEndpoint
         [FromBody] RefreshTokenRequest request,
         [FromServices] IHandler<RefreshTokenRequest, RefreshTokenResponse> handler,
         [FromServices] IValidator<RefreshTokenRequest> validator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var response = await handler.HandleAsync(request, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

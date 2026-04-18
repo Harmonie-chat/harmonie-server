@@ -67,12 +67,12 @@ public static class UpdateMyProfileEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UpdateMyProfileResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UpdateMyProfileResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 
     internal sealed record UpdateMyProfileOpenApiRequest(

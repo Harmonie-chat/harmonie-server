@@ -36,11 +36,11 @@ public static class SearchConversationMessagesEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<SearchConversationMessagesResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<SearchConversationMessagesResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new SearchConversationMessagesInput(conversationId, request.Q, request.Before, request.After, request.Cursor, request.Limit), currentUserId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

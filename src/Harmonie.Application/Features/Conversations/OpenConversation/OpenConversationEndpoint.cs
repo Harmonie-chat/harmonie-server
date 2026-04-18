@@ -35,20 +35,20 @@ public static class OpenConversationEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<OpenConversationResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<OpenConversationResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
         if (!response.Success)
-            return response.ToHttpResult();
+            return response.ToHttpResult(httpContext);
 
         if (response.Data is null)
         {
             return ApplicationResponse<OpenConversationResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Operation succeeded but no payload was returned.")
-                .ToHttpResult();
+                .ToHttpResult(httpContext);
         }
 
         return response.Data.Created

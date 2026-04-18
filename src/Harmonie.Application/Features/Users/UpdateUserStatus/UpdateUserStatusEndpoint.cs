@@ -43,11 +43,11 @@ public static class UpdateUserStatusEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UpdateUserStatusResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UpdateUserStatusResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

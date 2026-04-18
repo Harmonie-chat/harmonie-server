@@ -37,11 +37,11 @@ public static class CreateGuildInviteEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<CreateGuildInviteResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<CreateGuildInviteResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new CreateGuildInviteInput(guildId, request.MaxUses, request.ExpiresInHours), currentUserId, cancellationToken);
-        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/invites/{data.InviteId}");
+        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/invites/{data.InviteId}", httpContext);
     }
 }

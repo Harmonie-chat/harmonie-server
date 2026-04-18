@@ -33,11 +33,11 @@ public static class CreateGuildEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<CreateGuildResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<CreateGuildResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
-        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}");
+        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}", httpContext);
     }
 }

@@ -32,17 +32,15 @@ public static class RegisterEndpoint
         [FromBody] RegisterRequest request,
         [FromServices] IHandler<RegisterRequest, RegisterResponse> handler,
         [FromServices] IValidator<RegisterRequest> validator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        // Validate request
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<RegisterResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<RegisterResponse>.Fail(validationError).ToHttpResult(httpContext);
 
-        // Handle registration
         var response = await handler.HandleAsync(request, cancellationToken);
 
-        // Return created response
-        return response.ToCreatedHttpResult(data => $"/api/users/{data.UserId}");
+        return response.ToCreatedHttpResult(data => $"/api/users/{data.UserId}", httpContext);
     }
 }

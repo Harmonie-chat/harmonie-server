@@ -55,11 +55,11 @@ public static class UpdateChannelEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UpdateChannelResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UpdateChannelResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new UpdateChannelInput(channelId, request.Name, request.Position), callerId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

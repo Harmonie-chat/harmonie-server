@@ -38,7 +38,7 @@ public static class AcknowledgeReadEndpoint
     {
         var bodyValidationError = await request.ValidateAsync(bodyValidator, cancellationToken);
         if (bodyValidationError is not null)
-            return ApplicationResponse<bool>.Fail(bodyValidationError).ToHttpResult();
+            return ApplicationResponse<bool>.Fail(bodyValidationError).ToHttpResult(httpContext);
 
         var parsedMessageId = request.MessageId.HasValue ? MessageId.From(request.MessageId.Value) : null;
 
@@ -49,6 +49,6 @@ public static class AcknowledgeReadEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

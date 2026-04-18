@@ -40,7 +40,7 @@ public static class DownloadFileEndpoint
             cancellationToken);
 
         if (!response.Success || response.Data is null)
-            return response.ToHttpResult();
+            return response.ToHttpResult(httpContext);
 
         return Results.File(
             response.Data.Content,

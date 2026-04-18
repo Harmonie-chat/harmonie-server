@@ -28,13 +28,14 @@ public static class PreviewInviteEndpoint
         [AsParameters] PreviewInviteRouteRequest routeRequest,
         [FromServices] IHandler<string, PreviewInviteResponse> handler,
         [FromServices] IValidator<PreviewInviteRouteRequest> routeValidator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
         if (routeValidationError is not null)
-            return ApplicationResponse<PreviewInviteResponse>.Fail(routeValidationError).ToHttpResult();
+            return ApplicationResponse<PreviewInviteResponse>.Fail(routeValidationError).ToHttpResult(httpContext);
 
         var response = await handler.HandleAsync(routeRequest.InviteCode!, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

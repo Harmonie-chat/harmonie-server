@@ -41,7 +41,7 @@ public static class BanMemberEndpoint
     {
         var bodyValidationError = await request.ValidateAsync(bodyValidator, cancellationToken);
         if (bodyValidationError is not null)
-            return ApplicationResponse<BanMemberResponse>.Fail(bodyValidationError).ToHttpResult();
+            return ApplicationResponse<BanMemberResponse>.Fail(bodyValidationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -50,6 +50,6 @@ public static class BanMemberEndpoint
             callerId,
             cancellationToken);
 
-        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/bans");
+        return response.ToCreatedHttpResult(data => $"/api/guilds/{data.GuildId}/bans", httpContext);
     }
 }

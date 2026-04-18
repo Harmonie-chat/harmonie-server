@@ -45,11 +45,11 @@ public static class EditMessageEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<EditMessageResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<EditMessageResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(new EditChannelMessageInput(channelId, messageId, request.Content), callerId, cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

@@ -39,12 +39,12 @@ public static class AddReactionEndpoint
     {
         var routeValidationError = await routeRequest.ValidateAsync(routeValidator, cancellationToken);
         if (routeValidationError is not null)
-            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult();
+            return ApplicationResponse<bool>.Fail(routeValidationError).ToHttpResult(httpContext);
 
         if (routeRequest.Emoji is not string emoji)
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
-                "Route validation succeeded but emoji was null.").ToHttpResult();
+                "Route validation succeeded but emoji was null.").ToHttpResult(httpContext);
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -53,6 +53,6 @@ public static class AddReactionEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

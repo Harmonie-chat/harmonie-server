@@ -39,7 +39,7 @@ public static class SearchMessagesEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<SearchMessagesResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<SearchMessagesResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
@@ -47,6 +47,6 @@ public static class SearchMessagesEndpoint
             new SearchMessagesInput(guildId, request.Q, request.ChannelId, request.AuthorId, request.Before, request.After, request.Cursor, request.Limit),
             currentUserId,
             cancellationToken);
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

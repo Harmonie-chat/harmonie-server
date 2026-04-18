@@ -36,14 +36,14 @@ public static class UploadMyAvatarEndpoint
     {
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<UploadMyAvatarResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<UploadMyAvatarResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         if (request.File is not IFormFile file)
         {
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Request validation succeeded but file binding is missing.")
-                .ToHttpResult();
+                .ToHttpResult(httpContext);
         }
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
@@ -55,7 +55,7 @@ public static class UploadMyAvatarEndpoint
             return ApplicationResponse<UploadMyAvatarResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "Request validation succeeded but file metadata is invalid.")
-                .ToHttpResult();
+                .ToHttpResult(httpContext);
         }
 
         await using var stream = file.OpenReadStream();
@@ -65,6 +65,6 @@ public static class UploadMyAvatarEndpoint
             currentUserId,
             cancellationToken);
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

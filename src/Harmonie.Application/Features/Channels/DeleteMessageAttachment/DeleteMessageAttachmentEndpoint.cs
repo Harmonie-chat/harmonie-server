@@ -48,6 +48,6 @@ public static class DeleteMessageAttachmentEndpoint
         if (response.Success)
             return Results.NoContent();
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }

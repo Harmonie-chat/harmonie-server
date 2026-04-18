@@ -34,16 +34,15 @@ public static class LoginEndpoint
         [FromBody] LoginRequest request,
         [FromServices] IHandler<LoginRequest, LoginResponse> handler,
         [FromServices] IValidator<LoginRequest> validator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        // Validate request
         var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
-            return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult();
+            return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult(httpContext);
 
-        // Handle login
         var response = await handler.HandleAsync(request, cancellationToken);
 
-        return response.ToHttpResult();
+        return response.ToHttpResult(httpContext);
     }
 }
