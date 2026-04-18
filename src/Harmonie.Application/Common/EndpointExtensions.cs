@@ -181,10 +181,11 @@ public static class EndpointExtensions
                     {
                         Summary = code,
                         Value = ToOpenApiJsonNode(
-                            EnrichError(
-                                new ApplicationError(code, BuildExampleDetail(code), errors) with { TraceId = "trace-id" },
-                                status,
-                                httpContext: null))
+                            new ApplicationError(code, BuildExampleDetail(code), errors) with
+                            {
+                                Status = status,
+                                TraceId = "trace-id"
+                            })
                     };
                 }
             }
