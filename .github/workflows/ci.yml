@@ -156,7 +156,7 @@ jobs:
         ASPNETCORE_ENVIRONMENT: Development
 
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
+      run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory "${{ github.workspace }}/TestResults"
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
@@ -166,7 +166,7 @@ jobs:
       if: always()
       with:
         name: Test Results
-        path: '**/test-results.trx'
+        path: 'TestResults/*.trx'
         reporter: dotnet-trx
 
     - name: Stop containers
