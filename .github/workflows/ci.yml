@@ -156,7 +156,7 @@ jobs:
         ASPNETCORE_ENVIRONMENT: Development
 
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory "${{ github.workspace }}/TestResults"
+      run: dotnet test --no-build --verbosity normal --configuration Release -- --report-trx --results-directory "${{ github.workspace }}/TestResults"
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
