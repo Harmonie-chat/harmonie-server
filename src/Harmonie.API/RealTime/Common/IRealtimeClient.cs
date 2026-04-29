@@ -24,6 +24,7 @@ public interface IRealtimeClient
     // Conversations
     Task ConversationCreated(ConversationCreatedEvent payload, CancellationToken cancellationToken = default);
     Task ConversationParticipantLeft(ConversationParticipantLeftEvent payload, CancellationToken cancellationToken = default);
+    Task ConversationUpdated(ConversationUpdatedEvent payload, CancellationToken cancellationToken = default);
     Task ConversationMessageCreated(ConversationMessageCreatedEvent payload, CancellationToken cancellationToken = default);
     Task ConversationMessageUpdated(ConversationMessageUpdatedEvent payload, CancellationToken cancellationToken = default);
     Task ConversationMessageDeleted(ConversationMessageDeletedEvent payload, CancellationToken cancellationToken = default);

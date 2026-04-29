@@ -54,6 +54,21 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
             .ConversationParticipantLeft(payload, cancellationToken);
     }
+
+    public async Task NotifyConversationUpdatedAsync(
+        ConversationUpdatedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new ConversationUpdatedEvent(
+            ConversationId: notification.ConversationId.Value,
+            Name: notification.Name);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
+            .ConversationUpdated(payload, cancellationToken);
+    }
 }
 
 public sealed record ConversationCreatedEvent(
@@ -71,3 +86,7 @@ public sealed record ConversationParticipantEventDto(
 public sealed record ConversationParticipantLeftEvent(
     Guid ConversationId,
     Guid UserId);
+
+public sealed record ConversationUpdatedEvent(
+    Guid ConversationId,
+    string? Name);

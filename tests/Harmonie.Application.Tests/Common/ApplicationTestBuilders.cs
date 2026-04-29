@@ -141,6 +141,13 @@ internal static class ApplicationTestBuilders
             null,
             DateTime.UtcNow);
 
+    public static Conversation CreateGroupConversation(string? name, params UserId[] participantIds)
+        => Conversation.Rehydrate(
+            ConversationId.New(),
+            Harmonie.Domain.Entities.Conversations.ConversationType.Group,
+            name,
+            DateTime.UtcNow);
+
     public static UploadedFile CreateUploadedFile(
         UserId? uploaderUserId = null,
         UploadedFileId? id = null,

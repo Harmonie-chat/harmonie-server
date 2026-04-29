@@ -57,4 +57,8 @@ public interface IConversationRepository
     Task DeleteAsync(
         ConversationId conversationId,
         CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(
+        Conversation conversation,
+        CancellationToken cancellationToken = default);
 }
