@@ -105,5 +105,6 @@ public static class ApplicationErrorCodes
         public const string NotFound = "CONVERSATION_NOT_FOUND";
         public const string CannotOpenSelf = "CONVERSATION_CANNOT_OPEN_SELF";
         public const string AccessDenied = "CONVERSATION_ACCESS_DENIED";
+        public const string InvalidConversationType = "CONVERSATION_INVALID_TYPE";
     }
 }

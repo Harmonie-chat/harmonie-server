@@ -11,6 +11,7 @@ using ConversationEditMessage = Harmonie.Application.Features.Conversations.Edit
 using ConversationGetMessages = Harmonie.Application.Features.Conversations.GetMessages.GetMessagesEndpoint;
 using ConversationRemoveReaction = Harmonie.Application.Features.Conversations.RemoveReaction.RemoveReactionEndpoint;
 using ConversationSendMessage = Harmonie.Application.Features.Conversations.SendMessage.SendMessageEndpoint;
+using ConversationUpdateGroup = Harmonie.Application.Features.Conversations.UpdateGroupConversation.UpdateGroupConversationEndpoint;
 
 namespace Harmonie.API.Endpoints;
 
@@ -20,6 +21,7 @@ public static class ConversationEndpoints
     {
         OpenConversationEndpoint.Map(app);
         CreateGroupConversationEndpoint.Map(app);
+        ConversationUpdateGroup.Map(app);
         DeleteConversationEndpoint.Map(app);
         ListConversationsEndpoint.Map(app);
         SearchConversationMessagesEndpoint.Map(app);

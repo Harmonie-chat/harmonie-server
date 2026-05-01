@@ -13,6 +13,10 @@ public interface IConversationNotifier
     Task NotifyParticipantLeftAsync(
         ConversationParticipantLeftNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyConversationUpdatedAsync(
+        ConversationUpdatedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ConversationCreatedNotification(
@@ -23,3 +27,7 @@ public sealed record ConversationCreatedNotification(
 public sealed record ConversationParticipantLeftNotification(
     ConversationId ConversationId,
     UserId UserId);
+
+public sealed record ConversationUpdatedNotification(
+    ConversationId ConversationId,
+    string? Name);

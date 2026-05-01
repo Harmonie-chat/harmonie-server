@@ -310,6 +310,24 @@ public sealed class ConversationRepository : IConversationRepository
             cancellationToken: cancellationToken));
     }
 
+    public async Task UpdateAsync(
+        Conversation conversation,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+                            UPDATE conversations
+                            SET name = @Name
+                            WHERE id = @Id
+                            """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { Name = conversation.Name, Id = conversation.Id.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+    }
+
     private static Conversation MapToConversation(ConversationRow row)
         => Conversation.Rehydrate(
             ConversationId.From(row.Id),

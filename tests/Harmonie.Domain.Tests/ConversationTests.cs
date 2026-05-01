@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Harmonie.Domain.Entities.Conversations;
+using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
 using Xunit;
 
@@ -65,5 +66,71 @@ public sealed class ConversationTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void UpdateName_WithValidName_ShouldSucceed()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName("New Name");
+
+        result.IsSuccess.Should().BeTrue();
+        conversation.Name.Should().Be("New Name");
+    }
+
+    [Fact]
+    public void UpdateName_WithNull_ShouldSucceed()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName(null);
+
+        result.IsSuccess.Should().BeTrue();
+        conversation.Name.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateName_WithEmptyString_ShouldFail()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName("");
+
+        result.IsFailure.Should().BeTrue();
+        conversation.Name.Should().Be("Original");
+    }
+
+    [Fact]
+    public void UpdateName_WithWhitespaceOnly_ShouldFail()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName("   ");
+
+        result.IsFailure.Should().BeTrue();
+        conversation.Name.Should().Be("Original");
+    }
+
+    [Fact]
+    public void UpdateName_WithNameExceedingMaxLength_ShouldFail()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName(new string('a', 101));
+
+        result.IsFailure.Should().BeTrue();
+        conversation.Name.Should().Be("Original");
+    }
+
+    [Fact]
+    public void UpdateName_WithNameAtMaxLength_ShouldSucceed()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
+
+        var result = conversation.UpdateName(new string('a', 100));
+
+        result.IsSuccess.Should().BeTrue();
+        conversation.Name.Should().Be(new string('a', 100));
     }
 }

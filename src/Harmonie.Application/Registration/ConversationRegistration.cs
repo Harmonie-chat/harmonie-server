@@ -12,6 +12,7 @@ using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.RemoveReaction;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Features.Conversations.SendMessage;
+using Harmonie.Application.Features.Conversations.UpdateGroupConversation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Harmonie.Application.Registration;
@@ -22,6 +23,7 @@ public static class ConversationRegistration
     {
         services.AddAuthenticatedHandler<OpenConversationRequest, OpenConversationResponse, OpenConversationHandler>();
         services.AddAuthenticatedHandler<CreateGroupConversationRequest, CreateGroupConversationResponse, CreateGroupConversationHandler>();
+        services.AddAuthenticatedHandler<UpdateGroupConversationInput, UpdateGroupConversationResponse, UpdateGroupConversationHandler>();
         services.AddAuthenticatedHandler<DeleteConversationInput, bool, DeleteConversationHandler>();
         services.AddAuthenticatedHandler<Unit, ListConversationsResponse, ListConversationsHandler>();
         services.AddAuthenticatedHandler<SearchConversationMessagesInput, SearchConversationMessagesResponse, SearchConversationMessagesHandler>();
