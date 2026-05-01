@@ -2,6 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+COPY ["Directory.Packages.props", "./"]
 COPY ["tools/Harmonie.Migrations/Harmonie.Migrations.csproj", "tools/Harmonie.Migrations/"]
 RUN dotnet restore "tools/Harmonie.Migrations/Harmonie.Migrations.csproj"
 
