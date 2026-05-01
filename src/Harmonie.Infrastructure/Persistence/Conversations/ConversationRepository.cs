@@ -267,56 +267,6 @@ public sealed class ConversationRepository : IConversationRepository
         return row is null ? null : new ConversationAccess(MapToConversation(row), row.IsParticipant);
     }
 
-    public async Task<int> RemoveParticipantAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default)
-    {
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-
-        const string deleteSql = """
-                                  DELETE FROM conversation_participants
-                                  WHERE conversation_id = @ConversationId AND user_id = @UserId
-                                  """;
-        await connection.ExecuteAsync(new CommandDefinition(
-            deleteSql,
-            new { ConversationId = conversationId.Value, UserId = userId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-
-        const string countSql = """
-                                 SELECT COUNT(*) FROM conversation_participants
-                                 WHERE conversation_id = @ConversationId
-                                 """;
-        var remaining = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
-            countSql,
-            new { ConversationId = conversationId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-
-        return remaining;
-    }
-
-    public async Task HideConversationAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default)
-    {
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-
-        const string sql = """
-                            UPDATE conversation_participants
-                            SET hidden_at_utc = NOW()
-                            WHERE conversation_id = @ConversationId AND user_id = @UserId
-                              AND hidden_at_utc IS NULL
-                            """;
-        await connection.ExecuteAsync(new CommandDefinition(
-            sql,
-            new { ConversationId = conversationId.Value, UserId = userId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-    }
-
     public async Task DeleteAsync(
         ConversationId conversationId,
         CancellationToken cancellationToken = default)
