@@ -71,6 +71,19 @@ public sealed class ConversationRepository : IConversationRepository
         var existingConversationId = await connection.QueryFirstOrDefaultAsync<Guid?>(selectCommand);
         if (existingConversationId is not null)
         {
+            // Clear hidden_at_utc for both participants so the conversation reappears
+            const string clearHiddenSql = """
+                                           UPDATE conversation_participants
+                                           SET hidden_at_utc = NULL
+                                           WHERE conversation_id = @ConversationId
+                                             AND hidden_at_utc IS NOT NULL
+                                           """;
+            await connection.ExecuteAsync(new CommandDefinition(
+                clearHiddenSql,
+                new { ConversationId = existingConversationId.Value },
+                transaction: _dbSession.Transaction,
+                cancellationToken: cancellationToken));
+
             var existing = await GetByIdAsync(ConversationId.From(existingConversationId.Value), cancellationToken);
             return new ConversationGetOrCreateResult(existing!, WasCreated: false);
         }
@@ -180,6 +193,7 @@ public sealed class ConversationRepository : IConversationRepository
                            INNER JOIN conversation_participants cp2 ON cp2.conversation_id = c.id
                            INNER JOIN users u ON u.id = cp2.user_id
                            WHERE cp1.user_id = @UserId
+                             AND cp1.hidden_at_utc IS NULL
                              AND u.deleted_at IS NULL
                            ORDER BY c.created_at_utc DESC, c.id ASC, cp2.user_id ASC
                            """;
@@ -281,6 +295,26 @@ public sealed class ConversationRepository : IConversationRepository
             cancellationToken: cancellationToken));
 
         return remaining;
+    }
+
+    public async Task HideConversationAsync(
+        ConversationId conversationId,
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+                            UPDATE conversation_participants
+                            SET hidden_at_utc = NOW()
+                            WHERE conversation_id = @ConversationId AND user_id = @UserId
+                              AND hidden_at_utc IS NULL
+                            """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { ConversationId = conversationId.Value, UserId = userId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
     }
 
     public async Task DeleteAsync(

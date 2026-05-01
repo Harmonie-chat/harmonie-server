@@ -49,6 +49,11 @@ public interface IConversationRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
+    Task HideConversationAsync(
+        ConversationId conversationId,
+        UserId userId,
+        CancellationToken cancellationToken = default);
+
     Task<int> RemoveParticipantAsync(
         ConversationId conversationId,
         UserId userId,
