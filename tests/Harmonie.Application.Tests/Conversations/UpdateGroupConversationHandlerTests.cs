@@ -66,10 +66,8 @@ public sealed class UpdateGroupConversationHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCallerIsNotParticipant_ShouldReturnAccessDenied()
     {
-        var participantOne = UserId.New();
-        var participantTwo = UserId.New();
         var outsider = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name", participantOne, participantTwo);
+        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, outsider, It.IsAny<CancellationToken>()))
@@ -110,8 +108,7 @@ public sealed class UpdateGroupConversationHandlerTests
     public async Task HandleAsync_WhenGroupConversationUpdated_ShouldReturnSuccess()
     {
         var callerId = UserId.New();
-        var otherId = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name", callerId, otherId);
+        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -133,8 +130,7 @@ public sealed class UpdateGroupConversationHandlerTests
     public async Task HandleAsync_WhenGroupConversationUpdated_ShouldPersistAndNotify()
     {
         var callerId = UserId.New();
-        var otherId = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name", callerId, otherId);
+        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -161,8 +157,7 @@ public sealed class UpdateGroupConversationHandlerTests
     public async Task HandleAsync_WhenNameIsNull_ShouldNotUpdateButReturnSuccess()
     {
         var callerId = UserId.New();
-        var otherId = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name", callerId, otherId);
+        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -191,8 +186,7 @@ public sealed class UpdateGroupConversationHandlerTests
     public async Task HandleAsync_WhenNotifierThrows_ShouldStillSucceed()
     {
         var callerId = UserId.New();
-        var otherId = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name", callerId, otherId);
+        var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
