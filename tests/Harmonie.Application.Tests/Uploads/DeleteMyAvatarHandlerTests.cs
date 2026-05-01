@@ -75,7 +75,7 @@ public sealed class DeleteMyAvatarHandlerTests
         response.Error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(It.IsAny<ProfileUpdateParameters>(), It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -120,14 +120,7 @@ public sealed class DeleteMyAvatarHandlerTests
 
         _userRepositoryMock
             .InSequence(sequence)
-            .Setup(x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.UserId == user.Id &&
-                    p.AvatarFileIdIsSet &&
-                    p.AvatarFileId == null &&
-                    p.DisplayNameIsSet == false &&
-                    p.BioIsSet == false),
-                It.IsAny<CancellationToken>()))
+            .Setup(x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _transactionMock

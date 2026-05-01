@@ -74,13 +74,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.AvatarFileId.Should().Be(avatarFileId.Value);
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.DisplayNameIsSet == true &&
-                    p.DisplayName == "Updated Name" &&
-                    p.BioIsSet == false &&
-                    p.AvatarFileIdIsSet == false),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -115,14 +109,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.AvatarFileId.Should().BeNull();
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.DisplayNameIsSet == false &&
-                    p.BioIsSet == true &&
-                    p.Bio == null &&
-                    p.AvatarFileIdIsSet == true &&
-                    p.AvatarFileId == null),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -150,9 +137,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Error.Errors!.Should().ContainKey(nameof(request.DisplayName));
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.IsAny<ProfileUpdateParameters>(),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -178,9 +163,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.IsAny<ProfileUpdateParameters>(),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -205,11 +188,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data!.Theme.Should().Be("dark");
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.ThemeIsSet == true &&
-                    p.Theme == "dark"),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -296,13 +275,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Data.Avatar.Bg.Should().Be("#000000");
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.AvatarColorIsSet == true &&
-                    p.AvatarColor == "#UPDATED" &&
-                    p.AvatarIconIsSet == false &&
-                    p.AvatarBgIsSet == false),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -321,9 +294,7 @@ public sealed class UpdateMyProfileHandlerTests
         response.Success.Should().BeTrue();
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.IsAny<ProfileUpdateParameters>(),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

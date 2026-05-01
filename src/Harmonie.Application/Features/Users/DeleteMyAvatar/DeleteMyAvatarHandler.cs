@@ -62,19 +62,7 @@ public sealed class DeleteMyAvatarHandler : IAuthenticatedHandler<Unit, bool>
 
         await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
         {
-            await _userRepository.UpdateProfileAsync(
-                new ProfileUpdateParameters(
-                    UserId: user.Id,
-                    DisplayNameIsSet: false, DisplayName: null,
-                    BioIsSet: false, Bio: null,
-                    AvatarFileIdIsSet: true, AvatarFileId: null,
-                    AvatarColorIsSet: false, AvatarColor: null,
-                    AvatarIconIsSet: false, AvatarIcon: null,
-                    AvatarBgIsSet: false, AvatarBg: null,
-                    ThemeIsSet: false, Theme: null,
-                    LanguageIsSet: false, Language: null,
-                    UpdatedAtUtc: user.UpdatedAtUtc),
-                cancellationToken);
+            await _userRepository.UpdateAsync(user, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
 

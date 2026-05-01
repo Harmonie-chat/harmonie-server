@@ -24,18 +24,6 @@ public sealed record SearchUserResult(
     string? Bio,
     bool IsActive);
 
-public sealed record ProfileUpdateParameters(
-    UserId UserId,
-    bool DisplayNameIsSet, string? DisplayName,
-    bool BioIsSet, string? Bio,
-    bool AvatarFileIdIsSet, UploadedFileId? AvatarFileId,
-    bool AvatarColorIsSet, string? AvatarColor,
-    bool AvatarIconIsSet, string? AvatarIcon,
-    bool AvatarBgIsSet, string? AvatarBg,
-    bool ThemeIsSet, string? Theme,
-    bool LanguageIsSet, string? Language,
-    DateTime? UpdatedAtUtc);
-
 /// <summary>
 /// Repository interface for User aggregate.
 /// This is a "port" in Hexagonal Architecture - the infrastructure layer provides the implementation.
@@ -93,18 +81,6 @@ public interface IUserRepository
     /// Update an existing user
     /// </summary>
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Update only profile fields for an existing user.
-    /// </summary>
-    Task UpdateProfileAsync(
-        ProfileUpdateParameters parameters,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Update only the status field for an existing user.
-    /// </summary>
-    Task UpdateStatusAsync(UserId userId, string status, DateTime statusUpdatedAtUtc, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete a user (soft delete recommended)
