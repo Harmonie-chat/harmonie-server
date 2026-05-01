@@ -140,6 +140,121 @@ public sealed class OpenConversationHandlerTests
         response.Data.ConversationId.Should().Be(conversation.Id.Value);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenConversationExistsAndParticipantsHidden_ShouldUnhideThem()
+    {
+        var callerUserId = UserId.New();
+        var targetUserId = UserId.New();
+        var callerUser = CreateUser(callerUserId, "caller");
+        var targetUser = CreateUser(targetUserId, "target");
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
+
+        var hiddenCaller = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerUserId);
+        hiddenCaller.Hide();
+        var hiddenTarget = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, targetUserId);
+        hiddenTarget.Hide();
+
+        _userRepositoryMock
+            .Setup(x => x.GetManyByIdsAsync(
+                It.Is<IReadOnlyList<UserId>>(ids => ids.Contains(callerUserId) && ids.Contains(targetUserId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([callerUser, targetUser]);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationGetOrCreateResult(conversation, false));
+
+        _participantRepositoryMock
+            .Setup(x => x.GetByConversationIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([hiddenCaller, hiddenTarget]);
+
+        var response = await _handler.HandleAsync(
+            new OpenConversationRequest(targetUserId),
+            callerUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Created.Should().BeFalse();
+
+        _participantRepositoryMock.Verify(
+            x => x.UpdateRangeAsync(
+                It.Is<IReadOnlyList<ConversationParticipant>>(list =>
+                    list.Count == 2 &&
+                    list.All(p => p.HiddenAtUtc == null)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenConversationExistsAndNoParticipantsHidden_ShouldNotUpdate()
+    {
+        var callerUserId = UserId.New();
+        var targetUserId = UserId.New();
+        var callerUser = CreateUser(callerUserId, "caller");
+        var targetUser = CreateUser(targetUserId, "target");
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
+
+        var visibleCaller = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerUserId);
+        var visibleTarget = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, targetUserId);
+
+        _userRepositoryMock
+            .Setup(x => x.GetManyByIdsAsync(
+                It.Is<IReadOnlyList<UserId>>(ids => ids.Contains(callerUserId) && ids.Contains(targetUserId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([callerUser, targetUser]);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationGetOrCreateResult(conversation, false));
+
+        _participantRepositoryMock
+            .Setup(x => x.GetByConversationIdAsync(conversation.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([visibleCaller, visibleTarget]);
+
+        var response = await _handler.HandleAsync(
+            new OpenConversationRequest(targetUserId),
+            callerUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Created.Should().BeFalse();
+
+        _participantRepositoryMock.Verify(
+            x => x.UpdateRangeAsync(It.IsAny<IReadOnlyList<ConversationParticipant>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenConversationIsCreated_ShouldNotCallGetByConversationIdAsync()
+    {
+        var callerUserId = UserId.New();
+        var targetUserId = UserId.New();
+        var callerUser = CreateUser(callerUserId, "caller");
+        var targetUser = CreateUser(targetUserId, "target");
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
+
+        _userRepositoryMock
+            .Setup(x => x.GetManyByIdsAsync(
+                It.Is<IReadOnlyList<UserId>>(ids => ids.Contains(callerUserId) && ids.Contains(targetUserId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([callerUser, targetUser]);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationGetOrCreateResult(conversation, true));
+
+        var response = await _handler.HandleAsync(
+            new OpenConversationRequest(targetUserId),
+            callerUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+
+        _participantRepositoryMock.Verify(
+            x => x.GetByConversationIdAsync(It.IsAny<ConversationId>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     private static User CreateUser(UserId userId, string suffix)
     {
         var emailResult = Email.Create($"{suffix}@harmonie.chat");

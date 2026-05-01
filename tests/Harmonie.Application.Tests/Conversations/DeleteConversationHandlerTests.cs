@@ -49,9 +49,6 @@ public sealed class DeleteConversationHandlerTests
             NullLogger<DeleteConversationHandler>.Instance);
     }
 
-    private static ConversationParticipant CreateParticipant(ConversationId conversationId, UserId userId)
-        => ConversationParticipant.Rehydrate(conversationId, userId, DateTime.UtcNow, hiddenAtUtc: null);
-
     [Fact]
     public async Task HandleAsync_WhenConversationDoesNotExist_ShouldReturnNotFound()
     {
@@ -106,7 +103,7 @@ public sealed class DeleteConversationHandlerTests
         var callerId = UserId.New();
         var otherId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(callerId, otherId);
-        var participant = CreateParticipant(conversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -124,7 +121,7 @@ public sealed class DeleteConversationHandlerTests
         var callerId = UserId.New();
         var otherId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(callerId, otherId);
-        var participant = CreateParticipant(conversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -151,7 +148,7 @@ public sealed class DeleteConversationHandlerTests
         var callerId = UserId.New();
         var otherId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(callerId, otherId);
-        var participant = CreateParticipant(conversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -172,7 +169,7 @@ public sealed class DeleteConversationHandlerTests
         var callerId = UserId.New();
         var otherId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(callerId, otherId);
-        var participant = CreateParticipant(conversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -192,7 +189,7 @@ public sealed class DeleteConversationHandlerTests
     {
         var callerId = UserId.New();
         var groupConversation = ApplicationTestBuilders.CreateGroupConversation("Test Group");
-        var participant = CreateParticipant(groupConversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(groupConversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -213,7 +210,7 @@ public sealed class DeleteConversationHandlerTests
     {
         var callerId = UserId.New();
         var groupConversation = ApplicationTestBuilders.CreateGroupConversation("Test Group");
-        var participant = CreateParticipant(groupConversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(groupConversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -238,7 +235,7 @@ public sealed class DeleteConversationHandlerTests
     {
         var callerId = UserId.New();
         var groupConversation = ApplicationTestBuilders.CreateGroupConversation("Test Group");
-        var participant = CreateParticipant(groupConversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(groupConversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -260,7 +257,7 @@ public sealed class DeleteConversationHandlerTests
     {
         var callerId = UserId.New();
         var groupConversation = ApplicationTestBuilders.CreateGroupConversation("Test Group");
-        var participant = CreateParticipant(groupConversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(groupConversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
@@ -282,7 +279,7 @@ public sealed class DeleteConversationHandlerTests
     {
         var callerId = UserId.New();
         var groupConversation = ApplicationTestBuilders.CreateGroupConversation("Test Group");
-        var participant = CreateParticipant(groupConversation.Id, callerId);
+        var participant = ApplicationTestBuilders.CreateConversationParticipant(groupConversation.Id, callerId);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
