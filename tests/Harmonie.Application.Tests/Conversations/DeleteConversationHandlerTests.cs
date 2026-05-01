@@ -157,7 +157,7 @@ public sealed class DeleteConversationHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenDirectConversation_ShouldRemoveFromSignalRGroup()
+    public async Task HandleAsync_WhenDirectConversation_ShouldNotRemoveFromSignalRGroup()
     {
         var callerId = UserId.New();
         var otherId = UserId.New();
@@ -170,32 +170,8 @@ public sealed class DeleteConversationHandlerTests
         await _handler.HandleAsync(new DeleteConversationInput(conversation.Id), callerId, TestContext.Current.CancellationToken);
 
         _realtimeGroupManagerMock.Verify(
-            x => x.RemoveUserFromConversationGroupAsync(callerId, conversation.Id, It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WhenDirectConversationAndNotifierThrows_ShouldStillHide()
-    {
-        var callerId = UserId.New();
-        var otherId = UserId.New();
-        var conversation = ApplicationTestBuilders.CreateConversation(callerId, otherId);
-
-        _conversationRepositoryMock
-            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
-
-        _realtimeGroupManagerMock
-            .Setup(x => x.RemoveUserFromConversationGroupAsync(
-                callerId, conversation.Id, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("SignalR unavailable"));
-
-        var response = await _handler.HandleAsync(new DeleteConversationInput(conversation.Id), callerId, TestContext.Current.CancellationToken);
-
-        response.Success.Should().BeTrue();
-        _conversationRepositoryMock.Verify(
-            x => x.HideConversationAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()),
-            Times.Once);
+            x => x.RemoveUserFromConversationGroupAsync(It.IsAny<UserId>(), It.IsAny<ConversationId>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // ── Group conversation tests ──
