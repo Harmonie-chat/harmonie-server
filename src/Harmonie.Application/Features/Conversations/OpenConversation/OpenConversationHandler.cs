@@ -85,22 +85,19 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         }
         else
         {
-            // Reopen: clear hidden_at_utc for both participants so the conversation reappears
+            // Reopen: clear hidden_at_utc for hidden participants so the conversation reappears
             var conversationId = result.Conversation.Id;
+            var participants = await _participantRepository.GetByConversationIdAsync(conversationId, cancellationToken);
 
-            var currentParticipant = await _participantRepository.GetAsync(conversationId, currentUserId, cancellationToken);
-            if (currentParticipant is { HiddenAtUtc: not null })
-            {
-                currentParticipant.Unhide();
-                await _participantRepository.UpdateAsync(currentParticipant, cancellationToken);
-            }
+            var hidden = participants
+                .Where(p => p.HiddenAtUtc is not null)
+                .ToArray();
 
-            var targetParticipant = await _participantRepository.GetAsync(conversationId, targetUserId, cancellationToken);
-            if (targetParticipant is { HiddenAtUtc: not null })
-            {
-                targetParticipant.Unhide();
-                await _participantRepository.UpdateAsync(targetParticipant, cancellationToken);
-            }
+            foreach (var p in hidden)
+                p.Unhide();
+
+            if (hidden.Length > 0)
+                await _participantRepository.UpdateRangeAsync(hidden, cancellationToken);
         }
 
         var payload = new OpenConversationResponse(

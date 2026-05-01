@@ -68,6 +68,30 @@ public sealed class ConversationParticipantRepository : IConversationParticipant
         return row is null ? null : MapToParticipant(row);
     }
 
+    public async Task<IReadOnlyList<ConversationParticipant>> GetByConversationIdAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT conversation_id AS "ConversationId",
+                                  user_id         AS "UserId",
+                                  joined_at_utc   AS "JoinedAtUtc",
+                                  hidden_at_utc   AS "HiddenAtUtc"
+                           FROM conversation_participants
+                           WHERE conversation_id = @ConversationId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ConversationId = conversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.QueryAsync<ConversationParticipantRow>(command);
+        return rows.Select(MapToParticipant).ToArray();
+    }
+
     public async Task UpdateAsync(
         ConversationParticipant participant,
         CancellationToken cancellationToken = default)
@@ -86,6 +110,32 @@ public sealed class ConversationParticipantRepository : IConversationParticipant
                 ConversationId = participant.ConversationId.Value,
                 UserId = participant.UserId.Value,
                 HiddenAtUtc = participant.HiddenAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task UpdateRangeAsync(
+        IReadOnlyList<ConversationParticipant> participants,
+        CancellationToken cancellationToken = default)
+    {
+        if (participants.Count == 0)
+            return;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+                            UPDATE conversation_participants
+                            SET hidden_at_utc = @HiddenAtUtc
+                            WHERE conversation_id = @ConversationId AND user_id = ANY(@UserIds)
+                            """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new
+            {
+                ConversationId = participants[0].ConversationId.Value,
+                UserIds = participants.Select(p => p.UserId.Value).ToArray(),
+                HiddenAtUtc = participants[0].HiddenAtUtc
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken));

@@ -7,6 +7,7 @@ using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Users;
+using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -18,17 +19,23 @@ public sealed class OpenConversationHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
+    private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
     private readonly OpenConversationHandler _handler;
 
     public OpenConversationHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _conversationRepositoryMock = new Mock<IConversationRepository>();
+        _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
+
+        _participantRepositoryMock
+            .Setup(x => x.GetByConversationIdAsync(It.IsAny<ConversationId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
         _handler = new OpenConversationHandler(
             _userRepositoryMock.Object,
             _conversationRepositoryMock.Object,
-            new Mock<IConversationParticipantRepository>().Object,
+            _participantRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
             NullLogger<OpenConversationHandler>.Instance);
     }

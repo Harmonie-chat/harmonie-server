@@ -15,8 +15,16 @@ public interface IConversationParticipantRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ConversationParticipant>> GetByConversationIdAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default);
+
     Task UpdateAsync(
         ConversationParticipant participant,
+        CancellationToken cancellationToken = default);
+
+    Task UpdateRangeAsync(
+        IReadOnlyList<ConversationParticipant> participants,
         CancellationToken cancellationToken = default);
 
     Task<int> RemoveAsync(
