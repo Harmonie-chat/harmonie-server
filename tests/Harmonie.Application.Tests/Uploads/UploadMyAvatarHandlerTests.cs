@@ -128,13 +128,7 @@ public sealed class UploadMyAvatarHandlerTests
         capturedUploadRequest.ContentType.Should().Be("image/png");
 
         _userRepositoryMock.Verify(
-            x => x.UpdateProfileAsync(
-                It.Is<ProfileUpdateParameters>(p =>
-                    p.AvatarFileIdIsSet == true &&
-                    p.AvatarFileId != null &&
-                    p.DisplayNameIsSet == false &&
-                    p.BioIsSet == false),
-                It.IsAny<CancellationToken>()),
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -156,9 +150,7 @@ public sealed class UploadMyAvatarHandlerTests
             .ReturnsAsync(ObjectStorageUploadResult.Succeeded());
 
         _userRepositoryMock
-            .Setup(x => x.UpdateProfileAsync(
-                It.IsAny<ProfileUpdateParameters>(),
-                It.IsAny<CancellationToken>()))
+            .Setup(x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 
         using var stream = CreateTestImageStream();

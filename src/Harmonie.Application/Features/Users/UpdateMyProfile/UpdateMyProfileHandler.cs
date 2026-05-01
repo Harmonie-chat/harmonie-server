@@ -3,8 +3,6 @@ using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Common;
-using Harmonie.Domain.ValueObjects.Conversations;
-using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
@@ -119,29 +117,7 @@ public sealed class UpdateMyProfileHandler
             && previousAvatarFileId != user.AvatarFileId;
 
         if (anyFieldSet)
-        {
-            var parameters = new ProfileUpdateParameters(
-                UserId: user.Id,
-                DisplayNameIsSet: request.DisplayNameIsSet,
-                DisplayName: request.DisplayName,
-                BioIsSet: request.BioIsSet,
-                Bio: request.Bio,
-                AvatarFileIdIsSet: request.AvatarFileIdIsSet,
-                AvatarFileId: user.AvatarFileId,
-                AvatarColorIsSet: request.AvatarColorIsSet,
-                AvatarColor: request.AvatarColor,
-                AvatarIconIsSet: request.AvatarIconIsSet,
-                AvatarIcon: request.AvatarIcon,
-                AvatarBgIsSet: request.AvatarBgIsSet,
-                AvatarBg: request.AvatarBg,
-                ThemeIsSet: request.ThemeIsSet,
-                Theme: request.Theme,
-                LanguageIsSet: request.LanguageIsSet,
-                Language: request.Language,
-                UpdatedAtUtc: user.UpdatedAtUtc);
-
-            await _userRepository.UpdateProfileAsync(parameters, cancellationToken);
-        }
+            await _userRepository.UpdateAsync(user, cancellationToken);
 
         if (shouldNotifyProfile)
         {

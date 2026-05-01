@@ -47,11 +47,7 @@ public sealed class UpdateUserStatusHandler
                     result.Error ?? "Status is invalid"));
         }
 
-        await _userRepository.UpdateStatusAsync(
-            user.Id,
-            user.Status,
-            user.StatusUpdatedAtUtc!.Value,
-            cancellationToken);
+        await _userRepository.UpdateAsync(user, cancellationToken);
 
         // Broadcast to guild members: invisible users appear as "offline" to others
         var broadcastStatus = string.Equals(user.Status, "invisible", StringComparison.OrdinalIgnoreCase)

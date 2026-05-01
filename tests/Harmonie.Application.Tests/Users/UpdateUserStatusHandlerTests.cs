@@ -53,12 +53,8 @@ public sealed class UpdateUserStatusHandlerTests
         response.Data.Status.Should().Be("dnd");
 
         _userRepositoryMock.Verify(
-            x => x.UpdateStatusAsync(
-                user.Id,
-                "dnd",
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+                Times.Once);
     }
 
     [Fact]
@@ -79,12 +75,8 @@ public sealed class UpdateUserStatusHandlerTests
         response.Error!.Code.Should().Be(ApplicationErrorCodes.User.NotFound);
 
         _userRepositoryMock.Verify(
-            x => x.UpdateStatusAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<string>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+                Times.Never);
     }
 
     [Fact]
@@ -106,12 +98,8 @@ public sealed class UpdateUserStatusHandlerTests
         response.Error.Errors!.Should().ContainKey(nameof(request.Status));
 
         _userRepositoryMock.Verify(
-            x => x.UpdateStatusAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<string>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+            x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+                Times.Never);
     }
 
     [Fact]
