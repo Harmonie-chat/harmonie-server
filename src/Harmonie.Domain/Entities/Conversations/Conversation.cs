@@ -66,6 +66,9 @@ public sealed class Conversation : Entity<ConversationId>
 
     public Result UpdateName(string? name)
     {
+        if (name is not null && string.IsNullOrWhiteSpace(name))
+            return Result.Failure("Conversation name cannot be empty");
+
         if (name is not null && name.Length > 100)
             return Result.Failure("Conversation name must be 100 characters or less");
 
