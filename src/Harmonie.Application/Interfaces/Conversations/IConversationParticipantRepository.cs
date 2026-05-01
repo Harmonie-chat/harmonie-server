@@ -6,6 +6,10 @@ namespace Harmonie.Application.Interfaces.Conversations;
 
 public interface IConversationParticipantRepository
 {
+    Task<bool> TryAddAsync(
+        ConversationParticipant participant,
+        CancellationToken cancellationToken = default);
+
     Task<ConversationParticipant?> GetAsync(
         ConversationId conversationId,
         UserId userId,

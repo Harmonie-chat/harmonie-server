@@ -17,6 +17,32 @@ public sealed class ConversationParticipantRepository : IConversationParticipant
         _dbSession = dbSession;
     }
 
+    public async Task<bool> TryAddAsync(
+        ConversationParticipant participant,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           INSERT INTO conversation_participants (conversation_id, user_id, joined_at_utc)
+                           VALUES (@ConversationId, @UserId, @JoinedAtUtc)
+                           ON CONFLICT (conversation_id, user_id) DO NOTHING
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                ConversationId = participant.ConversationId.Value,
+                UserId = participant.UserId.Value,
+                JoinedAtUtc = participant.JoinedAtUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.ExecuteAsync(command);
+        return rows > 0;
+    }
+
     public async Task<ConversationParticipant?> GetAsync(
         ConversationId conversationId,
         UserId userId,
