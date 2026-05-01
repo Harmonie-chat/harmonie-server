@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
+using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
@@ -50,6 +51,14 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You are not a participant of this conversation");
+        }
+
+        if (access.Conversation.Type == ConversationType.Direct)
+        {
+            await _conversationRepository.HideConversationAsync(
+                request.ConversationId, currentUserId, cancellationToken);
+
+            return ApplicationResponse<bool>.Ok(true);
         }
 
         await BestEffortNotificationHelper.TryNotifyAsync(
