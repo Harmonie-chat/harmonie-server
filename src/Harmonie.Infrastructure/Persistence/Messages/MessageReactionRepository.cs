@@ -74,7 +74,9 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
     }
 
     public async Task RemoveAsync(
-        MessageReaction reaction,
+        MessageId messageId,
+        UserId userId,
+        string emoji,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -89,9 +91,9 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
             sql,
             new
             {
-                MessageId = reaction.MessageId.Value,
-                UserId = reaction.UserId.Value,
-                Emoji = reaction.Emoji
+                MessageId = messageId.Value,
+                UserId = userId.Value,
+                Emoji = emoji
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);

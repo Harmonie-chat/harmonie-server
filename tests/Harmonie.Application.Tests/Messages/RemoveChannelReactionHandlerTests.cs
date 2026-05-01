@@ -190,7 +190,7 @@ public sealed class RemoveChannelReactionHandlerTests
         await _handler.HandleAsync(new ChannelRemoveReactionInput(channel.Id, messageId, "👍"), callerId, TestContext.Current.CancellationToken);
 
         _reactionRepositoryMock.Verify(
-            x => x.RemoveAsync(It.IsAny<MessageReaction>(), It.IsAny<CancellationToken>()),
+            x => x.RemoveAsync(It.IsAny<MessageId>(), It.IsAny<UserId>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(

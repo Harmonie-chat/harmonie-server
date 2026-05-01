@@ -175,7 +175,7 @@ public sealed class RemoveConversationReactionHandlerTests
         await _handler.HandleAsync(new ConversationRemoveReactionInput(conversation.Id, messageId, "❤"), participantOne, TestContext.Current.CancellationToken);
 
         _reactionRepositoryMock.Verify(
-            x => x.RemoveAsync(It.IsAny<MessageReaction>(), It.IsAny<CancellationToken>()),
+            x => x.RemoveAsync(It.IsAny<MessageId>(), It.IsAny<UserId>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
