@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
+COPY ["Directory.Packages.props", "./"]
 COPY ["Harmonie.sln", "./"]
 COPY ["src/Harmonie.Domain/Harmonie.Domain.csproj", "src/Harmonie.Domain/"]
 COPY ["src/Harmonie.Application/Harmonie.Application.csproj", "src/Harmonie.Application/"]
