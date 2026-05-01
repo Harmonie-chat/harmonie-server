@@ -13,17 +13,20 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
 {
     private readonly IUserRepository _userRepository;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly ILogger<OpenConversationHandler> _logger;
 
     public OpenConversationHandler(
         IUserRepository userRepository,
         IConversationRepository conversationRepository,
+        IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
         ILogger<OpenConversationHandler> logger)
     {
         _userRepository = userRepository;
         _conversationRepository = conversationRepository;
+        _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _logger = logger;
     }
@@ -79,6 +82,25 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                 _logger,
                 "Failed to subscribe users to conversation {ConversationId} SignalR group",
                 conversationId);
+        }
+        else
+        {
+            // Reopen: clear hidden_at_utc for both participants so the conversation reappears
+            var conversationId = result.Conversation.Id;
+
+            var currentParticipant = await _participantRepository.GetAsync(conversationId, currentUserId, cancellationToken);
+            if (currentParticipant is { HiddenAtUtc: not null })
+            {
+                currentParticipant.Unhide();
+                await _participantRepository.UpdateAsync(currentParticipant, cancellationToken);
+            }
+
+            var targetParticipant = await _participantRepository.GetAsync(conversationId, targetUserId, cancellationToken);
+            if (targetParticipant is { HiddenAtUtc: not null })
+            {
+                targetParticipant.Unhide();
+                await _participantRepository.UpdateAsync(targetParticipant, cancellationToken);
+            }
         }
 
         var payload = new OpenConversationResponse(

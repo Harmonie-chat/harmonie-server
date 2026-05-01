@@ -71,19 +71,6 @@ public sealed class ConversationRepository : IConversationRepository
         var existingConversationId = await connection.QueryFirstOrDefaultAsync<Guid?>(selectCommand);
         if (existingConversationId is not null)
         {
-            // Clear hidden_at_utc for both participants so the conversation reappears
-            const string clearHiddenSql = """
-                                           UPDATE conversation_participants
-                                           SET hidden_at_utc = NULL
-                                           WHERE conversation_id = @ConversationId
-                                             AND hidden_at_utc IS NOT NULL
-                                           """;
-            await connection.ExecuteAsync(new CommandDefinition(
-                clearHiddenSql,
-                new { ConversationId = existingConversationId.Value },
-                transaction: _dbSession.Transaction,
-                cancellationToken: cancellationToken));
-
             var existing = await GetByIdAsync(ConversationId.From(existingConversationId.Value), cancellationToken);
             return new ConversationGetOrCreateResult(existing!, WasCreated: false);
         }

@@ -28,6 +28,7 @@ public sealed class OpenConversationHandlerTests
         _handler = new OpenConversationHandler(
             _userRepositoryMock.Object,
             _conversationRepositoryMock.Object,
+            new Mock<IConversationParticipantRepository>().Object,
             new Mock<IRealtimeGroupManager>().Object,
             NullLogger<OpenConversationHandler>.Instance);
     }
