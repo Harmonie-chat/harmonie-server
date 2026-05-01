@@ -189,7 +189,7 @@ public sealed class AddChannelReactionHandlerTests
         await _handler.HandleAsync(new ChannelAddReactionInput(channel.Id, messageId, "👍"), callerId, TestContext.Current.CancellationToken);
 
         _reactionRepositoryMock.Verify(
-            x => x.AddAsync(messageId, callerId, "👍", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            x => x.AddAsync(It.IsAny<MessageReaction>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(

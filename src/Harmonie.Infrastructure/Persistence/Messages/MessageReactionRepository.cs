@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 using Harmonie.Infrastructure.Persistence.Common;
@@ -47,10 +48,7 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
     }
 
     public async Task AddAsync(
-        MessageId messageId,
-        UserId userId,
-        string emoji,
-        DateTime createdAtUtc,
+        MessageReaction reaction,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -64,10 +62,10 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
             sql,
             new
             {
-                MessageId = messageId.Value,
-                UserId = userId.Value,
-                Emoji = emoji,
-                CreatedAtUtc = createdAtUtc
+                MessageId = reaction.MessageId.Value,
+                UserId = reaction.UserId.Value,
+                Emoji = reaction.Emoji,
+                CreatedAtUtc = reaction.CreatedAtUtc
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
@@ -76,9 +74,7 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
     }
 
     public async Task RemoveAsync(
-        MessageId messageId,
-        UserId userId,
-        string emoji,
+        MessageReaction reaction,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -93,9 +89,9 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
             sql,
             new
             {
-                MessageId = messageId.Value,
-                UserId = userId.Value,
-                Emoji = emoji
+                MessageId = reaction.MessageId.Value,
+                UserId = reaction.UserId.Value,
+                Emoji = reaction.Emoji
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);

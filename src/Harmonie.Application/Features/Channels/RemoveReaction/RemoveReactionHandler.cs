@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -76,7 +77,8 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _reactionRepository.RemoveAsync(request.MessageId, currentUserId, request.Emoji, cancellationToken);
+        var reaction = MessageReaction.Rehydrate(request.MessageId, currentUserId, request.Emoji, DateTime.UtcNow);
+        await _reactionRepository.RemoveAsync(reaction, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionRemovedSafelyAsync(

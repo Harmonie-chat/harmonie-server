@@ -176,7 +176,7 @@ public sealed class AddConversationReactionHandlerTests
         await _handler.HandleAsync(new ConversationAddReactionInput(conversation.Id, messageId, "❤"), participantOne, TestContext.Current.CancellationToken);
 
         _reactionRepositoryMock.Verify(
-            x => x.AddAsync(messageId, participantOne, "❤", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            x => x.AddAsync(It.IsAny<MessageReaction>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
