@@ -1,3 +1,4 @@
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 
@@ -12,10 +13,7 @@ public interface IMessageReactionRepository
         CancellationToken cancellationToken = default);
 
     Task AddAsync(
-        MessageId messageId,
-        UserId userId,
-        string emoji,
-        DateTime createdAtUtc,
+        MessageReaction reaction,
         CancellationToken cancellationToken = default);
 
     Task RemoveAsync(

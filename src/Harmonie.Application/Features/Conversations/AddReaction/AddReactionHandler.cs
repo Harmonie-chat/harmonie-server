@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -67,7 +68,15 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _reactionRepository.AddAsync(request.MessageId, currentUserId, request.Emoji, DateTime.UtcNow, cancellationToken);
+        var reaction = MessageReaction.Create(request.MessageId, currentUserId, request.Emoji);
+        if (reaction.IsFailure || reaction.Value is null)
+        {
+            return ApplicationResponse<bool>.Fail(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                reaction.Error ?? "Invalid reaction");
+        }
+
+        await _reactionRepository.AddAsync(reaction.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionAddedSafelyAsync(
