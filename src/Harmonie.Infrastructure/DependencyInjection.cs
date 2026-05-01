@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IMessagePaginationRepository, MessagePaginationRepository>();
         services.AddScoped<IMessageSearchRepository, MessageSearchRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IConversationParticipantRepository, ConversationParticipantRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();
         services.AddScoped<IChannelReadStateRepository, ChannelReadStateRepository>();

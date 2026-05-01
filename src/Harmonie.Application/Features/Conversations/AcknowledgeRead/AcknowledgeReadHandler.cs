@@ -41,7 +41,7 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCo
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

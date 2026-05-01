@@ -71,19 +71,6 @@ public sealed class ConversationRepository : IConversationRepository
         var existingConversationId = await connection.QueryFirstOrDefaultAsync<Guid?>(selectCommand);
         if (existingConversationId is not null)
         {
-            // Clear hidden_at_utc for both participants so the conversation reappears
-            const string clearHiddenSql = """
-                                           UPDATE conversation_participants
-                                           SET hidden_at_utc = NULL
-                                           WHERE conversation_id = @ConversationId
-                                             AND hidden_at_utc IS NOT NULL
-                                           """;
-            await connection.ExecuteAsync(new CommandDefinition(
-                clearHiddenSql,
-                new { ConversationId = existingConversationId.Value },
-                transaction: _dbSession.Transaction,
-                cancellationToken: cancellationToken));
-
             var existing = await GetByIdAsync(ConversationId.From(existingConversationId.Value), cancellationToken);
             return new ConversationGetOrCreateResult(existing!, WasCreated: false);
         }
@@ -244,15 +231,16 @@ public sealed class ConversationRepository : IConversationRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT c.id             AS "Id",
-                                  c.type           AS "Type",
-                                  c.name           AS "Name",
-                                  c.created_at_utc AS "CreatedAtUtc",
-                                  EXISTS(
-                                      SELECT 1 FROM conversation_participants
-                                      WHERE conversation_id = c.id AND user_id = @UserId
-                                  ) AS "IsParticipant"
+                           SELECT c.id              AS "Id",
+                                  c.type            AS "Type",
+                                  c.name            AS "Name",
+                                  c.created_at_utc  AS "CreatedAtUtc",
+                                  cp.user_id        AS "ParticipantUserId",
+                                  cp.joined_at_utc  AS "JoinedAtUtc",
+                                  cp.hidden_at_utc  AS "HiddenAtUtc"
                            FROM conversations c
+                           LEFT JOIN conversation_participants cp
+                             ON cp.conversation_id = c.id AND cp.user_id = @UserId
                            WHERE c.id = @ConversationId
                            """;
 
@@ -264,57 +252,19 @@ public sealed class ConversationRepository : IConversationRepository
             cancellationToken: cancellationToken);
 
         var row = await connection.QueryFirstOrDefaultAsync<ConversationWithParticipantRow>(command);
-        return row is null ? null : new ConversationAccess(MapToConversation(row), row.IsParticipant);
-    }
+        if (row is null)
+            return null;
 
-    public async Task<int> RemoveParticipantAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default)
-    {
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var conversation = MapToConversation(row);
+        var participant = row.ParticipantUserId is not null
+            ? ConversationParticipant.Rehydrate(
+                ConversationId.From(conversationId.Value),
+                UserId.From(row.ParticipantUserId.Value),
+                row.JoinedAtUtc!.Value,
+                row.HiddenAtUtc)
+            : null;
 
-        const string deleteSql = """
-                                  DELETE FROM conversation_participants
-                                  WHERE conversation_id = @ConversationId AND user_id = @UserId
-                                  """;
-        await connection.ExecuteAsync(new CommandDefinition(
-            deleteSql,
-            new { ConversationId = conversationId.Value, UserId = userId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-
-        const string countSql = """
-                                 SELECT COUNT(*) FROM conversation_participants
-                                 WHERE conversation_id = @ConversationId
-                                 """;
-        var remaining = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
-            countSql,
-            new { ConversationId = conversationId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-
-        return remaining;
-    }
-
-    public async Task HideConversationAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default)
-    {
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-
-        const string sql = """
-                            UPDATE conversation_participants
-                            SET hidden_at_utc = NOW()
-                            WHERE conversation_id = @ConversationId AND user_id = @UserId
-                              AND hidden_at_utc IS NULL
-                            """;
-        await connection.ExecuteAsync(new CommandDefinition(
-            sql,
-            new { ConversationId = conversationId.Value, UserId = userId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
+        return new ConversationAccess(conversation, participant);
     }
 
     public async Task DeleteAsync(
@@ -394,7 +344,11 @@ public sealed class ConversationRepository : IConversationRepository
 
         public DateTime CreatedAtUtc { get; init; }
 
-        public bool IsParticipant { get; init; }
+        public Guid? ParticipantUserId { get; init; }
+
+        public DateTime? JoinedAtUtc { get; init; }
+
+        public DateTime? HiddenAtUtc { get; init; }
     }
 
 }

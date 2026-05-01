@@ -61,7 +61,7 @@ public sealed class SearchConversationMessagesHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, outsider, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: false));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: null));
 
         var response = await _handler.HandleAsync(
             new SearchConversationMessagesInput(conversation.Id, Q: "deploy"),
@@ -89,7 +89,7 @@ public sealed class SearchConversationMessagesHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, user1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, user1)));
 
         _directMessageRepositoryMock
             .Setup(x => x.SearchConversationMessagesAsync(

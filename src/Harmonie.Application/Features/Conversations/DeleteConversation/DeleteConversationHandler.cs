@@ -15,17 +15,20 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
 
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IConversationNotifier _conversationNotifier;
     private readonly ILogger<DeleteConversationHandler> _logger;
 
     public DeleteConversationHandler(
         IConversationRepository conversationRepository,
+        IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IConversationNotifier conversationNotifier,
         ILogger<DeleteConversationHandler> logger)
     {
         _conversationRepository = conversationRepository;
+        _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _conversationNotifier = conversationNotifier;
         _logger = logger;
@@ -46,7 +49,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
                 "Conversation was not found");
         }
 
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
@@ -55,8 +58,8 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
 
         if (access.Conversation.Type == ConversationType.Direct)
         {
-            await _conversationRepository.HideConversationAsync(
-                request.ConversationId, currentUserId, cancellationToken);
+            access.Participant.Hide();
+            await _participantRepository.UpdateAsync(access.Participant, cancellationToken);
 
             return ApplicationResponse<bool>.Ok(true);
         }
@@ -70,8 +73,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
             request.ConversationId,
             currentUserId);
 
-        var remaining = await _conversationRepository.RemoveParticipantAsync(
-            request.ConversationId, currentUserId, cancellationToken);
+        var remaining = await _participantRepository.RemoveAsync(access.Participant, cancellationToken);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _realtimeGroupManager.RemoveUserFromConversationGroupAsync(currentUserId, request.ConversationId, ct),

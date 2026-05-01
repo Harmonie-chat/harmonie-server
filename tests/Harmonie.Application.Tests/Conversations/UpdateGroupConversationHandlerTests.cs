@@ -71,7 +71,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, outsider, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: false));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: null));
 
         var response = await _handler.HandleAsync(
             new UpdateGroupConversationInput(conversation.Id, "New Name"),
@@ -92,7 +92,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
 
         var response = await _handler.HandleAsync(
             new UpdateGroupConversationInput(conversation.Id, "New Name"),
@@ -112,7 +112,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId)));
 
         var response = await _handler.HandleAsync(
             new UpdateGroupConversationInput(conversation.Id, "New Name"),
@@ -134,7 +134,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId)));
 
         await _handler.HandleAsync(
             new UpdateGroupConversationInput(conversation.Id, "New Name"),
@@ -161,7 +161,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId)));
 
         var response = await _handler.HandleAsync(
             new UpdateGroupConversationInput(conversation.Id, null),
@@ -190,7 +190,7 @@ public sealed class UpdateGroupConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, IsParticipant: true));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerId)));
 
         _conversationNotifierMock
             .Setup(x => x.NotifyConversationUpdatedAsync(

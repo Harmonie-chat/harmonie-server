@@ -15,7 +15,7 @@ public sealed record ConversationParticipantSummary(
 
 public sealed record ConversationGetOrCreateResult(Conversation Conversation, bool WasCreated);
 
-public sealed record ConversationAccess(Conversation Conversation, bool IsParticipant);
+public sealed record ConversationAccess(Conversation Conversation, ConversationParticipant? Participant);
 
 public sealed record UserConversationSummary(
     ConversationId ConversationId,
@@ -45,16 +45,6 @@ public interface IConversationRepository
         CancellationToken cancellationToken = default);
 
     Task<ConversationAccess?> GetByIdWithParticipantCheckAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default);
-
-    Task HideConversationAsync(
-        ConversationId conversationId,
-        UserId userId,
-        CancellationToken cancellationToken = default);
-
-    Task<int> RemoveParticipantAsync(
         ConversationId conversationId,
         UserId userId,
         CancellationToken cancellationToken = default);

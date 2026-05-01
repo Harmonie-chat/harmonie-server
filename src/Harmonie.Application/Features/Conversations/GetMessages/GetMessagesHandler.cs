@@ -55,7 +55,7 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<GetMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

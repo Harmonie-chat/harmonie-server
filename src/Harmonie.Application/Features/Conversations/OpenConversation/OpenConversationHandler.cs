@@ -13,17 +13,20 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
 {
     private readonly IUserRepository _userRepository;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly ILogger<OpenConversationHandler> _logger;
 
     public OpenConversationHandler(
         IUserRepository userRepository,
         IConversationRepository conversationRepository,
+        IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
         ILogger<OpenConversationHandler> logger)
     {
         _userRepository = userRepository;
         _conversationRepository = conversationRepository;
+        _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _logger = logger;
     }
@@ -79,6 +82,22 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                 _logger,
                 "Failed to subscribe users to conversation {ConversationId} SignalR group",
                 conversationId);
+        }
+        else
+        {
+            // Reopen: clear hidden_at_utc for hidden participants so the conversation reappears
+            var conversationId = result.Conversation.Id;
+            var participants = await _participantRepository.GetByConversationIdAsync(conversationId, cancellationToken);
+
+            var hidden = participants
+                .Where(p => p.HiddenAtUtc is not null)
+                .ToArray();
+
+            foreach (var p in hidden)
+                p.Unhide();
+
+            if (hidden.Length > 0)
+                await _participantRepository.UpdateRangeAsync(hidden, cancellationToken);
         }
 
         var payload = new OpenConversationResponse(
