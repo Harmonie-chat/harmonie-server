@@ -123,7 +123,7 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
         if (access is null)
             throw new HubException(ApplicationErrorCodes.Conversation.NotFound);
 
-        if (!access.IsParticipant)
+        if (access.Participant is null)
             throw new HubException(ApplicationErrorCodes.Conversation.AccessDenied);
 
         var throttleKey = $"conversation:{currentUserId}:{conversationId}";

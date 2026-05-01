@@ -49,7 +49,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
                 "Conversation was not found");
         }
 
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
@@ -58,18 +58,8 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
 
         if (access.Conversation.Type == ConversationType.Direct)
         {
-            var participant = await _participantRepository.GetAsync(
-                request.ConversationId, currentUserId, cancellationToken);
-
-            if (participant is null)
-            {
-                return ApplicationResponse<bool>.Fail(
-                    ApplicationErrorCodes.Conversation.AccessDenied,
-                    "You are not a participant of this conversation");
-            }
-
-            participant.Hide();
-            await _participantRepository.UpdateAsync(participant, cancellationToken);
+            access.Participant.Hide();
+            await _participantRepository.UpdateAsync(access.Participant, cancellationToken);
 
             return ApplicationResponse<bool>.Ok(true);
         }
@@ -83,17 +73,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
             request.ConversationId,
             currentUserId);
 
-        var participantToRemove = await _participantRepository.GetAsync(
-            request.ConversationId, currentUserId, cancellationToken);
-
-        if (participantToRemove is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Conversation.AccessDenied,
-                "You are not a participant of this conversation");
-        }
-
-        var remaining = await _participantRepository.RemoveAsync(participantToRemove, cancellationToken);
+        var remaining = await _participantRepository.RemoveAsync(access.Participant, cancellationToken);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _realtimeGroupManager.RemoveUserFromConversationGroupAsync(currentUserId, request.ConversationId, ct),

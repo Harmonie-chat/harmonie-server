@@ -109,7 +109,7 @@ public sealed class SearchConversationMessagesHandler : IAuthenticatedHandler<Se
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<SearchConversationMessagesResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

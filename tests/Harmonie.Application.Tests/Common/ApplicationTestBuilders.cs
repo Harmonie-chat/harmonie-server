@@ -141,6 +141,9 @@ internal static class ApplicationTestBuilders
             null,
             DateTime.UtcNow);
 
+    public static ConversationParticipant CreateConversationParticipant(ConversationId conversationId, UserId userId)
+        => ConversationParticipant.Rehydrate(conversationId, userId, DateTime.UtcNow, hiddenAtUtc: null);
+
     public static Conversation CreateGroupConversation(string? name)
         => Conversation.Rehydrate(
             ConversationId.New(),

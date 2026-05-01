@@ -57,7 +57,7 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

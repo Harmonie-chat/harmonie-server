@@ -46,7 +46,7 @@ public sealed class UpdateGroupConversationHandler : IAuthenticatedHandler<Updat
                 "Conversation was not found");
         }
 
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<UpdateGroupConversationResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

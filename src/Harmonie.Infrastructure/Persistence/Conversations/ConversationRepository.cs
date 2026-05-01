@@ -244,15 +244,16 @@ public sealed class ConversationRepository : IConversationRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT c.id             AS "Id",
-                                  c.type           AS "Type",
-                                  c.name           AS "Name",
-                                  c.created_at_utc AS "CreatedAtUtc",
-                                  EXISTS(
-                                      SELECT 1 FROM conversation_participants
-                                      WHERE conversation_id = c.id AND user_id = @UserId
-                                  ) AS "IsParticipant"
+                           SELECT c.id              AS "Id",
+                                  c.type            AS "Type",
+                                  c.name            AS "Name",
+                                  c.created_at_utc  AS "CreatedAtUtc",
+                                  cp.user_id        AS "ParticipantUserId",
+                                  cp.joined_at_utc  AS "JoinedAtUtc",
+                                  cp.hidden_at_utc  AS "HiddenAtUtc"
                            FROM conversations c
+                           LEFT JOIN conversation_participants cp
+                             ON cp.conversation_id = c.id AND cp.user_id = @UserId
                            WHERE c.id = @ConversationId
                            """;
 
@@ -264,7 +265,19 @@ public sealed class ConversationRepository : IConversationRepository
             cancellationToken: cancellationToken);
 
         var row = await connection.QueryFirstOrDefaultAsync<ConversationWithParticipantRow>(command);
-        return row is null ? null : new ConversationAccess(MapToConversation(row), row.IsParticipant);
+        if (row is null)
+            return null;
+
+        var conversation = MapToConversation(row);
+        var participant = row.ParticipantUserId is not null
+            ? ConversationParticipant.Rehydrate(
+                ConversationId.From(conversationId.Value),
+                UserId.From(row.ParticipantUserId.Value),
+                row.JoinedAtUtc!.Value,
+                row.HiddenAtUtc)
+            : null;
+
+        return new ConversationAccess(conversation, participant);
     }
 
     public async Task DeleteAsync(
@@ -344,7 +357,11 @@ public sealed class ConversationRepository : IConversationRepository
 
         public DateTime CreatedAtUtc { get; init; }
 
-        public bool IsParticipant { get; init; }
+        public Guid? ParticipantUserId { get; init; }
+
+        public DateTime? JoinedAtUtc { get; init; }
+
+        public DateTime? HiddenAtUtc { get; init; }
     }
 
 }

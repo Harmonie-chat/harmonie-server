@@ -15,7 +15,7 @@ public sealed record ConversationParticipantSummary(
 
 public sealed record ConversationGetOrCreateResult(Conversation Conversation, bool WasCreated);
 
-public sealed record ConversationAccess(Conversation Conversation, bool IsParticipant);
+public sealed record ConversationAccess(Conversation Conversation, ConversationParticipant? Participant);
 
 public sealed record UserConversationSummary(
     ConversationId ConversationId,

@@ -50,7 +50,7 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,

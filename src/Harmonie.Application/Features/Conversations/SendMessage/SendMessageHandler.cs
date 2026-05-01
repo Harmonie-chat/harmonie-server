@@ -66,7 +66,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 ApplicationErrorCodes.Conversation.NotFound,
                 "Conversation was not found");
         }
-        if (!access.IsParticipant)
+        if (access.Participant is null)
         {
             return ApplicationResponse<SendMessageResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
