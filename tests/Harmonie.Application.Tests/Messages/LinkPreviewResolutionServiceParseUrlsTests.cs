@@ -106,4 +106,48 @@ public sealed class LinkPreviewResolutionServiceParseUrlsTests
         result.Should().HaveCount(1);
         result[0].ToString().Should().Be("https://example.com/page?q=1#section");
     }
+
+    [Fact]
+    public void ParseUrls_WhenHtmlAnchorTag_ShouldExtractHref()
+    {
+        var content = "<p><a href=\"https://www.youtube.com/watch?v=nUp_bv_sOeI\" rel=\"noopener noreferrer\" target=\"_blank\">https://www.youtube.com/watch?v=nUp_bv_sOeI</a></p>";
+
+        var result = _service.ParseUrls(content);
+
+        result.Should().HaveCount(1);
+        result[0].ToString().Should().Be("https://www.youtube.com/watch?v=nUp_bv_sOeI");
+    }
+
+    [Fact]
+    public void ParseUrls_WhenHtmlWithMultipleAnchors_ShouldExtractAll()
+    {
+        var content = "<a href=\"https://a.com\">a</a> <a href='https://b.com'>b</a>";
+
+        var result = _service.ParseUrls(content);
+
+        result.Should().HaveCount(2);
+        result[0].ToString().Should().Be("https://a.com/");
+        result[1].ToString().Should().Be("https://b.com/");
+    }
+
+    [Fact]
+    public void ParseUrls_WhenPlainTextHasUrl_PrefersPlainTextOverHtml()
+    {
+        var content = "https://plain.com <a href=\"https://html.com\">link</a>";
+
+        var result = _service.ParseUrls(content);
+
+        result.Should().HaveCount(1);
+        result[0].ToString().Should().Be("https://plain.com/");
+    }
+
+    [Fact]
+    public void ParseUrls_WhenHtmlAnchorHasNoHttps_ShouldBeIgnored()
+    {
+        var content = "<a href=\"ftp://files.com\">files</a>";
+
+        var result = _service.ParseUrls(content);
+
+        result.Should().BeEmpty();
+    }
 }

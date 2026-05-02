@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
@@ -18,6 +19,10 @@ public sealed class LinkPreviewResolutionService
     private static readonly TimeSpan PreviewCacheMaxAge = TimeSpan.FromHours(24);
     private static readonly TimeSpan ResolutionTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly Regex HrefRegex = new(
+        @"href\s*=\s*[""'](https?://[^""'\s>]+)[""']",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(200));
     private const int MaxUrlsPerMessage = 5;
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
@@ -38,6 +43,7 @@ public sealed class LinkPreviewResolutionService
 
         var urls = new List<Uri>(MaxUrlsPerMessage);
 
+        // First pass: split by whitespace (plain text)
         foreach (var token in content.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
             if (urls.Count >= MaxUrlsPerMessage)
@@ -53,6 +59,32 @@ public sealed class LinkPreviewResolutionService
                 continue;
 
             urls.Add(uri);
+        }
+
+        // Second pass: extract href from <a> tags (HTML content from rich text editors)
+        if (urls.Count == 0 && content.Contains("<a ", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                foreach (Match match in HrefRegex.Matches(content))
+                {
+                    if (urls.Count >= MaxUrlsPerMessage)
+                        break;
+
+                    var href = match.Groups[1].Value;
+                    if (Uri.TryCreate(href, UriKind.Absolute, out var uri)
+                        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                        && IsSafeHost(uri)
+                        && !urls.Contains(uri))
+                    {
+                        urls.Add(uri);
+                    }
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // Malformed HTML — skip
+            }
         }
 
         return urls;
