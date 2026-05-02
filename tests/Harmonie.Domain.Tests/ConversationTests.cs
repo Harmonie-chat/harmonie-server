@@ -69,6 +69,17 @@ public sealed class ConversationTests
     }
 
     [Fact]
+    public void UpdateName_WhenDirectConversation_ShouldFail()
+    {
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Direct, null, DateTime.UtcNow);
+
+        var result = conversation.UpdateName("Should Fail");
+
+        result.IsFailure.Should().BeTrue();
+        conversation.Name.Should().BeNull();
+    }
+
+    [Fact]
     public void UpdateName_WithValidName_ShouldSucceed()
     {
         var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", DateTime.UtcNow);
