@@ -85,6 +85,27 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
 
+                   SELECT sub.message_id AS "MessageId",
+                          sub.emoji AS "Emoji",
+                          sub.user_id AS "UserId",
+                          u.username AS "Username",
+                          u.display_name AS "DisplayName"
+                   FROM (
+                       SELECT mr.message_id, mr.emoji, mr.user_id, mr.created_at_utc,
+                              ROW_NUMBER() OVER (PARTITION BY mr.message_id, mr.emoji ORDER BY mr.created_at_utc) AS rn
+                       FROM message_reactions mr
+                       WHERE mr.message_id IN (
+                           SELECT id FROM messages
+                           WHERE channel_id = @ChannelId
+                             AND deleted_at_utc IS NULL
+                             {cursorFilter}
+                           ORDER BY created_at_utc DESC, id DESC
+                           LIMIT @Take)
+                   ) sub
+                   JOIN users u ON u.id = sub.user_id
+                   WHERE sub.rn <= 5
+                   ORDER BY sub.message_id, sub.emoji, sub.created_at_utc;
+
                    SELECT last_read_message_id AS "LastReadMessageId",
                           read_at_utc          AS "ReadAtUtc"
                    FROM channel_read_states
@@ -112,6 +133,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+        var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
 
         var hasMore = rows.Length > limit;
@@ -121,7 +143,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var attachmentsByMessageId = MessageRepositoryHelpers.BuildAttachmentsDictionary(
             attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
         var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
-            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)),
+            reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -215,6 +238,27 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
 
+                   SELECT sub.message_id AS "MessageId",
+                          sub.emoji AS "Emoji",
+                          sub.user_id AS "UserId",
+                          u.username AS "Username",
+                          u.display_name AS "DisplayName"
+                   FROM (
+                       SELECT mr.message_id, mr.emoji, mr.user_id, mr.created_at_utc,
+                              ROW_NUMBER() OVER (PARTITION BY mr.message_id, mr.emoji ORDER BY mr.created_at_utc) AS rn
+                       FROM message_reactions mr
+                       WHERE mr.message_id IN (
+                           SELECT id FROM messages
+                           WHERE conversation_id = @ConversationId
+                             AND deleted_at_utc IS NULL
+                             {cursorFilter}
+                           ORDER BY created_at_utc DESC, id DESC
+                           LIMIT @Take)
+                   ) sub
+                   JOIN users u ON u.id = sub.user_id
+                   WHERE sub.rn <= 5
+                   ORDER BY sub.message_id, sub.emoji, sub.created_at_utc;
+
                    SELECT last_read_message_id AS "LastReadMessageId",
                           read_at_utc          AS "ReadAtUtc"
                    FROM conversation_read_states
@@ -242,6 +286,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
+        var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
 
         var hasMore = rows.Length > limit;
@@ -251,7 +296,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var attachmentsByMessageId = MessageRepositoryHelpers.BuildAttachmentsDictionary(
             attachmentRows.Where(r => pageMessageIds.Contains(r.MessageId)));
         var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
-            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+            reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)),
+            reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))

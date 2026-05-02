@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -19,6 +20,7 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageReactionRepository _reactionRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IReactionNotifier _reactionNotifier;
     private readonly ILogger<RemoveReactionHandler> _logger;
@@ -27,6 +29,7 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
         IGuildChannelRepository guildChannelRepository,
         IMessageRepository messageRepository,
         IMessageReactionRepository reactionRepository,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IReactionNotifier reactionNotifier,
         ILogger<RemoveReactionHandler> logger)
@@ -34,6 +37,7 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
         _guildChannelRepository = guildChannelRepository;
         _messageRepository = messageRepository;
         _reactionRepository = reactionRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _reactionNotifier = reactionNotifier;
         _logger = logger;
@@ -79,8 +83,12 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
         await _reactionRepository.RemoveAsync(request.MessageId, currentUserId, request.Emoji, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
+        var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
+        var username = user?.Username?.Value ?? string.Empty;
+        var displayName = user?.DisplayName;
+
         await NotifyReactionRemovedSafelyAsync(
-            new ChannelReactionRemovedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, request.Emoji));
+            new ChannelReactionRemovedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, username, displayName, request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

@@ -25,6 +25,8 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
             GuildId: notification.GuildId.Value,
             ConversationId: null,
             UserId: notification.UserId.Value,
+            ReactorUsername: notification.Username,
+            ReactorDisplayName: notification.DisplayName,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -44,6 +46,8 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
             GuildId: null,
             ConversationId: notification.ConversationId.Value,
             UserId: notification.UserId.Value,
+            ReactorUsername: notification.Username,
+            ReactorDisplayName: notification.DisplayName,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -63,6 +67,8 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
             GuildId: notification.GuildId.Value,
             ConversationId: null,
             UserId: notification.UserId.Value,
+            ReactorUsername: notification.Username,
+            ReactorDisplayName: notification.DisplayName,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -82,6 +88,8 @@ public sealed class SignalRReactionNotifier : IReactionNotifier
             GuildId: null,
             ConversationId: notification.ConversationId.Value,
             UserId: notification.UserId.Value,
+            ReactorUsername: notification.Username,
+            ReactorDisplayName: notification.DisplayName,
             Emoji: notification.Emoji);
 
         await _hubContext.Clients
@@ -96,6 +104,8 @@ public sealed record ReactionAddedEvent(
     Guid? GuildId,
     Guid? ConversationId,
     Guid UserId,
+    string ReactorUsername,
+    string? ReactorDisplayName,
     string Emoji);
 
 public sealed record ReactionRemovedEvent(
@@ -104,4 +114,6 @@ public sealed record ReactionRemovedEvent(
     Guid? GuildId,
     Guid? ConversationId,
     Guid UserId,
+    string ReactorUsername,
+    string? ReactorDisplayName,
     string Emoji);

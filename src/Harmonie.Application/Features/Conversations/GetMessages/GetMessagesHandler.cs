@@ -80,7 +80,8 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
                     AuthorUserId: x.AuthorUserId.Value,
                     Content: x.Content?.Value,
                     Attachments: x.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
-                    Reactions: reactions?.Select(r => new MessageReactionDto(r.Emoji, r.Count, r.ReactedByCaller)).ToArray()
+                    Reactions: reactions?.Select(r => new MessageReactionDto(r.Emoji, r.Count, r.ReactedByCaller,
+                        r.Users.Select(u => new ReactionUserDto(u.UserId, u.Username, u.DisplayName)).ToArray())).ToArray()
                               ?? Array.Empty<MessageReactionDto>(),
                     CreatedAtUtc: x.CreatedAtUtc,
                     UpdatedAtUtc: x.UpdatedAtUtc);

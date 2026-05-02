@@ -7,6 +7,7 @@ using Harmonie.Application.Features.Channels.DeleteMessageAttachment;
 using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
+using Harmonie.Application.Features.Channels.GetReactionUsers;
 using Harmonie.Application.Features.Channels.RemoveReaction;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
@@ -34,6 +35,7 @@ public static class ChannelRegistration
         // Reactions
         services.AddAuthenticatedHandler<ChannelAddReactionInput, bool, AddReactionHandler>();
         services.AddAuthenticatedHandler<ChannelRemoveReactionInput, bool, RemoveReactionHandler>();
+        services.AddAuthenticatedHandler<GetChannelReactionUsersInput, GetReactionUsersResponse, GetReactionUsersHandler>();
 
         return services;
     }
