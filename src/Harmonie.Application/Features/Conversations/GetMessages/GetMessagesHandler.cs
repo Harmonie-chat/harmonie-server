@@ -93,7 +93,8 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
             NextCursor: page.NextCursor is null
                 ? null
                 : MessageCursorCodec.Encode(page.NextCursor),
-            LastReadMessageId: page.LastReadMessageId?.Value);
+            LastReadMessageId: page.LastReadState?.LastReadMessageId.Value,
+            LastReadAtUtc: page.LastReadState?.ReadAtUtc);
 
         return ApplicationResponse<GetMessagesResponse>.Ok(payload);
     }

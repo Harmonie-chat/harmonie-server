@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Conversations;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -17,10 +18,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
     }
 
     public async Task UpsertAsync(
-        UserId userId,
-        ConversationId conversationId,
-        MessageId lastReadMessageId,
-        DateTime readAtUtc,
+        MessageReadState state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -37,14 +35,53 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
             sql,
             new
             {
-                UserId = userId.Value,
-                ConversationId = conversationId.Value,
-                LastReadMessageId = lastReadMessageId.Value,
-                ReadAtUtc = readAtUtc
+                UserId = state.UserId.Value,
+                ConversationId = state.ConversationId!.Value,
+                LastReadMessageId = state.LastReadMessageId.Value,
+                ReadAtUtc = state.ReadAtUtc
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
+    }
+
+    public async Task<MessageReadState?> GetAsync(
+        UserId userId,
+        ConversationId conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT user_id             AS "UserId",
+                                  conversation_id     AS "ConversationId",
+                                  last_read_message_id AS "LastReadMessageId",
+                                  read_at_utc         AS "ReadAtUtc"
+                           FROM conversation_read_states
+                           WHERE user_id          = @UserId
+                             AND conversation_id = @ConversationId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { UserId = userId.Value, ConversationId = conversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QueryFirstOrDefaultAsync<Row>(command);
+        return row is null ? null : MessageReadState.Rehydrate(
+            UserId.From(row.UserId),
+            channelId: null,
+            ConversationId.From(row.ConversationId),
+            MessageId.From(row.LastReadMessageId),
+            row.ReadAtUtc);
+    }
+
+    private sealed class Row
+    {
+        public Guid UserId { get; init; }
+        public Guid ConversationId { get; init; }
+        public Guid LastReadMessageId { get; init; }
+        public DateTime ReadAtUtc { get; init; }
     }
 }

@@ -7,7 +7,8 @@ public sealed record GetMessagesResponse(
     Guid ConversationId,
     IReadOnlyList<GetMessagesItemResponse> Items,
     string? NextCursor,
-    Guid? LastReadMessageId);
+    Guid? LastReadMessageId,
+    DateTime? LastReadAtUtc);
 
 public sealed record GetMessagesItemResponse(
     Guid MessageId,

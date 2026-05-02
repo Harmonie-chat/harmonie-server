@@ -145,8 +145,8 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(participantOne, conversation.Id, messageId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
+                Times.Once);
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
@@ -174,8 +174,8 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(participantOne, conversation.Id, latestMessageId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
+                Times.Once);
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
@@ -202,8 +202,8 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(It.IsAny<UserId>(), It.IsAny<ConversationId>(), It.IsAny<MessageId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
+                Times.Never);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

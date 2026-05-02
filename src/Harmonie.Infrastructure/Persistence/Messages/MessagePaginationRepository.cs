@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -84,7 +85,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
 
-                   SELECT last_read_message_id
+                   SELECT last_read_message_id AS "LastReadMessageId",
+                          read_at_utc          AS "ReadAtUtc"
                    FROM channel_read_states
                    WHERE user_id    = @CallerId
                      AND channel_id = @ChannelId;
@@ -110,7 +112,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
-        var lastReadMessageIdRaw = await multi.ReadSingleOrDefaultAsync<Guid?>();
+        var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -134,11 +136,18 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        var lastReadMessageId = lastReadMessageIdRaw.HasValue
-            ? MessageId.From(lastReadMessageIdRaw.Value)
-            : null;
+        MessageReadState? lastReadState = null;
+        if (readStateRow is not null)
+        {
+            lastReadState = MessageReadState.Rehydrate(
+                UserId.From(callerId.Value),
+                GuildChannelId.From(channelId.Value),
+                conversationId: null,
+                MessageId.From(readStateRow.LastReadMessageId),
+                readStateRow.ReadAtUtc);
+        }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadMessageId);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadState);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
@@ -206,7 +215,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    GROUP BY message_id, emoji
                    ORDER BY message_id, MIN(created_at_utc);
 
-                   SELECT last_read_message_id
+                   SELECT last_read_message_id AS "LastReadMessageId",
+                          read_at_utc          AS "ReadAtUtc"
                    FROM conversation_read_states
                    WHERE user_id         = @CallerId
                      AND conversation_id = @ConversationId;
@@ -232,7 +242,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var rows = (await multi.ReadAsync<MessageRow>()).ToArray();
         var attachmentRows = (await multi.ReadAsync<MessageAttachmentRow>()).ToArray();
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
-        var lastReadMessageIdRaw = await multi.ReadSingleOrDefaultAsync<Guid?>();
+        var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -256,10 +266,23 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
             nextCursor = new MessageCursor(oldestItem.CreatedAtUtc, oldestItem.Id);
         }
 
-        var lastReadMessageId = lastReadMessageIdRaw.HasValue
-            ? MessageId.From(lastReadMessageIdRaw.Value)
-            : null;
+        MessageReadState? lastReadState = null;
+        if (readStateRow is not null)
+        {
+            lastReadState = MessageReadState.Rehydrate(
+                UserId.From(callerId.Value),
+                channelId: null,
+                ConversationId.From(conversationId.Value),
+                MessageId.From(readStateRow.LastReadMessageId),
+                readStateRow.ReadAtUtc);
+        }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadMessageId);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadState);
+    }
+
+    private sealed class ReadStateRow
+    {
+        public Guid LastReadMessageId { get; init; }
+        public DateTime ReadAtUtc { get; init; }
     }
 }
