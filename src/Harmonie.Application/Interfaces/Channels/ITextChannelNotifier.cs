@@ -19,6 +19,10 @@ public interface ITextChannelNotifier
     Task NotifyMessageDeletedAsync(
         TextChannelMessageDeletedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMessagePreviewUpdatedAsync(
+        TextChannelMessagePreviewUpdatedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record TextChannelMessageCreatedNotification(
@@ -43,3 +47,9 @@ public sealed record TextChannelMessageDeletedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
     GuildId GuildId);
+
+public sealed record TextChannelMessagePreviewUpdatedNotification(
+    MessageId MessageId,
+    GuildChannelId ChannelId,
+    GuildId GuildId,
+    IReadOnlyList<LinkPreviewDto> Previews);

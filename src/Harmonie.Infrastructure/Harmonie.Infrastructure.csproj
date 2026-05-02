@@ -17,6 +17,7 @@
   <ItemGroup>
     <!-- Database -->
     <PackageReference Include="Dapper" />
+    <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="Livekit.Server.Sdk.Dotnet" />
     <PackageReference Include="Npgsql" />
     

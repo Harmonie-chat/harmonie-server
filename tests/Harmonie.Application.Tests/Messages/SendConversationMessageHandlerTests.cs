@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Conversations.SendMessage;
+using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -25,6 +26,8 @@ public sealed class SendConversationMessageHandlerTests
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<ILinkPreviewRepository> _linkPreviewRepositoryMock;
+    private readonly Mock<ILinkPreviewFetcher> _linkPreviewFetcherMock;
     private readonly Mock<IConversationMessageNotifier> _directMessageNotifierMock;
     private readonly SendMessageHandler _handler;
 
@@ -35,6 +38,8 @@ public sealed class SendConversationMessageHandlerTests
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _linkPreviewRepositoryMock = new Mock<ILinkPreviewRepository>();
+        _linkPreviewFetcherMock = new Mock<ILinkPreviewFetcher>();
         _directMessageNotifierMock = new Mock<IConversationMessageNotifier>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
@@ -51,6 +56,10 @@ public sealed class SendConversationMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _directMessageNotifierMock.Object,
+            new LinkPreviewResolutionService(
+                _linkPreviewRepositoryMock.Object,
+                _linkPreviewFetcherMock.Object,
+                NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -225,5 +234,59 @@ public sealed class SendConversationMessageHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenContentContainsUrls_ShouldSucceed()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _directMessageNotifierMock
+            .Setup(x => x.NotifyMessagePreviewUpdatedAsync(
+                It.IsAny<ConversationMessagePreviewUpdatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "Check https://example.com"),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenContentHasNoUrls_ShouldSucceedWithoutPreviewResolution()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "Hello world, no links here"),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
     }
 }

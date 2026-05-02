@@ -19,6 +19,7 @@ using Harmonie.Infrastructure.Persistence.Guilds;
 using Harmonie.Infrastructure.Persistence.Messages;
 using Harmonie.Infrastructure.Persistence.Uploads;
 using Harmonie.Infrastructure.Persistence.Users;
+using Harmonie.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -79,9 +80,18 @@ public static class DependencyInjection
         services.AddScoped<IConversationParticipantRepository, ConversationParticipantRepository>();
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();
+        services.AddScoped<ILinkPreviewRepository, LinkPreviewRepository>();
         services.AddScoped<IChannelReadStateRepository, ChannelReadStateRepository>();
         services.AddScoped<IConversationReadStateRepository, ConversationReadStateRepository>();
         services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+
+        // Link preview
+        services.AddHttpClient<ILinkPreviewFetcher, LinkPreviewFetcher>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Harmonie-LinkPreview/1.0");
+        });
+
         return services;
     }
 }

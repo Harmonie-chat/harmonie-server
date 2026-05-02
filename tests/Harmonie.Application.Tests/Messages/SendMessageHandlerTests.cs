@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
@@ -28,6 +29,8 @@ public sealed class SendMessageHandlerTests
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<ILinkPreviewRepository> _linkPreviewRepositoryMock;
+    private readonly Mock<ILinkPreviewFetcher> _linkPreviewFetcherMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
     private readonly SendMessageHandler _handler;
 
@@ -38,6 +41,8 @@ public sealed class SendMessageHandlerTests
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _linkPreviewRepositoryMock = new Mock<ILinkPreviewRepository>();
+        _linkPreviewFetcherMock = new Mock<ILinkPreviewFetcher>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
@@ -54,6 +59,10 @@ public sealed class SendMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _textChannelNotifierMock.Object,
+            new LinkPreviewResolutionService(
+                _linkPreviewRepositoryMock.Object,
+                _linkPreviewFetcherMock.Object,
+                NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -320,6 +329,62 @@ public sealed class SendMessageHandlerTests
                 It.IsAny<TextChannelMessageCreatedNotification>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenContentContainsUrls_ShouldSucceed()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("Check https://example.com/article");
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _textChannelNotifierMock
+            .Setup(x => x.NotifyMessagePreviewUpdatedAsync(
+                It.IsAny<TextChannelMessagePreviewUpdatedNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenContentHasNoUrls_ShouldSucceedWithoutPreviewResolution()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("Hello world, no links here");
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Error.Should().BeNull();
+        response.Data.Should().NotBeNull();
     }
 
 }

@@ -1,5 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -16,12 +17,14 @@ public sealed record SendConversationMessageInput(ConversationId ConversationId,
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan LinkPreviewTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _conversationMessageRepository;
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
+    private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -30,6 +33,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
+        LinkPreviewResolutionService linkPreviewService,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -37,6 +41,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
+        _linkPreviewService = linkPreviewService;
         _logger = logger;
     }
 
@@ -126,6 +131,15 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
 
+        var urls = LinkPreviewResolutionService.ParseUrls(messageResult.Value.Content?.Value);
+        if (urls.Count > 0)
+        {
+            _ = ResolveLinkPreviewsSafelyAsync(
+                messageResult.Value.Id,
+                messageConversationId,
+                urls);
+        }
+
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
             MessageId: messageResult.Value.Id.Value,
             ConversationId: messageConversationId.Value,
@@ -145,5 +159,38 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             "SendConversationMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
             notification.MessageId,
             notification.ConversationId);
+    }
+
+    private async Task ResolveLinkPreviewsSafelyAsync(
+        MessageId messageId,
+        ConversationId conversationId,
+        IReadOnlyList<Uri> urls)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(LinkPreviewTimeout);
+            var previews = await _linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
+
+            if (previews.Count > 0)
+            {
+                await BestEffortNotificationHelper.TryNotifyAsync(
+                    token => _conversationMessageNotifier.NotifyMessagePreviewUpdatedAsync(
+                        new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, previews),
+                        token),
+                    NotificationTimeout,
+                    _logger,
+                    "Conversation link preview notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+                    messageId,
+                    conversationId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Conversation link preview resolution failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+                messageId,
+                conversationId);
+        }
     }
 }

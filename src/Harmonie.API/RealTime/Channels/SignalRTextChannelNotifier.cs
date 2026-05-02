@@ -36,6 +36,24 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
             .MessageCreated(payload, cancellationToken);
     }
 
+    public async Task NotifyMessagePreviewUpdatedAsync(
+        TextChannelMessagePreviewUpdatedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new MessagePreviewUpdatedEvent(
+            MessageId: notification.MessageId.Value,
+            ChannelId: notification.ChannelId.Value,
+            ConversationId: null,
+            GuildId: notification.GuildId.Value,
+            Previews: notification.Previews);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetChannelGroupName(notification.ChannelId))
+            .MessagePreviewUpdated(payload, cancellationToken);
+    }
+
     public async Task NotifyMessageUpdatedAsync(
         TextChannelMessageUpdatedNotification notification,
         CancellationToken cancellationToken = default)
@@ -93,3 +111,10 @@ public sealed record MessageDeletedEvent(
     Guid MessageId,
     Guid ChannelId,
     Guid GuildId);
+
+public sealed record MessagePreviewUpdatedEvent(
+    Guid MessageId,
+    Guid? ChannelId,
+    Guid? ConversationId,
+    Guid? GuildId,
+    IReadOnlyList<LinkPreviewDto> Previews);
