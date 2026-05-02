@@ -18,16 +18,25 @@ public sealed class GetConversationMessagesHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IMessagePaginationRepository> _directMessageRepositoryMock;
+    private readonly Mock<ILinkPreviewRepository> _linkPreviewRepositoryMock;
     private readonly GetMessagesHandler _handler;
 
     public GetConversationMessagesHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _directMessageRepositoryMock = new Mock<IMessagePaginationRepository>();
+        _linkPreviewRepositoryMock = new Mock<ILinkPreviewRepository>();
+
+        _linkPreviewRepositoryMock
+            .Setup(x => x.GetByMessageIdsAsync(
+                It.IsAny<IReadOnlyCollection<MessageId>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<MessageLinkPreview>());
 
         _handler = new GetMessagesHandler(
             _conversationRepositoryMock.Object,
-            _directMessageRepositoryMock.Object);
+            _directMessageRepositoryMock.Object,
+            _linkPreviewRepositoryMock.Object);
     }
 
     [Fact]
