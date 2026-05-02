@@ -46,13 +46,16 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
         await connection.ExecuteAsync(command);
     }
 
-    public async Task<MessageId?> GetLastReadMessageIdAsync(
+    public async Task<ChannelReadState?> GetAsync(
         UserId userId,
         GuildChannelId channelId,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT last_read_message_id
+                           SELECT user_id             AS "UserId",
+                                  channel_id          AS "ChannelId",
+                                  last_read_message_id AS "LastReadMessageId",
+                                  read_at_utc         AS "ReadAtUtc"
                            FROM channel_read_states
                            WHERE user_id    = @UserId
                              AND channel_id = @ChannelId
@@ -61,15 +64,23 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(
             sql,
-            new
-            {
-                UserId = userId.Value,
-                ChannelId = channelId.Value
-            },
+            new { UserId = userId.Value, ChannelId = channelId.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var result = await connection.QuerySingleOrDefaultAsync<Guid?>(command);
-        return result.HasValue ? MessageId.From(result.Value) : null;
+        var row = await connection.QueryFirstOrDefaultAsync<ChannelReadStateRow>(command);
+        return row is null ? null : ChannelReadState.Rehydrate(
+            UserId.From(row.UserId),
+            GuildChannelId.From(row.ChannelId),
+            MessageId.From(row.LastReadMessageId),
+            row.ReadAtUtc);
+    }
+
+    private sealed class ChannelReadStateRow
+    {
+        public Guid UserId { get; init; }
+        public Guid ChannelId { get; init; }
+        public Guid LastReadMessageId { get; init; }
+        public DateTime ReadAtUtc { get; init; }
     }
 }

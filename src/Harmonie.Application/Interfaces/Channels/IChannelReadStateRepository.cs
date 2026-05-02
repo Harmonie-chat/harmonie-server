@@ -11,7 +11,7 @@ public interface IChannelReadStateRepository
         ChannelReadState state,
         CancellationToken cancellationToken = default);
 
-    Task<MessageId?> GetLastReadMessageIdAsync(
+    Task<ChannelReadState?> GetAsync(
         UserId userId,
         GuildChannelId channelId,
         CancellationToken cancellationToken = default);
