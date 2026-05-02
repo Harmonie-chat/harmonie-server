@@ -1,3 +1,4 @@
+using Harmonie.Application.Common.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -54,6 +55,7 @@ public sealed record MessagePage(
     IReadOnlyList<Message> Items,
     MessageCursor? NextCursor,
     IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId,
+    IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>>? LinkPreviewsByMessageId = null,
     MessageReadState? LastReadState = null);
 
 public sealed record SearchGuildMessagesQuery(

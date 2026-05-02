@@ -2,7 +2,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Users;
@@ -17,16 +16,13 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
 
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessagePaginationRepository _channelMessageRepository;
-    private readonly ILinkPreviewRepository _linkPreviewRepository;
 
     public GetMessagesHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessagePaginationRepository channelMessageRepository,
-        ILinkPreviewRepository linkPreviewRepository)
+        IMessagePaginationRepository channelMessageRepository)
     {
         _guildChannelRepository = guildChannelRepository;
         _channelMessageRepository = channelMessageRepository;
-        _linkPreviewRepository = linkPreviewRepository;
     }
 
     public async Task<ApplicationResponse<GetMessagesResponse>> HandleAsync(
@@ -82,21 +78,14 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
             currentUserId,
             cancellationToken);
 
-        var messageIds = page.Items.Select(x => x.Id).ToArray();
-        IReadOnlyList<MessageLinkPreview> linkPreviews = messageIds.Length > 0
-            ? await _linkPreviewRepository.GetByMessageIdsAsync(messageIds, cancellationToken)
-            : Array.Empty<MessageLinkPreview>();
-        var linkPreviewsByMessageId = linkPreviews
-            .GroupBy(p => p.MessageId.Value)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<MessageLinkPreview>)g.ToArray());
-
         var items = page.Items
             .OrderBy(x => x.CreatedAtUtc)
             .ThenBy(x => x.Id.Value)
             .Select(x =>
             {
                 page.ReactionsByMessageId.TryGetValue(x.Id.Value, out var reactions);
-                linkPreviewsByMessageId.TryGetValue(x.Id.Value, out var previews);
+                IReadOnlyList<LinkPreviewDto>? previews = null;
+                page.LinkPreviewsByMessageId?.TryGetValue(x.Id.Value, out previews);
                 return new GetMessagesItemResponse(
                     MessageId: x.Id.Value,
                     AuthorUserId: x.AuthorUserId.Value,
@@ -105,7 +94,7 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
                     Reactions: reactions?.Select(r => new MessageReactionDto(r.Emoji, r.Count, r.ReactedByCaller,
                         r.Users.Select(u => new ReactionUserDto(u.UserId, u.Username, u.DisplayName)).ToArray())).ToArray()
                               ?? Array.Empty<MessageReactionDto>(),
-                    LinkPreviews: previews?.Select(p => new LinkPreviewDto(p.Url, p.Title, p.Description, p.ImageUrl, p.SiteName)).ToArray(),
+                    LinkPreviews: previews?.ToArray(),
                     CreatedAtUtc: x.CreatedAtUtc,
                     UpdatedAtUtc: x.UpdatedAtUtc);
             })

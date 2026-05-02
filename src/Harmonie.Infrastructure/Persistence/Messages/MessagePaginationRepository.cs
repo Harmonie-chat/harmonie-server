@@ -111,6 +111,22 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    FROM channel_read_states
                    WHERE user_id    = @CallerId
                      AND channel_id = @ChannelId;
+
+                   SELECT message_id AS "MessageId",
+                          url AS "Url",
+                          title AS "Title",
+                          description AS "Description",
+                          image_url AS "ImageUrl",
+                          site_name AS "SiteName"
+                   FROM message_link_previews
+                   WHERE message_id IN (
+                       SELECT id FROM messages
+                       WHERE channel_id = @ChannelId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   ORDER BY message_id;
                    """;
 
         var parameters = new DynamicParameters();
@@ -135,6 +151,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
         var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
+        var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -145,6 +162,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
             reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)),
             reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+        var linkPreviewsByMessageId = MessageRepositoryHelpers.BuildLinkPreviewsDictionary(
+            linkPreviewRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -170,7 +189,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, lastReadState);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
@@ -264,6 +283,22 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                    FROM conversation_read_states
                    WHERE user_id         = @CallerId
                      AND conversation_id = @ConversationId;
+
+                   SELECT message_id AS "MessageId",
+                          url AS "Url",
+                          title AS "Title",
+                          description AS "Description",
+                          image_url AS "ImageUrl",
+                          site_name AS "SiteName"
+                   FROM message_link_previews
+                   WHERE message_id IN (
+                       SELECT id FROM messages
+                       WHERE conversation_id = @ConversationId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take)
+                   ORDER BY message_id;
                    """;
 
         var parameters = new DynamicParameters();
@@ -288,6 +323,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionRows = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
         var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
+        var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -298,6 +334,8 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionsByMessageId = MessageRepositoryHelpers.BuildReactionsDictionary(
             reactionRows.Where(r => pageMessageIds.Contains(r.MessageId)),
             reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+        var linkPreviewsByMessageId = MessageRepositoryHelpers.BuildLinkPreviewsDictionary(
+            linkPreviewRows.Where(r => pageMessageIds.Contains(r.MessageId)));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -323,7 +361,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, lastReadState);
     }
 
     private sealed class ReadStateRow
