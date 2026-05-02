@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.UpdateMemberRole;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -18,6 +19,7 @@ public sealed class UpdateMemberRoleHandlerTests
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IGuildNotifier> _guildNotifierMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly UpdateMemberRoleHandler _handler;
 
     public UpdateMemberRoleHandlerTests()
@@ -25,11 +27,13 @@ public sealed class UpdateMemberRoleHandlerTests
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _guildNotifierMock = new Mock<IGuildNotifier>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _handler = new UpdateMemberRoleHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
-            _guildNotifierMock.Object);
+            _guildNotifierMock.Object,
+            _userRepositoryMock.Object);
     }
 
     [Fact]
@@ -220,7 +224,8 @@ public sealed class UpdateMemberRoleHandlerTests
                 It.Is<MemberRoleUpdatedNotification>(n =>
                     n.GuildId == guild.Id &&
                     n.UserId == targetId &&
-                    n.NewRole == GuildRole.Admin),
+                    n.NewRole == GuildRole.Admin &&
+                    n.Username == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

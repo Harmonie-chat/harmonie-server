@@ -48,7 +48,9 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 
         var payload = new ConversationParticipantLeftEvent(
             ConversationId: notification.ConversationId.Value,
-            UserId: notification.UserId.Value);
+            UserId: notification.UserId.Value,
+            Username: notification.Username,
+            DisplayName: notification.DisplayName);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
@@ -85,7 +87,9 @@ public sealed record ConversationParticipantEventDto(
 
 public sealed record ConversationParticipantLeftEvent(
     Guid ConversationId,
-    Guid UserId);
+    Guid UserId,
+    string Username,
+    string? DisplayName);
 
 public sealed record ConversationUpdatedEvent(
     Guid ConversationId,

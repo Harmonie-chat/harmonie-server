@@ -428,12 +428,15 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
     private sealed record SignalRMemberJoinedEvent(
         string GuildId,
         string UserId,
+        string Username,
         string? DisplayName,
         string? AvatarFileId);
 
     private sealed record SignalRMemberLeftEvent(
         string GuildId,
-        string UserId);
+        string UserId,
+        string Username,
+        string? DisplayName);
 
     [Fact]
     public async Task MemberRemoved_WhenMemberConnected_ShouldReceiveEvent()
@@ -585,15 +588,21 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
     private sealed record SignalRMemberBannedEvent(
         string GuildId,
-        string UserId);
+        string UserId,
+        string Username,
+        string? DisplayName);
 
     private sealed record SignalRMemberRemovedEvent(
         string GuildId,
-        string UserId);
+        string UserId,
+        string Username,
+        string? DisplayName);
 
     private sealed record SignalRMemberRoleUpdatedEvent(
         string GuildId,
         string UserId,
+        string Username,
+        string? DisplayName,
         string NewRole);
 
     private sealed record SignalRGuildUpdatedEvent(

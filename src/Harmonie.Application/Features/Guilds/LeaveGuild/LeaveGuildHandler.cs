@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ public sealed class LeaveGuildHandler : IAuthenticatedHandler<LeaveGuildInput, b
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<LeaveGuildHandler> _logger;
 
     public LeaveGuildHandler(
@@ -22,12 +24,14 @@ public sealed class LeaveGuildHandler : IAuthenticatedHandler<LeaveGuildInput, b
         IGuildMemberRepository guildMemberRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
+        IUserRepository userRepository,
         ILogger<LeaveGuildHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -68,11 +72,15 @@ public sealed class LeaveGuildHandler : IAuthenticatedHandler<LeaveGuildInput, b
             currentUserId,
             request.GuildId);
 
+        var user = await _userRepository.GetByIdAsync(currentUserId, CancellationToken.None);
+
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _guildNotifier.NotifyMemberLeftAsync(
                 new MemberLeftNotification(
                     GuildId: request.GuildId,
-                    UserId: currentUserId),
+                    UserId: currentUserId,
+                    Username: user?.Username.Value ?? string.Empty,
+                    DisplayName: user?.DisplayName),
                 ct),
             TimeSpan.FromSeconds(5),
             _logger,

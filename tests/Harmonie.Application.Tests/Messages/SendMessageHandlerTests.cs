@@ -6,10 +6,12 @@ using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Entities.Uploads;
+using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -29,6 +31,7 @@ public sealed class SendMessageHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly SendMessageHandler _handler;
 
     public SendMessageHandlerTests()
@@ -39,6 +42,7 @@ public sealed class SendMessageHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
@@ -54,6 +58,7 @@ public sealed class SendMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _textChannelNotifierMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -210,7 +215,8 @@ public sealed class SendMessageHandlerTests
                     n.ChannelId == channel.Id
                     && n.GuildId == channel.GuildId
                     && n.AuthorUserId == userId
-                    && n.Content == "hello team"),
+                    && n.Content == "hello team"
+                    && n.AuthorUsername == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

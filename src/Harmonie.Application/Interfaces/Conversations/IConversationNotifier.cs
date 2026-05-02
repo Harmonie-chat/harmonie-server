@@ -26,7 +26,9 @@ public sealed record ConversationCreatedNotification(
 
 public sealed record ConversationParticipantLeftNotification(
     ConversationId ConversationId,
-    UserId UserId);
+    UserId UserId,
+    string Username,
+    string? DisplayName);
 
 public sealed record ConversationUpdatedNotification(
     ConversationId ConversationId,

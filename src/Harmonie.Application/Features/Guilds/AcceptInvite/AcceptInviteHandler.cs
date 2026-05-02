@@ -126,6 +126,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
                 new MemberJoinedNotification(
                     GuildId: invite.GuildId,
                     UserId: currentUserId,
+                    Username: user?.Username.Value ?? string.Empty,
                     DisplayName: user?.DisplayName,
                     AvatarFileId: user?.AvatarFileId),
                 ct),

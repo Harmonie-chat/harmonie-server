@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -21,6 +22,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<BanMemberHandler> _logger;
 
     public BanMemberHandler(
@@ -31,6 +33,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
+        IUserRepository userRepository,
         ILogger<BanMemberHandler> logger)
     {
         _guildRepository = guildRepository;
@@ -40,6 +43,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -115,6 +119,8 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
 
         if (isMember)
         {
+            var bannedUser = await _userRepository.GetByIdAsync(request.TargetId, CancellationToken.None);
+
             await BestEffortNotificationHelper.TryNotifyAsync(
                 ct => _realtimeGroupManager.RemoveUserFromGuildGroupsAsync(request.TargetId, request.GuildId, ct),
                 TimeSpan.FromSeconds(5),
@@ -127,7 +133,9 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 ct => _guildNotifier.NotifyMemberBannedAsync(
                     new MemberBannedNotification(
                         GuildId: request.GuildId,
-                        BannedUserId: request.TargetId),
+                        BannedUserId: request.TargetId,
+                        Username: bannedUser?.Username.Value ?? string.Empty,
+                        DisplayName: bannedUser?.DisplayName),
                     ct),
                 TimeSpan.FromSeconds(5),
                 _logger,

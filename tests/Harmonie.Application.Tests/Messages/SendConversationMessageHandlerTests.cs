@@ -6,6 +6,7 @@ using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.Entities.Messages;
@@ -26,6 +27,7 @@ public sealed class SendConversationMessageHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IConversationMessageNotifier> _directMessageNotifierMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly SendMessageHandler _handler;
 
     public SendConversationMessageHandlerTests()
@@ -36,6 +38,7 @@ public sealed class SendConversationMessageHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _directMessageNotifierMock = new Mock<IConversationMessageNotifier>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
@@ -51,6 +54,7 @@ public sealed class SendConversationMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _directMessageNotifierMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -155,7 +159,8 @@ public sealed class SendConversationMessageHandlerTests
                 It.Is<ConversationMessageCreatedNotification>(n =>
                     n.ConversationId == conversation.Id
                     && n.AuthorUserId == currentUserId
-                    && n.Content == "hello dm"),
+                    && n.Content == "hello dm"
+                    && n.AuthorUsername == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

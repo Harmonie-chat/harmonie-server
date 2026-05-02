@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.TransferOwnership;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -22,6 +23,7 @@ public sealed class TransferOwnershipHandlerTests
     private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly TransferOwnershipHandler _handler;
 
     public TransferOwnershipHandlerTests()
@@ -31,6 +33,7 @@ public sealed class TransferOwnershipHandlerTests
         _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
@@ -45,6 +48,7 @@ public sealed class TransferOwnershipHandlerTests
             _guildMemberRepositoryMock.Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<TransferOwnershipHandler>.Instance);
     }
 
@@ -154,7 +158,7 @@ public sealed class TransferOwnershipHandlerTests
         _guildNotifierMock.Verify(
             x => x.NotifyGuildOwnershipTransferredAsync(
                 It.Is<GuildOwnershipTransferredNotification>(n =>
-                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId),
+                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId && n.NewOwnerUsername == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

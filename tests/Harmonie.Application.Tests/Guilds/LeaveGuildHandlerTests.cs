@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.LeaveGuild;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -19,18 +20,21 @@ public sealed class LeaveGuildHandlerTests
 {
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly LeaveGuildHandler _handler;
 
     public LeaveGuildHandlerTests()
     {
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _handler = new LeaveGuildHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
             new Mock<IGuildNotifier>().Object,
+            _userRepositoryMock.Object,
             NullLogger<LeaveGuildHandler>.Instance);
     }
 

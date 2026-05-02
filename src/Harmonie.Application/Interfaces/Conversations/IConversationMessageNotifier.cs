@@ -24,6 +24,8 @@ public sealed record ConversationMessageCreatedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
     UserId AuthorUserId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);

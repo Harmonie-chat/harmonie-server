@@ -4,6 +4,7 @@ using Harmonie.Application.Features.Guilds.BanMember;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -24,6 +25,7 @@ public sealed class BanMemberHandlerTests
     private readonly Mock<IGuildNotifier> _guildNotifierMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly BanMemberHandler _handler;
 
     public BanMemberHandlerTests()
@@ -35,6 +37,7 @@ public sealed class BanMemberHandlerTests
         _guildNotifierMock = new Mock<IGuildNotifier>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
@@ -46,6 +49,7 @@ public sealed class BanMemberHandlerTests
             new Mock<IRealtimeGroupManager>().Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<BanMemberHandler>.Instance);
     }
 
@@ -255,7 +259,7 @@ public sealed class BanMemberHandlerTests
 
         _guildNotifierMock.Verify(
             x => x.NotifyMemberBannedAsync(
-                It.Is<MemberBannedNotification>(n => n.GuildId == guild.Id && n.BannedUserId == targetId),
+                It.Is<MemberBannedNotification>(n => n.GuildId == guild.Id && n.BannedUserId == targetId && n.Username == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

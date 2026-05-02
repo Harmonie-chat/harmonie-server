@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.DeleteConversation;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -19,6 +20,7 @@ public sealed class DeleteConversationHandlerTests
     private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
     private readonly Mock<IRealtimeGroupManager> _realtimeGroupManagerMock;
     private readonly Mock<IConversationNotifier> _conversationNotifierMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly DeleteConversationHandler _handler;
 
     public DeleteConversationHandlerTests()
@@ -27,6 +29,7 @@ public sealed class DeleteConversationHandlerTests
         _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
         _realtimeGroupManagerMock = new Mock<IRealtimeGroupManager>();
         _conversationNotifierMock = new Mock<IConversationNotifier>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _conversationNotifierMock
             .Setup(x => x.NotifyParticipantLeftAsync(
@@ -46,6 +49,7 @@ public sealed class DeleteConversationHandlerTests
             _participantRepositoryMock.Object,
             _realtimeGroupManagerMock.Object,
             _conversationNotifierMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<DeleteConversationHandler>.Instance);
     }
 
@@ -225,7 +229,7 @@ public sealed class DeleteConversationHandlerTests
         _conversationNotifierMock.Verify(
             x => x.NotifyParticipantLeftAsync(
                 It.Is<ConversationParticipantLeftNotification>(n =>
-                    n.ConversationId == groupConversation.Id && n.UserId == callerId),
+                    n.ConversationId == groupConversation.Id && n.UserId == callerId && n.Username == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

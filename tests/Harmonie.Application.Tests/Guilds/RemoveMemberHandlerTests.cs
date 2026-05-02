@@ -3,6 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.RemoveMember;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -19,6 +20,7 @@ public sealed class RemoveMemberHandlerTests
     private readonly Mock<IGuildRepository> _guildRepositoryMock;
     private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IGuildNotifier> _guildNotifierMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly RemoveMemberHandler _handler;
 
     public RemoveMemberHandlerTests()
@@ -26,12 +28,14 @@ public sealed class RemoveMemberHandlerTests
         _guildRepositoryMock = new Mock<IGuildRepository>();
         _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _guildNotifierMock = new Mock<IGuildNotifier>();
+        _userRepositoryMock = new Mock<IUserRepository>();
 
         _handler = new RemoveMemberHandler(
             _guildRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
             _guildNotifierMock.Object,
+            _userRepositoryMock.Object,
             NullLogger<RemoveMemberHandler>.Instance);
     }
 
@@ -192,7 +196,7 @@ public sealed class RemoveMemberHandlerTests
 
         _guildNotifierMock.Verify(
             x => x.NotifyMemberRemovedAsync(
-                It.Is<MemberRemovedNotification>(n => n.GuildId == guild.Id && n.RemovedUserId == targetId),
+                It.Is<MemberRemovedNotification>(n => n.GuildId == guild.Id && n.RemovedUserId == targetId && n.Username == string.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

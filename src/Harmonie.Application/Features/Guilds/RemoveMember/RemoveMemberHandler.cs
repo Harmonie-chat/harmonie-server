@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
@@ -16,6 +17,7 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<RemoveMemberHandler> _logger;
 
     public RemoveMemberHandler(
@@ -23,12 +25,14 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
         IGuildMemberRepository guildMemberRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
+        IUserRepository userRepository,
         ILogger<RemoveMemberHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -77,11 +81,15 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
             request.TargetId,
             request.GuildId);
 
+        var removedUser = await _userRepository.GetByIdAsync(request.TargetId, CancellationToken.None);
+
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _guildNotifier.NotifyMemberRemovedAsync(
                 new MemberRemovedNotification(
                     GuildId: request.GuildId,
-                    RemovedUserId: request.TargetId),
+                    RemovedUserId: request.TargetId,
+                    Username: removedUser?.Username.Value ?? string.Empty,
+                    DisplayName: removedUser?.DisplayName),
                 ct),
             TimeSpan.FromSeconds(5),
             _logger,
