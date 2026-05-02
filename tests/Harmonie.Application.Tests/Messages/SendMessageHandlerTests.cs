@@ -16,6 +16,7 @@ using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -31,6 +32,7 @@ public sealed class SendMessageHandlerTests
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ILinkPreviewRepository> _linkPreviewRepositoryMock;
     private readonly Mock<ILinkPreviewFetcher> _linkPreviewFetcherMock;
+    private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
     private readonly SendMessageHandler _handler;
 
@@ -53,16 +55,28 @@ public sealed class SendMessageHandlerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        var linkPreviewService = new LinkPreviewResolutionService(
+            _linkPreviewRepositoryMock.Object,
+            _linkPreviewFetcherMock.Object,
+            NullLogger<LinkPreviewResolutionService>.Instance);
+
+        var scopeMock = new Mock<IServiceScope>();
+        scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(LinkPreviewResolutionService)))
+            .Returns(linkPreviewService);
+        scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(ITextChannelNotifier)))
+            .Returns(_textChannelNotifierMock.Object);
+
+        _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
+        _serviceScopeFactoryMock.Setup(f => f.CreateScope())
+            .Returns(scopeMock.Object);
+
         _handler = new SendMessageHandler(
             _guildChannelRepositoryMock.Object,
             _channelMessageRepositoryMock.Object,
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _textChannelNotifierMock.Object,
-            new LinkPreviewResolutionService(
-                _linkPreviewRepositoryMock.Object,
-                _linkPreviewFetcherMock.Object,
-                NullLogger<LinkPreviewResolutionService>.Instance),
+            _serviceScopeFactoryMock.Object,
             NullLogger<SendMessageHandler>.Instance);
     }
 

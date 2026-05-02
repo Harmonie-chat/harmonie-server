@@ -8,6 +8,7 @@ using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SendMessage;
@@ -24,7 +25,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
-    private readonly LinkPreviewResolutionService _linkPreviewService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -33,7 +34,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
-        LinkPreviewResolutionService linkPreviewService,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -41,7 +42,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
-        _linkPreviewService = linkPreviewService;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -169,12 +170,17 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         try
         {
             using var cts = new CancellationTokenSource(LinkPreviewTimeout);
-            var previews = await _linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var linkPreviewService = scope.ServiceProvider.GetRequiredService<LinkPreviewResolutionService>();
+            var conversationMessageNotifier = scope.ServiceProvider.GetRequiredService<IConversationMessageNotifier>();
+
+            var previews = await linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
 
             if (previews.Count > 0)
             {
                 await BestEffortNotificationHelper.TryNotifyAsync(
-                    token => _conversationMessageNotifier.NotifyMessagePreviewUpdatedAsync(
+                    token => conversationMessageNotifier.NotifyMessagePreviewUpdatedAsync(
                         new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, previews),
                         token),
                     NotificationTimeout,

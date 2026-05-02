@@ -10,6 +10,7 @@ using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
@@ -26,7 +27,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
-    private readonly LinkPreviewResolutionService _linkPreviewService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -35,7 +36,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
-        LinkPreviewResolutionService linkPreviewService,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -43,7 +44,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
-        _linkPreviewService = linkPreviewService;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -184,12 +185,17 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         try
         {
             using var cts = new CancellationTokenSource(LinkPreviewTimeout);
-            var previews = await _linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var linkPreviewService = scope.ServiceProvider.GetRequiredService<LinkPreviewResolutionService>();
+            var textChannelNotifier = scope.ServiceProvider.GetRequiredService<ITextChannelNotifier>();
+
+            var previews = await linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
 
             if (previews.Count > 0)
             {
                 await BestEffortNotificationHelper.TryNotifyAsync(
-                    token => _textChannelNotifier.NotifyMessagePreviewUpdatedAsync(
+                    token => textChannelNotifier.NotifyMessagePreviewUpdatedAsync(
                         new TextChannelMessagePreviewUpdatedNotification(messageId, channelId, guildId, previews),
                         token),
                     NotificationTimeout,
