@@ -4,7 +4,6 @@ using Harmonie.Application.Features.Conversations.AddReaction;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -22,7 +21,6 @@ public sealed class AddConversationReactionHandlerTests
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
     private readonly Mock<IMessageReactionRepository> _reactionRepositoryMock;
-    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IReactionNotifier> _reactionNotifierMock;
@@ -33,7 +31,6 @@ public sealed class AddConversationReactionHandlerTests
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _messageRepositoryMock = new Mock<IMessageRepository>();
         _reactionRepositoryMock = new Mock<IMessageReactionRepository>();
-        _userRepositoryMock = new Mock<IUserRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _reactionNotifierMock = new Mock<IReactionNotifier>();
@@ -44,15 +41,10 @@ public sealed class AddConversationReactionHandlerTests
             .Setup(x => x.NotifyReactionAddedToConversationAsync(It.IsAny<ConversationReactionAddedNotification>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserId userId, CancellationToken _) => ApplicationTestBuilders.CreateUser(userId));
-
         _handler = new AddReactionHandler(
             _conversationRepositoryMock.Object,
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _reactionNotifierMock.Object,
             NullLogger<AddReactionHandler>.Instance);

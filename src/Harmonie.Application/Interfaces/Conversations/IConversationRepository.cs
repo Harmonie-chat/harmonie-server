@@ -15,7 +15,11 @@ public sealed record ConversationParticipantSummary(
 
 public sealed record ConversationGetOrCreateResult(Conversation Conversation, bool WasCreated);
 
-public sealed record ConversationAccess(Conversation Conversation, ConversationParticipant? Participant);
+public sealed record ConversationAccess(
+    Conversation Conversation,
+    ConversationParticipant? Participant,
+    string? CallerUsername = null,
+    string? CallerDisplayName = null);
 
 public sealed record UserConversationSummary(
     ConversationId ConversationId,

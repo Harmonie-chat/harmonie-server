@@ -237,10 +237,15 @@ public sealed class ConversationRepository : IConversationRepository
                                   c.created_at_utc  AS "CreatedAtUtc",
                                   cp.user_id        AS "ParticipantUserId",
                                   cp.joined_at_utc  AS "JoinedAtUtc",
-                                  cp.hidden_at_utc  AS "HiddenAtUtc"
+                                  cp.hidden_at_utc  AS "HiddenAtUtc",
+                                  u.username        AS "Username",
+                                  u.display_name    AS "DisplayName"
                            FROM conversations c
                            LEFT JOIN conversation_participants cp
                              ON cp.conversation_id = c.id AND cp.user_id = @UserId
+                           LEFT JOIN users u
+                             ON u.id = @UserId
+                            AND u.deleted_at IS NULL
                            WHERE c.id = @ConversationId
                            """;
 
@@ -264,7 +269,7 @@ public sealed class ConversationRepository : IConversationRepository
                 row.HiddenAtUtc)
             : null;
 
-        return new ConversationAccess(conversation, participant);
+        return new ConversationAccess(conversation, participant, row.Username, row.DisplayName);
     }
 
     public async Task DeleteAsync(
@@ -349,6 +354,10 @@ public sealed class ConversationRepository : IConversationRepository
         public DateTime? JoinedAtUtc { get; init; }
 
         public DateTime? HiddenAtUtc { get; init; }
+
+        public string? Username { get; init; }
+
+        public string? DisplayName { get; init; }
     }
 
 }

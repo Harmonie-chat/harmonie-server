@@ -263,11 +263,16 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                                   gc.is_default     AS "IsDefault",
                                   gc.position       AS "Position",
                                   gc.created_at_utc AS "CreatedAtUtc",
-                                  gm.role           AS "Role"
+                                  gm.role           AS "Role",
+                                  u.username        AS "Username",
+                                  u.display_name    AS "DisplayName"
                            FROM guild_channels gc
                            LEFT JOIN guild_members gm
                                   ON gm.guild_id = gc.guild_id
                                  AND gm.user_id = @CallerId
+                           LEFT JOIN users u
+                                  ON u.id = @CallerId
+                                 AND u.deleted_at IS NULL
                            WHERE gc.id = @ChannelId
                            LIMIT 1
                            """;
@@ -284,7 +289,9 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             ? null
             : new ChannelAccessContext(
                 MapToGuildChannel(row),
-                row.Role.HasValue ? (GuildRole)row.Role.Value : null);
+                row.Role.HasValue ? (GuildRole)row.Role.Value : null,
+                row.Username,
+                row.DisplayName);
     }
 
     private static GuildChannel MapToGuildChannel(GuildChannelRow row)
@@ -342,6 +349,8 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         public int Position { get; init; }
         public DateTime CreatedAtUtc { get; init; }
         public short? Role { get; init; }
+        public string? Username { get; init; }
+        public string? DisplayName { get; init; }
     }
 
     private sealed class ChannelWithParticipantDto

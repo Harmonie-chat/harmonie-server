@@ -4,7 +4,6 @@ using Harmonie.Application.Features.Channels.AddReaction;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
@@ -24,7 +23,6 @@ public sealed class AddChannelReactionHandlerTests
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
     private readonly Mock<IMessageReactionRepository> _reactionRepositoryMock;
-    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IReactionNotifier> _reactionNotifierMock;
@@ -35,7 +33,6 @@ public sealed class AddChannelReactionHandlerTests
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
         _messageRepositoryMock = new Mock<IMessageRepository>();
         _reactionRepositoryMock = new Mock<IMessageReactionRepository>();
-        _userRepositoryMock = new Mock<IUserRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _reactionNotifierMock = new Mock<IReactionNotifier>();
@@ -46,15 +43,10 @@ public sealed class AddChannelReactionHandlerTests
             .Setup(x => x.NotifyReactionAddedToChannelAsync(It.IsAny<ChannelReactionAddedNotification>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        _userRepositoryMock
-            .Setup(x => x.GetByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserId userId, CancellationToken _) => ApplicationTestBuilders.CreateUser(userId));
-
         _handler = new AddReactionHandler(
             _guildChannelRepositoryMock.Object,
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _reactionNotifierMock.Object,
             NullLogger<AddReactionHandler>.Instance);

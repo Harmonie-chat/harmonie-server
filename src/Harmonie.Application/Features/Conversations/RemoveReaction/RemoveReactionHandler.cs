@@ -2,7 +2,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -19,7 +18,6 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageReactionRepository _reactionRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IReactionNotifier _reactionNotifier;
     private readonly ILogger<RemoveReactionHandler> _logger;
@@ -28,7 +26,6 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
         IConversationRepository conversationRepository,
         IMessageRepository messageRepository,
         IMessageReactionRepository reactionRepository,
-        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IReactionNotifier reactionNotifier,
         ILogger<RemoveReactionHandler> logger)
@@ -36,7 +33,6 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
         _reactionRepository = reactionRepository;
-        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _reactionNotifier = reactionNotifier;
         _logger = logger;
@@ -74,12 +70,14 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
         await _reactionRepository.RemoveAsync(request.MessageId, currentUserId, request.Emoji, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
-        var username = user?.Username?.Value ?? string.Empty;
-        var displayName = user?.DisplayName;
-
         await NotifyReactionRemovedSafelyAsync(
-            new ConversationReactionRemovedNotification(request.MessageId, request.ConversationId, currentUserId, username, displayName, request.Emoji));
+            new ConversationReactionRemovedNotification(
+                request.MessageId,
+                request.ConversationId,
+                currentUserId,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

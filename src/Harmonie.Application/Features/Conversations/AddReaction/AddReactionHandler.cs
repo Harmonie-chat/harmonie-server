@@ -2,7 +2,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -20,7 +19,6 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageReactionRepository _reactionRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IReactionNotifier _reactionNotifier;
     private readonly ILogger<AddReactionHandler> _logger;
@@ -29,7 +27,6 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
         IConversationRepository conversationRepository,
         IMessageRepository messageRepository,
         IMessageReactionRepository reactionRepository,
-        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IReactionNotifier reactionNotifier,
         ILogger<AddReactionHandler> logger)
@@ -37,7 +34,6 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
         _reactionRepository = reactionRepository;
-        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _reactionNotifier = reactionNotifier;
         _logger = logger;
@@ -83,12 +79,14 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
         await _reactionRepository.AddAsync(reaction.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        var user = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
-        var username = user?.Username?.Value ?? string.Empty;
-        var displayName = user?.DisplayName;
-
         await NotifyReactionAddedSafelyAsync(
-            new ConversationReactionAddedNotification(request.MessageId, request.ConversationId, currentUserId, username, displayName, request.Emoji));
+            new ConversationReactionAddedNotification(
+                request.MessageId,
+                request.ConversationId,
+                currentUserId,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }
