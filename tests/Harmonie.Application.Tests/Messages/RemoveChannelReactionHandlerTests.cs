@@ -21,6 +21,9 @@ namespace Harmonie.Application.Tests.Messages;
 
 public sealed class RemoveChannelReactionHandlerTests
 {
+    private const string TestUsername = "testuser";
+    private const string TestDisplayName = "Test User";
+
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
     private readonly Mock<IMessageReactionRepository> _reactionRepositoryMock;
@@ -159,7 +162,7 @@ public sealed class RemoveChannelReactionHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member, TestUsername, TestDisplayName));
 
         _messageRepositoryMock
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
@@ -181,7 +184,7 @@ public sealed class RemoveChannelReactionHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member, TestUsername, TestDisplayName));
 
         _messageRepositoryMock
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
@@ -204,6 +207,8 @@ public sealed class RemoveChannelReactionHandlerTests
                     n.GuildId == channel.GuildId &&
                     n.MessageId == messageId &&
                     n.UserId == callerId &&
+                    n.Username == TestUsername &&
+                    n.DisplayName == TestDisplayName &&
                     n.Emoji == "👍"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -219,7 +224,7 @@ public sealed class RemoveChannelReactionHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member, TestUsername, TestDisplayName));
 
         _messageRepositoryMock
             .Setup(x => x.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
