@@ -130,7 +130,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
 
-        var urls = LinkPreviewResolutionService.ParseUrls(messageResult.Value.Content?.Value);
+        var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
         if (urls.Count > 0)
         {
             _ = _linkPreviewService.ResolveAndNotifyForConversationAsync(
