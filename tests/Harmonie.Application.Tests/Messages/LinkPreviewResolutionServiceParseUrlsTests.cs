@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
+using Harmonie.Application.Services;
 using Xunit;
 
 namespace Harmonie.Application.Tests.Messages;

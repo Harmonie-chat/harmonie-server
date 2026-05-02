@@ -2,7 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.SendMessage;
-using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
+using Harmonie.Application.Services;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;

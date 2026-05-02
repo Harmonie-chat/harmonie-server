@@ -11,7 +11,7 @@ using Harmonie.Domain.ValueObjects.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Harmonie.Application.Features.Messages.ResolveLinkPreviews;
+namespace Harmonie.Application.Services;
 
 public sealed class LinkPreviewResolutionService
 {

@@ -2,7 +2,7 @@ using System.Reflection;
 using FluentValidation;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Common.Uploads;
-using Harmonie.Application.Features.Messages.ResolveLinkPreviews;
+using Harmonie.Application.Services;
 using Harmonie.Application.Registration;
 using Microsoft.Extensions.DependencyInjection;
 
