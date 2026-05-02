@@ -18,6 +18,10 @@ public interface IConversationMessageNotifier
     Task NotifyMessageDeletedAsync(
         ConversationMessageDeletedNotification notification,
         CancellationToken cancellationToken = default);
+
+    Task NotifyMessagePreviewUpdatedAsync(
+        ConversationMessagePreviewUpdatedNotification notification,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ConversationMessageCreatedNotification(
@@ -39,3 +43,8 @@ public sealed record ConversationMessageUpdatedNotification(
 public sealed record ConversationMessageDeletedNotification(
     MessageId MessageId,
     ConversationId ConversationId);
+
+public sealed record ConversationMessagePreviewUpdatedNotification(
+    MessageId MessageId,
+    ConversationId ConversationId,
+    IReadOnlyList<LinkPreviewDto> Previews);

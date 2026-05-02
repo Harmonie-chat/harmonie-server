@@ -60,4 +60,7 @@ public interface IRealtimeClient
     // Reactions
     Task ReactionAdded(ReactionAddedEvent payload, CancellationToken cancellationToken = default);
     Task ReactionRemoved(ReactionRemovedEvent payload, CancellationToken cancellationToken = default);
+
+    // Link previews
+    Task MessagePreviewUpdated(MessagePreviewUpdatedEvent payload, CancellationToken cancellationToken = default);
 }

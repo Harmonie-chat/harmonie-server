@@ -1,11 +1,13 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Services;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
+using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging;
@@ -23,6 +25,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
+    private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -31,6 +34,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
+        LinkPreviewResolutionService linkPreviewService,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -38,6 +42,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
+        _linkPreviewService = linkPreviewService;
         _logger = logger;
     }
 
@@ -135,6 +140,20 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
+
+        var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
+        if (urls.Count > 0)
+        {
+            // TODO: Replace fire-and-forget with a domain event + dedicated background worker
+            // (e.g. MessageCreatedDomainEvent -> LinkPreviewResolutionWorker via a channel/queue).
+            // This avoids scoped-service lifetime issues and gives proper retry/observability.
+            _ = _linkPreviewService.ResolveAndNotifyForChannelAsync(
+                messageResult.Value.Id,
+                messageChannelId,
+                ctx.Channel.GuildId,
+                urls,
+                cancellationToken);
+        }
 
         var payload = new SendMessageResponse(
             MessageId: messageResult.Value.Id.Value,

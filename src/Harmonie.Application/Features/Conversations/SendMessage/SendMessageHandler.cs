@@ -1,5 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Services;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -22,6 +23,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
+    private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -30,6 +32,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
+        LinkPreviewResolutionService linkPreviewService,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -37,6 +40,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
+        _linkPreviewService = linkPreviewService;
         _logger = logger;
     }
 
@@ -125,6 +129,19 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
+
+        var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
+        if (urls.Count > 0)
+        {
+            // TODO: Replace fire-and-forget with a domain event + dedicated background worker
+            // (e.g. MessageCreatedDomainEvent -> LinkPreviewResolutionWorker via a channel/queue).
+            // This avoids scoped-service lifetime issues and gives proper retry/observability.
+            _ = _linkPreviewService.ResolveAndNotifyForConversationAsync(
+                messageResult.Value.Id,
+                messageConversationId,
+                urls,
+                cancellationToken);
+        }
 
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
             MessageId: messageResult.Value.Id.Value,

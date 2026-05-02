@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentValidation;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Common.Uploads;
+using Harmonie.Application.Services;
 using Harmonie.Application.Registration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<UploadedFileCleanupService>();
         services.AddScoped<MessageAttachmentResolver>();
+        services.AddScoped<LinkPreviewResolutionService>();
 
         services.AddAuthHandlers();
         services.AddGuildHandlers();

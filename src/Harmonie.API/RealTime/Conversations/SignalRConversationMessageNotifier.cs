@@ -1,3 +1,4 @@
+using Harmonie.API.RealTime.Channels;
 using Harmonie.API.RealTime.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Conversations;
@@ -33,6 +34,24 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
             .ConversationMessageCreated(payload, cancellationToken);
+    }
+
+    public async Task NotifyMessagePreviewUpdatedAsync(
+        ConversationMessagePreviewUpdatedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var payload = new MessagePreviewUpdatedEvent(
+            MessageId: notification.MessageId.Value,
+            ChannelId: null,
+            ConversationId: notification.ConversationId.Value,
+            GuildId: null,
+            Previews: notification.Previews);
+
+        await _hubContext.Clients
+            .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
+            .MessagePreviewUpdated(payload, cancellationToken);
     }
 
     public async Task NotifyMessageUpdatedAsync(
