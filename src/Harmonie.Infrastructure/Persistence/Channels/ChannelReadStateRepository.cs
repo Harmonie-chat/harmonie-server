@@ -1,6 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Domain.Entities.Channels;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -18,7 +18,7 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
     }
 
     public async Task UpsertAsync(
-        ChannelReadState state,
+        MessageReadState state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -36,7 +36,7 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
             new
             {
                 UserId = state.UserId.Value,
-                ChannelId = state.ChannelId.Value,
+                ChannelId = state.ChannelId!.Value,
                 LastReadMessageId = state.LastReadMessageId.Value,
                 ReadAtUtc = state.ReadAtUtc
             },
@@ -46,7 +46,7 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
         await connection.ExecuteAsync(command);
     }
 
-    public async Task<ChannelReadState?> GetAsync(
+    public async Task<MessageReadState?> GetAsync(
         UserId userId,
         GuildChannelId channelId,
         CancellationToken cancellationToken = default)
@@ -68,15 +68,16 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<ChannelReadStateRow>(command);
-        return row is null ? null : ChannelReadState.Rehydrate(
+        var row = await connection.QueryFirstOrDefaultAsync<Row>(command);
+        return row is null ? null : MessageReadState.Rehydrate(
             UserId.From(row.UserId),
             GuildChannelId.From(row.ChannelId),
+            conversationId: null,
             MessageId.From(row.LastReadMessageId),
             row.ReadAtUtc);
     }
 
-    private sealed class ChannelReadStateRow
+    private sealed class Row
     {
         public Guid UserId { get; init; }
         public Guid ChannelId { get; init; }

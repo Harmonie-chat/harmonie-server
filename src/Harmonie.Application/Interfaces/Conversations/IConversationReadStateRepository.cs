@@ -1,4 +1,4 @@
-using Harmonie.Domain.Entities.Conversations;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
 
@@ -7,10 +7,10 @@ namespace Harmonie.Application.Interfaces.Conversations;
 public interface IConversationReadStateRepository
 {
     Task UpsertAsync(
-        ConversationReadState state,
+        MessageReadState state,
         CancellationToken cancellationToken = default);
 
-    Task<ConversationReadState?> GetAsync(
+    Task<MessageReadState?> GetAsync(
         UserId userId,
         ConversationId conversationId,
         CancellationToken cancellationToken = default);

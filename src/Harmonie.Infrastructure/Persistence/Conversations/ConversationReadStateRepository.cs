@@ -1,6 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Domain.Entities.Conversations;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -18,7 +18,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
     }
 
     public async Task UpsertAsync(
-        ConversationReadState state,
+        MessageReadState state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -36,7 +36,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
             new
             {
                 UserId = state.UserId.Value,
-                ConversationId = state.ConversationId.Value,
+                ConversationId = state.ConversationId!.Value,
                 LastReadMessageId = state.LastReadMessageId.Value,
                 ReadAtUtc = state.ReadAtUtc
             },
@@ -46,7 +46,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
         await connection.ExecuteAsync(command);
     }
 
-    public async Task<ConversationReadState?> GetAsync(
+    public async Task<MessageReadState?> GetAsync(
         UserId userId,
         ConversationId conversationId,
         CancellationToken cancellationToken = default)
@@ -68,15 +68,16 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<ConversationReadStateRow>(command);
-        return row is null ? null : ConversationReadState.Rehydrate(
+        var row = await connection.QueryFirstOrDefaultAsync<Row>(command);
+        return row is null ? null : MessageReadState.Rehydrate(
             UserId.From(row.UserId),
+            channelId: null,
             ConversationId.From(row.ConversationId),
             MessageId.From(row.LastReadMessageId),
             row.ReadAtUtc);
     }
 
-    private sealed class ConversationReadStateRow
+    private sealed class Row
     {
         public Guid UserId { get; init; }
         public Guid ConversationId { get; init; }

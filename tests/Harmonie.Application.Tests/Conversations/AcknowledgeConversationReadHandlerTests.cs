@@ -3,7 +3,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.AcknowledgeRead;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Domain.Entities.Conversations;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
@@ -146,7 +146,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(It.IsAny<ConversationReadState>(), It.IsAny<CancellationToken>()),
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
                 Times.Once);
 
         _transactionMock.Verify(
@@ -175,7 +175,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(It.IsAny<ConversationReadState>(), It.IsAny<CancellationToken>()),
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
                 Times.Once);
 
         _transactionMock.Verify(
@@ -203,7 +203,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
         response.Success.Should().BeTrue();
 
         _conversationReadStateRepositoryMock.Verify(
-            x => x.UpsertAsync(It.IsAny<ConversationReadState>(), It.IsAny<CancellationToken>()),
+            x => x.UpsertAsync(It.IsAny<MessageReadState>(), It.IsAny<CancellationToken>()),
                 Times.Never);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);

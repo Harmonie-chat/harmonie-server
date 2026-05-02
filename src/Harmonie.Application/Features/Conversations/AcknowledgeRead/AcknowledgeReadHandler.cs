@@ -2,7 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Entities.Conversations;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -74,7 +74,7 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCo
             resolvedMessageId = latestMessageId;
         }
 
-        var state = ConversationReadState.Create(currentUserId, request.ConversationId, resolvedMessageId);
+        var state = MessageReadState.CreateForConversation(currentUserId, request.ConversationId, resolvedMessageId);
         if (state.IsFailure || state.Value is null)
         {
             return ApplicationResponse<bool>.Fail(

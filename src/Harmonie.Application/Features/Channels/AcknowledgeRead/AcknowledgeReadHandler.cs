@@ -2,7 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Entities.Channels;
+using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -83,7 +83,7 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCh
             resolvedMessageId = latestMessageId;
         }
 
-        var state = ChannelReadState.Create(currentUserId, request.ChannelId, resolvedMessageId);
+        var state = MessageReadState.CreateForChannel(currentUserId, request.ChannelId, resolvedMessageId);
         if (state.IsFailure || state.Value is null)
         {
             return ApplicationResponse<bool>.Fail(

@@ -54,7 +54,7 @@ public sealed record MessagePage(
     IReadOnlyList<Message> Items,
     MessageCursor? NextCursor,
     IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId,
-    MessageId? LastReadMessageId = null);
+    MessageReadState? LastReadState = null);
 
 public sealed record SearchGuildMessagesQuery(
     GuildId GuildId,
