@@ -144,6 +144,9 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
         if (urls.Count > 0)
         {
+            // TODO: Replace fire-and-forget with a domain event + dedicated background worker
+            // (e.g. MessageCreatedDomainEvent -> LinkPreviewResolutionWorker via a channel/queue).
+            // This avoids scoped-service lifetime issues and gives proper retry/observability.
             _ = _linkPreviewService.ResolveAndNotifyForChannelAsync(
                 messageResult.Value.Id,
                 messageChannelId,
