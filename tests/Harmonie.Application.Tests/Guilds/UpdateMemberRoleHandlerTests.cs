@@ -158,6 +158,13 @@ public sealed class UpdateMemberRoleHandlerTests
         _guildMemberRepositoryMock.Verify(
             x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Admin, It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRoleUpdatedAsync(
+                It.Is<MemberRoleUpdatedNotification>(n =>
+                    n.GuildId == guild.Id && n.UserId == targetId && n.NewRole == GuildRole.Admin && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -187,6 +194,13 @@ public sealed class UpdateMemberRoleHandlerTests
 
         _guildMemberRepositoryMock.Verify(
             x => x.UpdateRoleAsync(guild.Id, targetId, GuildRole.Member, It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRoleUpdatedAsync(
+                It.Is<MemberRoleUpdatedNotification>(n =>
+                    n.GuildId == guild.Id && n.UserId == targetId && n.NewRole == GuildRole.Member && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

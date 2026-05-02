@@ -123,7 +123,7 @@ public sealed class TransferOwnershipHandlerTests
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member, "newowner", "New Owner"));
 
         _guildRepositoryMock
             .Setup(x => x.UpdateOwnerAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
@@ -154,7 +154,7 @@ public sealed class TransferOwnershipHandlerTests
         _guildNotifierMock.Verify(
             x => x.NotifyGuildOwnershipTransferredAsync(
                 It.Is<GuildOwnershipTransferredNotification>(n =>
-                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId && n.NewOwnerUsername == string.Empty),
+                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId && n.NewOwnerUsername == "newowner" && n.NewOwnerDisplayName == "New Owner"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -168,7 +168,7 @@ public sealed class TransferOwnershipHandlerTests
 
         _guildRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin, "adminuser", "Admin Display"));
 
         _guildRepositoryMock
             .Setup(x => x.UpdateOwnerAsync(guild.Id, newOwnerId, It.IsAny<CancellationToken>()))
@@ -185,7 +185,7 @@ public sealed class TransferOwnershipHandlerTests
         _guildNotifierMock.Verify(
             x => x.NotifyGuildOwnershipTransferredAsync(
                 It.Is<GuildOwnershipTransferredNotification>(n =>
-                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId),
+                    n.GuildId == guild.Id && n.NewOwnerUserId == newOwnerId && n.NewOwnerUsername == "adminuser" && n.NewOwnerDisplayName == "Admin Display"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

@@ -167,6 +167,13 @@ public sealed class BanMemberHandlerTests
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberBannedAsync(
+                It.Is<MemberBannedNotification>(n =>
+                    n.GuildId == guild.Id && n.BannedUserId == targetId && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

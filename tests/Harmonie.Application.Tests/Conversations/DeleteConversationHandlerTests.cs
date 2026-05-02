@@ -214,7 +214,7 @@ public sealed class DeleteConversationHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(groupConversation.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(groupConversation, participant));
+            .ReturnsAsync(new ConversationAccess(groupConversation, participant, CallerUsername: "leaver", CallerDisplayName: "Leaver Display"));
 
         _participantRepositoryMock
             .Setup(x => x.RemoveAsync(It.IsAny<ConversationParticipant>(), It.IsAny<CancellationToken>()))
@@ -225,7 +225,7 @@ public sealed class DeleteConversationHandlerTests
         _conversationNotifierMock.Verify(
             x => x.NotifyParticipantLeftAsync(
                 It.Is<ConversationParticipantLeftNotification>(n =>
-                    n.ConversationId == groupConversation.Id && n.UserId == callerId && n.Username == string.Empty),
+                    n.ConversationId == groupConversation.Id && n.UserId == callerId && n.Username == "leaver" && n.DisplayName == "Leaver Display"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

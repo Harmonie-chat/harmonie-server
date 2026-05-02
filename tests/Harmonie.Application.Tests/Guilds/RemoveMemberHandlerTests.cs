@@ -162,6 +162,13 @@ public sealed class RemoveMemberHandlerTests
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRemovedAsync(
+                It.Is<MemberRemovedNotification>(n =>
+                    n.GuildId == guild.Id && n.RemovedUserId == targetId && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
