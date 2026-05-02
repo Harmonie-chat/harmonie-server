@@ -37,17 +37,10 @@ public sealed class MessageReadState
         GuildChannelId channelId,
         MessageId lastReadMessageId)
     {
-        if (userId is null)
-            return Result.Failure<MessageReadState>("User ID is required");
-
         if (channelId is null)
             return Result.Failure<MessageReadState>("Channel ID is required");
 
-        if (lastReadMessageId is null)
-            return Result.Failure<MessageReadState>("Last read message ID is required");
-
-        return Result.Success(new MessageReadState(
-            userId, channelId, conversationId: null, lastReadMessageId, DateTime.UtcNow));
+        return Create(userId, channelId, conversationId: null, lastReadMessageId);
     }
 
     public static Result<MessageReadState> CreateForConversation(
@@ -55,17 +48,26 @@ public sealed class MessageReadState
         ConversationId conversationId,
         MessageId lastReadMessageId)
     {
-        if (userId is null)
-            return Result.Failure<MessageReadState>("User ID is required");
-
         if (conversationId is null)
             return Result.Failure<MessageReadState>("Conversation ID is required");
+
+        return Create(userId, channelId: null, conversationId, lastReadMessageId);
+    }
+
+    private static Result<MessageReadState> Create(
+        UserId userId,
+        GuildChannelId? channelId,
+        ConversationId? conversationId,
+        MessageId lastReadMessageId)
+    {
+        if (userId is null)
+            return Result.Failure<MessageReadState>("User ID is required");
 
         if (lastReadMessageId is null)
             return Result.Failure<MessageReadState>("Last read message ID is required");
 
         return Result.Success(new MessageReadState(
-            userId, channelId: null, conversationId, lastReadMessageId, DateTime.UtcNow));
+            userId, channelId, conversationId, lastReadMessageId, DateTime.UtcNow));
     }
 
     public static MessageReadState Rehydrate(
