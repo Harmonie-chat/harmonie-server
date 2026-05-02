@@ -3,7 +3,6 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.AcknowledgeRead;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Domain.Entities.Messages;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
