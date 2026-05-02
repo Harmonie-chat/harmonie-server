@@ -13,7 +13,7 @@ public interface IGuildMemberRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
-    Task<GuildRole?> GetRoleAsync(
+    Task<GuildMemberUserRole?> GetUserWithRoleAsync(
         GuildId guildId,
         UserId userId,
         CancellationToken cancellationToken = default);
@@ -46,6 +46,11 @@ public sealed record UserGuildMembership(
     Guild Guild,
     GuildRole Role,
     DateTime JoinedAtUtc);
+
+public sealed record GuildMemberUserRole(
+    GuildRole Role,
+    string Username,
+    string? DisplayName);
 
 public sealed record GuildMemberUser(
     UserId UserId,

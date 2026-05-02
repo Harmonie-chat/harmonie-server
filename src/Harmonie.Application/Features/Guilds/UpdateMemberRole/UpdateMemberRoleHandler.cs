@@ -1,6 +1,5 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Guilds;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
@@ -15,18 +14,15 @@ public sealed class UpdateMemberRoleHandler
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildNotifier _guildNotifier;
-    private readonly IUserRepository _userRepository;
 
     public UpdateMemberRoleHandler(
         IGuildRepository guildRepository,
         IGuildMemberRepository guildMemberRepository,
-        IGuildNotifier guildNotifier,
-        IUserRepository userRepository)
+        IGuildNotifier guildNotifier)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildNotifier = guildNotifier;
-        _userRepository = userRepository;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -49,8 +45,8 @@ public sealed class UpdateMemberRoleHandler
                 "You must be an admin to change member roles in this guild");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
-        if (targetRole is null)
+        var targetInfo = await _guildMemberRepository.GetUserWithRoleAsync(request.GuildId, request.TargetId, cancellationToken);
+        if (targetInfo is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.MemberNotFound,
@@ -66,14 +62,12 @@ public sealed class UpdateMemberRoleHandler
 
         await _guildMemberRepository.UpdateRoleAsync(request.GuildId, request.TargetId, request.NewRole, cancellationToken);
 
-        var targetUser = await _userRepository.GetByIdAsync(request.TargetId, CancellationToken.None);
-
         await _guildNotifier.NotifyMemberRoleUpdatedAsync(
             new MemberRoleUpdatedNotification(
                 request.GuildId,
                 request.TargetId,
-                targetUser?.Username.Value ?? string.Empty,
-                targetUser?.DisplayName,
+                targetInfo!.Username,
+                targetInfo.DisplayName,
                 request.NewRole),
             cancellationToken);
 

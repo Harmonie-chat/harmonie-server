@@ -7,7 +7,9 @@ namespace Harmonie.Application.Interfaces.Guilds;
 
 public sealed record GuildAccessContext(
     Guild Guild,
-    GuildRole? CallerRole);
+    GuildRole? CallerRole,
+    string? CallerUsername = null,
+    string? CallerDisplayName = null);
 
 public interface IGuildRepository
 {

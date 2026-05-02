@@ -1,7 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Users;
@@ -20,7 +19,6 @@ public sealed class TransferOwnershipHandler
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<TransferOwnershipHandler> _logger;
 
     public TransferOwnershipHandler(
@@ -28,14 +26,12 @@ public sealed class TransferOwnershipHandler
         IGuildMemberRepository guildMemberRepository,
         IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
-        IUserRepository userRepository,
         ILogger<TransferOwnershipHandler> logger)
     {
         _guildRepository = guildRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -87,14 +83,12 @@ public sealed class TransferOwnershipHandler
 
         await transaction.CommitAsync(cancellationToken);
 
-        var newOwner = await _userRepository.GetByIdAsync(request.NewOwnerId, CancellationToken.None);
-
         await NotifyOwnershipTransferredSafelyAsync(
             new GuildOwnershipTransferredNotification(
                 request.GuildId,
                 request.NewOwnerId,
-                newOwner?.Username.Value ?? string.Empty,
-                newOwner?.DisplayName));
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName));
 
         return ApplicationResponse<bool>.Ok(true);
     }

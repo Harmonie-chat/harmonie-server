@@ -1,7 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
@@ -19,7 +18,6 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
     private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IConversationNotifier _conversationNotifier;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<DeleteConversationHandler> _logger;
 
     public DeleteConversationHandler(
@@ -27,14 +25,12 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
         IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IConversationNotifier conversationNotifier,
-        IUserRepository userRepository,
         ILogger<DeleteConversationHandler> logger)
     {
         _conversationRepository = conversationRepository;
         _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _conversationNotifier = conversationNotifier;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -68,15 +64,13 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
             return ApplicationResponse<bool>.Ok(true);
         }
 
-        var user = await _userRepository.GetByIdAsync(currentUserId, CancellationToken.None);
-
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _conversationNotifier.NotifyParticipantLeftAsync(
                 new ConversationParticipantLeftNotification(
                     request.ConversationId,
                     currentUserId,
-                    user?.Username.Value ?? string.Empty,
-                    user?.DisplayName), ct),
+                    access.CallerUsername ?? string.Empty,
+                    access.CallerDisplayName), ct),
             NotificationTimeout,
             _logger,
             "Failed to notify participants of conversation {ConversationId} that user {UserId} left",

@@ -3,7 +3,6 @@ using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -23,7 +22,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -32,7 +30,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
-        IUserRepository userRepository,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -40,7 +37,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -119,15 +115,13 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 "Conversation message creation succeeded but conversation ID is missing");
         }
 
-        var author = await _userRepository.GetByIdAsync(messageResult.Value.AuthorUserId, CancellationToken.None);
-
         await NotifyMessageCreatedSafelyAsync(
             new ConversationMessageCreatedNotification(
                 messageResult.Value.Id,
                 messageConversationId,
                 messageResult.Value.AuthorUserId,
-                author?.Username.Value ?? string.Empty,
-                author?.DisplayName,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));

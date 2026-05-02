@@ -47,16 +47,21 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         return await connection.ExecuteScalarAsync<bool>(command);
     }
 
-    public async Task<GuildRole?> GetRoleAsync(
+    public async Task<GuildMemberUserRole?> GetUserWithRoleAsync(
         GuildId guildId,
         UserId userId,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT role
-                           FROM guild_members
-                           WHERE guild_id = @GuildId
-                             AND user_id = @UserId
+                           SELECT gm.role       AS "Role",
+                                  u.username    AS "Username",
+                                  u.display_name AS "DisplayName"
+                           FROM guild_members gm
+                           LEFT JOIN users u
+                                  ON u.id = gm.user_id
+                                 AND u.deleted_at IS NULL
+                           WHERE gm.guild_id = @GuildId
+                             AND gm.user_id = @UserId
                            LIMIT 1
                            """;
 
@@ -71,14 +76,17 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var role = await connection.QueryFirstOrDefaultAsync<short?>(command);
-        if (role is null)
+        var row = await connection.QueryFirstOrDefaultAsync<MemberRoleRow>(command);
+        if (row is null)
             return null;
 
-        if (!Enum.IsDefined(typeof(GuildRole), role.Value))
+        if (!Enum.IsDefined(typeof(GuildRole), row.Role))
             throw new InvalidOperationException("Stored guild role is invalid.");
 
-        return (GuildRole)role.Value;
+        return new GuildMemberUserRole(
+            (GuildRole)row.Role,
+            row.Username ?? string.Empty,
+            row.DisplayName);
     }
 
     public async Task<bool> TryAddAsync(
@@ -292,6 +300,13 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
             row.IsActive,
             (GuildRole)row.Role,
             row.JoinedAtUtc);
+    }
+
+    private sealed class MemberRoleRow
+    {
+        public short Role { get; init; }
+        public string? Username { get; init; }
+        public string? DisplayName { get; init; }
     }
 
 }

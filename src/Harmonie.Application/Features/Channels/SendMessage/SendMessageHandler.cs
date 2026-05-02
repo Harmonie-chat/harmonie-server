@@ -3,7 +3,6 @@ using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -24,7 +23,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -33,7 +31,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
-        IUserRepository userRepository,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -41,7 +38,6 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -128,16 +124,14 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 "Channel message creation succeeded but channel ID is missing");
         }
 
-        var author = await _userRepository.GetByIdAsync(messageResult.Value.AuthorUserId, CancellationToken.None);
-
         await NotifyMessageCreatedSafelyAsync(
             new TextChannelMessageCreatedNotification(
                 messageResult.Value.Id,
                 messageChannelId,
                 ctx.Channel.GuildId,
                 messageResult.Value.AuthorUserId,
-                author?.Username.Value ?? string.Empty,
-                author?.DisplayName,
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
