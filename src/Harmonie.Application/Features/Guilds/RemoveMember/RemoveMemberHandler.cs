@@ -52,8 +52,8 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
                 "You must be an admin to remove members from this guild");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
-        if (targetRole is null)
+        var targetInfo = await _guildMemberRepository.GetUserWithRoleAsync(request.GuildId, request.TargetId, cancellationToken);
+        if (targetInfo is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.MemberNotFound,
@@ -81,7 +81,9 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
             ct => _guildNotifier.NotifyMemberRemovedAsync(
                 new MemberRemovedNotification(
                     GuildId: request.GuildId,
-                    RemovedUserId: request.TargetId),
+                    RemovedUserId: request.TargetId,
+                    Username: targetInfo!.Username,
+                    DisplayName: targetInfo.DisplayName),
                 ct),
             TimeSpan.FromSeconds(5),
             _logger,

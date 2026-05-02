@@ -62,31 +62,28 @@ public sealed class UpdateGroupConversationHandler : IAuthenticatedHandler<Updat
 
         var conversation = access.Conversation;
 
-        if (request.Name is not null)
+        var updateResult = conversation.UpdateName(request.Name);
+        if (updateResult.IsFailure)
         {
-            var updateResult = conversation.UpdateName(request.Name);
-            if (updateResult.IsFailure)
-            {
-                return ApplicationResponse<UpdateGroupConversationResponse>.Fail(
-                    ApplicationErrorCodes.Common.DomainRuleViolation,
-                    updateResult.Error ?? "Conversation name update failed");
-            }
-
-            await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-            await _conversationRepository.UpdateAsync(conversation, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            await BestEffortNotificationHelper.TryNotifyAsync(
-                ct => _conversationNotifier.NotifyConversationUpdatedAsync(
-                    new ConversationUpdatedNotification(
-                        ConversationId: conversation.Id,
-                        Name: conversation.Name),
-                    ct),
-                NotificationTimeout,
-                _logger,
-                "Failed to notify participants of conversation {ConversationId} update",
-                conversation.Id);
+            return ApplicationResponse<UpdateGroupConversationResponse>.Fail(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                updateResult.Error ?? "Conversation name update failed");
         }
+
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+        await _conversationRepository.UpdateAsync(conversation, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        await BestEffortNotificationHelper.TryNotifyAsync(
+            ct => _conversationNotifier.NotifyConversationUpdatedAsync(
+                new ConversationUpdatedNotification(
+                    ConversationId: conversation.Id,
+                    Name: conversation.Name),
+                ct),
+            NotificationTimeout,
+            _logger,
+            "Failed to notify participants of conversation {ConversationId} update",
+            conversation.Id);
 
         return ApplicationResponse<UpdateGroupConversationResponse>.Ok(
             new UpdateGroupConversationResponse(

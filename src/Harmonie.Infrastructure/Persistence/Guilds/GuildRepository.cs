@@ -61,11 +61,16 @@ public sealed class GuildRepository : IGuildRepository
                                   g.icon_bg        AS "IconBg",
                                   g.created_at_utc AS "CreatedAtUtc",
                                   g.updated_at_utc AS "UpdatedAtUtc",
-                                  gm.role          AS "Role"
+                                  gm.role          AS "Role",
+                                  u.username       AS "Username",
+                                  u.display_name   AS "DisplayName"
                            FROM guilds g
                            LEFT JOIN guild_members gm
                                   ON gm.guild_id = g.id
                                  AND gm.user_id = @CallerId
+                           LEFT JOIN users u
+                                  ON u.id = @CallerId
+                                 AND u.deleted_at IS NULL
                            WHERE g.id = @GuildId
                            LIMIT 1
                            """;
@@ -86,7 +91,9 @@ public sealed class GuildRepository : IGuildRepository
 
         return new GuildAccessContext(
             MapToGuild(row),
-            row.Role.HasValue ? (GuildRole)row.Role.Value : null);
+            row.Role.HasValue ? (GuildRole)row.Role.Value : null,
+            row.Username,
+            row.DisplayName);
     }
 
     public async Task AddAsync(Guild guild, CancellationToken cancellationToken = default)
@@ -269,5 +276,7 @@ public sealed class GuildRepository : IGuildRepository
         public DateTime CreatedAtUtc { get; init; }
         public DateTime UpdatedAtUtc { get; init; }
         public short? Role { get; init; }
+        public string? Username { get; init; }
+        public string? DisplayName { get; init; }
     }
 }

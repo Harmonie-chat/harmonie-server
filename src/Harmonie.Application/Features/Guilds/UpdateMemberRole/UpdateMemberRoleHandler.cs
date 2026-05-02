@@ -45,8 +45,8 @@ public sealed class UpdateMemberRoleHandler
                 "You must be an admin to change member roles in this guild");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
-        if (targetRole is null)
+        var targetInfo = await _guildMemberRepository.GetUserWithRoleAsync(request.GuildId, request.TargetId, cancellationToken);
+        if (targetInfo is null)
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Guild.MemberNotFound,
@@ -63,7 +63,12 @@ public sealed class UpdateMemberRoleHandler
         await _guildMemberRepository.UpdateRoleAsync(request.GuildId, request.TargetId, request.NewRole, cancellationToken);
 
         await _guildNotifier.NotifyMemberRoleUpdatedAsync(
-            new MemberRoleUpdatedNotification(request.GuildId, request.TargetId, request.NewRole),
+            new MemberRoleUpdatedNotification(
+                request.GuildId,
+                request.TargetId,
+                targetInfo!.Username,
+                targetInfo.DisplayName,
+                request.NewRole),
             cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);

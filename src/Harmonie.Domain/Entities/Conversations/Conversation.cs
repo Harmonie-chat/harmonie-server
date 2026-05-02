@@ -66,6 +66,9 @@ public sealed class Conversation : Entity<ConversationId>
 
     public Result UpdateName(string? name)
     {
+        if (Type != ConversationType.Group)
+            return Result.Failure("Only group conversations can have a name");
+
         if (name is not null && string.IsNullOrWhiteSpace(name))
             return Result.Failure("Conversation name cannot be empty");
 

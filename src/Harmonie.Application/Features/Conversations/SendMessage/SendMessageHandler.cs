@@ -120,6 +120,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 messageResult.Value.Id,
                 messageConversationId,
                 messageResult.Value.AuthorUserId,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));

@@ -154,7 +154,7 @@ public sealed class UpdateGroupConversationHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenNameIsNull_ShouldNotUpdateButReturnSuccess()
+    public async Task HandleAsync_WhenNameIsNull_ShouldResetToDefaultAndNotify()
     {
         var callerId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateGroupConversation("Original Name");
@@ -170,16 +170,18 @@ public sealed class UpdateGroupConversationHandlerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.Name.Should().Be("Original Name");
+        response.Data!.Name.Should().BeNull();
 
-        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
         _conversationRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<Conversation>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            x => x.UpdateAsync(It.Is<Conversation>(c => c.Name == null), It.IsAny<CancellationToken>()),
+            Times.Once);
 
         _conversationNotifierMock.Verify(
-            x => x.NotifyConversationUpdatedAsync(It.IsAny<ConversationUpdatedNotification>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            x => x.NotifyConversationUpdatedAsync(
+                It.Is<ConversationUpdatedNotification>(n =>
+                    n.ConversationId == conversation.Id && n.Name == null),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

@@ -72,7 +72,9 @@ public sealed class LeaveGuildHandler : IAuthenticatedHandler<LeaveGuildInput, b
             ct => _guildNotifier.NotifyMemberLeftAsync(
                 new MemberLeftNotification(
                     GuildId: request.GuildId,
-                    UserId: currentUserId),
+                    UserId: currentUserId,
+                    Username: ctx.CallerUsername ?? string.Empty,
+                    DisplayName: ctx.CallerDisplayName),
                 ct),
             TimeSpan.FromSeconds(5),
             _logger,

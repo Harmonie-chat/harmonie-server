@@ -26,6 +26,8 @@ public sealed record TextChannelMessageCreatedNotification(
     GuildChannelId ChannelId,
     GuildId GuildId,
     UserId AuthorUserId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);

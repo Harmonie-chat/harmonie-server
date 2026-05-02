@@ -84,7 +84,11 @@ public sealed class TransferOwnershipHandler
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyOwnershipTransferredSafelyAsync(
-            new GuildOwnershipTransferredNotification(request.GuildId, request.NewOwnerId));
+            new GuildOwnershipTransferredNotification(
+                request.GuildId,
+                request.NewOwnerId,
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName));
 
         return ApplicationResponse<bool>.Ok(true);
     }

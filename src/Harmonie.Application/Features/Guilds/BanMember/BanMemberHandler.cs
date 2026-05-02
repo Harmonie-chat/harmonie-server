@@ -77,10 +77,10 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 "The guild owner cannot be banned");
         }
 
-        var targetRole = await _guildMemberRepository.GetRoleAsync(request.GuildId, request.TargetId, cancellationToken);
-        var isMember = targetRole is not null;
+        var targetInfo = await _guildMemberRepository.GetUserWithRoleAsync(request.GuildId, request.TargetId, cancellationToken);
+        var isMember = targetInfo is not null;
 
-        if (targetRole == GuildRole.Admin && ctx.Guild.OwnerUserId != currentUserId)
+        if (targetInfo?.Role == GuildRole.Admin && ctx.Guild.OwnerUserId != currentUserId)
         {
             return ApplicationResponse<BanMemberResponse>.Fail(
                 ApplicationErrorCodes.Guild.AccessDenied,
@@ -127,7 +127,9 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 ct => _guildNotifier.NotifyMemberBannedAsync(
                     new MemberBannedNotification(
                         GuildId: request.GuildId,
-                        BannedUserId: request.TargetId),
+                        BannedUserId: request.TargetId,
+                        Username: targetInfo!.Username,
+                        DisplayName: targetInfo.DisplayName),
                     ct),
                 TimeSpan.FromSeconds(5),
                 _logger,

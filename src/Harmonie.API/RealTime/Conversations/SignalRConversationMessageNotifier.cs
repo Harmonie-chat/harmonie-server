@@ -24,6 +24,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
             MessageId: notification.MessageId.Value,
             ConversationId: notification.ConversationId.Value,
             AuthorUserId: notification.AuthorUserId.Value,
+            AuthorUsername: notification.AuthorUsername,
+            AuthorDisplayName: notification.AuthorDisplayName,
             Content: notification.Content,
             Attachments: notification.Attachments,
             CreatedAtUtc: notification.CreatedAtUtc);
@@ -70,6 +72,8 @@ public sealed record ConversationMessageCreatedEvent(
     Guid MessageId,
     Guid ConversationId,
     Guid AuthorUserId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);

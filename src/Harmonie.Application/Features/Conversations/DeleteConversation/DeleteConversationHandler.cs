@@ -66,7 +66,11 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
 
         await BestEffortNotificationHelper.TryNotifyAsync(
             ct => _conversationNotifier.NotifyParticipantLeftAsync(
-                new ConversationParticipantLeftNotification(request.ConversationId, currentUserId), ct),
+                new ConversationParticipantLeftNotification(
+                    request.ConversationId,
+                    currentUserId,
+                    access.CallerUsername ?? string.Empty,
+                    access.CallerDisplayName), ct),
             NotificationTimeout,
             _logger,
             "Failed to notify participants of conversation {ConversationId} that user {UserId} left",

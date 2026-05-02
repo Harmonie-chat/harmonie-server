@@ -130,8 +130,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Admin, "targetuser", null));
 
         var response = await _handler.HandleAsync(new BanMemberInput(guild.Id, targetId, null, 0), callerId, TestContext.Current.CancellationToken);
 
@@ -151,8 +151,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Admin, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -166,6 +166,13 @@ public sealed class BanMemberHandlerTests
 
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberBannedAsync(
+                It.Is<MemberBannedNotification>(n =>
+                    n.GuildId == guild.Id && n.BannedUserId == targetId && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -181,8 +188,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -206,8 +213,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -242,8 +249,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -255,7 +262,7 @@ public sealed class BanMemberHandlerTests
 
         _guildNotifierMock.Verify(
             x => x.NotifyMemberBannedAsync(
-                It.Is<MemberBannedNotification>(n => n.GuildId == guild.Id && n.BannedUserId == targetId),
+                It.Is<MemberBannedNotification>(n => n.GuildId == guild.Id && n.BannedUserId == targetId && n.Username == "targetuser"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -272,8 +279,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((GuildRole?)null);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildMemberUserRole?)null);
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -300,8 +307,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))
@@ -332,8 +339,8 @@ public sealed class BanMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildBanRepositoryMock
             .Setup(x => x.TryAddAsync(It.IsAny<GuildBan>(), It.IsAny<CancellationToken>()))

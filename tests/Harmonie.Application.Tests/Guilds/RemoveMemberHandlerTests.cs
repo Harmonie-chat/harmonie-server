@@ -101,8 +101,8 @@ public sealed class RemoveMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((GuildRole?)null);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GuildMemberUserRole?)null);
 
         var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, targetId), ownerId, TestContext.Current.CancellationToken);
 
@@ -123,8 +123,8 @@ public sealed class RemoveMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Admin);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Admin, "owner", null));
 
         var response = await _handler.HandleAsync(new RemoveMemberInput(guild.Id, ownerId), callerId, TestContext.Current.CancellationToken);
 
@@ -146,8 +146,8 @@ public sealed class RemoveMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildMemberRepositoryMock
             .Setup(x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
@@ -161,6 +161,13 @@ public sealed class RemoveMemberHandlerTests
 
         _guildMemberRepositoryMock.Verify(
             x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _guildNotifierMock.Verify(
+            x => x.NotifyMemberRemovedAsync(
+                It.Is<MemberRemovedNotification>(n =>
+                    n.GuildId == guild.Id && n.RemovedUserId == targetId && n.Username == "targetuser"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -177,8 +184,8 @@ public sealed class RemoveMemberHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
 
         _guildMemberRepositoryMock
-            .Setup(x => x.GetRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GuildRole.Member);
+            .Setup(x => x.GetUserWithRoleAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildMemberUserRole(GuildRole.Member, "targetuser", null));
 
         _guildMemberRepositoryMock
             .Setup(x => x.RemoveAsync(guild.Id, targetId, It.IsAny<CancellationToken>()))
@@ -192,7 +199,7 @@ public sealed class RemoveMemberHandlerTests
 
         _guildNotifierMock.Verify(
             x => x.NotifyMemberRemovedAsync(
-                It.Is<MemberRemovedNotification>(n => n.GuildId == guild.Id && n.RemovedUserId == targetId),
+                It.Is<MemberRemovedNotification>(n => n.GuildId == guild.Id && n.RemovedUserId == targetId && n.Username == "targetuser"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

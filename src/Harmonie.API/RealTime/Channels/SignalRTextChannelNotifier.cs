@@ -25,6 +25,8 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
             ChannelId: notification.ChannelId.Value,
             GuildId: notification.GuildId.Value,
             AuthorUserId: notification.AuthorUserId.Value,
+            AuthorUsername: notification.AuthorUsername,
+            AuthorDisplayName: notification.AuthorDisplayName,
             Content: notification.Content,
             Attachments: notification.Attachments,
             CreatedAtUtc: notification.CreatedAtUtc);
@@ -74,6 +76,8 @@ public sealed record MessageCreatedEvent(
     Guid ChannelId,
     Guid GuildId,
     Guid AuthorUserId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc);

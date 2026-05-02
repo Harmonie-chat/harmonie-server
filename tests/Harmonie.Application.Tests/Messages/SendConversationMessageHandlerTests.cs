@@ -130,7 +130,7 @@ public sealed class SendConversationMessageHandlerTests
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId), CallerUsername: "sender", CallerDisplayName: "Sender Display"));
 
         _directMessageRepositoryMock
             .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
@@ -155,7 +155,9 @@ public sealed class SendConversationMessageHandlerTests
                 It.Is<ConversationMessageCreatedNotification>(n =>
                     n.ConversationId == conversation.Id
                     && n.AuthorUserId == currentUserId
-                    && n.Content == "hello dm"),
+                    && n.Content == "hello dm"
+                    && n.AuthorUsername == "sender"
+                    && n.AuthorDisplayName == "Sender Display"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

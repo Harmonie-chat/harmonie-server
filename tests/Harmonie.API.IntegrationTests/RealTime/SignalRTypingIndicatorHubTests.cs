@@ -274,11 +274,15 @@ public sealed class SignalRTypingIndicatorHubTests : IClassFixture<HarmonieWebAp
 
     private sealed record SignalRUserTypingEvent(
         string UserId,
+        string Username,
+        string? DisplayName,
         string ChannelId,
         DateTime Timestamp);
 
     private sealed record SignalRConversationUserTypingEvent(
         string UserId,
+        string Username,
+        string? DisplayName,
         string ConversationId,
         DateTime Timestamp);
 }

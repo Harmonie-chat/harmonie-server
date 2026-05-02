@@ -62,7 +62,9 @@ public sealed record GuildDeletedNotification(
 
 public sealed record GuildOwnershipTransferredNotification(
     GuildId GuildId,
-    UserId NewOwnerUserId);
+    UserId NewOwnerUserId,
+    string NewOwnerUsername,
+    string? NewOwnerDisplayName);
 
 public sealed record ChannelCreatedNotification(
     GuildId GuildId,
@@ -93,24 +95,33 @@ public sealed record ChannelPositionItem(
 public sealed record MemberJoinedNotification(
     GuildId GuildId,
     UserId UserId,
+    string Username,
     string? DisplayName,
     UploadedFileId? AvatarFileId);
 
 public sealed record MemberLeftNotification(
     GuildId GuildId,
-    UserId UserId);
+    UserId UserId,
+    string Username,
+    string? DisplayName);
 
 public sealed record MemberBannedNotification(
     GuildId GuildId,
-    UserId BannedUserId);
+    UserId BannedUserId,
+    string Username,
+    string? DisplayName);
 
 public sealed record MemberRemovedNotification(
     GuildId GuildId,
-    UserId RemovedUserId);
+    UserId RemovedUserId,
+    string Username,
+    string? DisplayName);
 
 public sealed record MemberRoleUpdatedNotification(
     GuildId GuildId,
     UserId UserId,
+    string Username,
+    string? DisplayName,
     GuildRole NewRole);
 
 public sealed record GuildUpdatedNotification(

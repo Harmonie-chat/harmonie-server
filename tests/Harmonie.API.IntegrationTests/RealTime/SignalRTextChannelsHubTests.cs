@@ -240,6 +240,8 @@ public sealed class SignalRTextChannelsHubTests : IClassFixture<HarmonieWebAppli
         string MessageId,
         string ChannelId,
         string AuthorUserId,
+        string AuthorUsername,
+        string? AuthorDisplayName,
         string Content,
         DateTime CreatedAtUtc);
 

@@ -175,6 +175,8 @@ public sealed class SignalRConversationMessagesHubTests : IClassFixture<Harmonie
         string MessageId,
         string ConversationId,
         string AuthorUserId,
+        string AuthorUsername,
+        string? AuthorDisplayName,
         string Content,
         DateTime CreatedAtUtc);
 

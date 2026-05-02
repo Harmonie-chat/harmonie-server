@@ -77,18 +77,14 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
             throw new HubException(ApplicationErrorCodes.Auth.InvalidCredentials);
 
         var parsedChannelId = GuildChannelId.From(channelId);
-        var channel = await _guildChannelRepository.GetByIdAsync(parsedChannelId, Context.ConnectionAborted);
-        if (channel is null)
+        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(parsedChannelId, currentUserId, Context.ConnectionAborted);
+        if (ctx is null)
             throw new HubException(ApplicationErrorCodes.Channel.NotFound);
 
-        if (channel.Type != GuildChannelType.Text)
+        if (ctx.Channel.Type != GuildChannelType.Text)
             throw new HubException(ApplicationErrorCodes.Channel.NotText);
 
-        var isMember = await _guildMemberRepository.IsMemberAsync(
-            channel.GuildId,
-            currentUserId,
-            Context.ConnectionAborted);
-        if (!isMember)
+        if (ctx.CallerRole is null)
             throw new HubException(ApplicationErrorCodes.Channel.AccessDenied);
 
         var throttleKey = $"channel:{currentUserId}:{channelId}";
@@ -97,6 +93,8 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
 
         var payload = new UserTypingEvent(
             UserId: currentUserId.Value,
+            Username: ctx.CallerUsername ?? string.Empty,
+            DisplayName: ctx.CallerDisplayName,
             ChannelId: channelId,
             Timestamp: DateTime.UtcNow);
 
@@ -132,6 +130,8 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
 
         var payload = new ConversationUserTypingEvent(
             UserId: currentUserId.Value,
+            Username: access.CallerUsername ?? string.Empty,
+            DisplayName: access.CallerDisplayName,
             ConversationId: conversationId,
             Timestamp: DateTime.UtcNow);
 
@@ -185,10 +185,14 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
 
 public sealed record UserTypingEvent(
     Guid UserId,
+    string Username,
+    string? DisplayName,
     Guid ChannelId,
     DateTime Timestamp);
 
 public sealed record ConversationUserTypingEvent(
     Guid UserId,
+    string Username,
+    string? DisplayName,
     Guid ConversationId,
     DateTime Timestamp);

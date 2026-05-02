@@ -184,7 +184,7 @@ public sealed class SendMessageHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member, "sender", "Sender Display"));
 
         Message? persistedMessage = null;
         _channelMessageRepositoryMock
@@ -210,7 +210,9 @@ public sealed class SendMessageHandlerTests
                     n.ChannelId == channel.Id
                     && n.GuildId == channel.GuildId
                     && n.AuthorUserId == userId
-                    && n.Content == "hello team"),
+                    && n.Content == "hello team"
+                    && n.AuthorUsername == "sender"
+                    && n.AuthorDisplayName == "Sender Display"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

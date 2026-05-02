@@ -130,6 +130,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 messageChannelId,
                 ctx.Channel.GuildId,
                 messageResult.Value.AuthorUserId,
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
                 messageResult.Value.CreatedAtUtc));
