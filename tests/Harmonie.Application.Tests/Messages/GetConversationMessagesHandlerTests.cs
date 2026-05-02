@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -125,6 +126,51 @@ public sealed class GetConversationMessagesHandlerTests
         response.Data.Items[0].Reactions.Should().BeEmpty();
         response.Data.Items[1].Content.Should().Be("Second");
         response.Data.NextCursor.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMessagesHaveLinkPreviews_ShouldIncludeThem()
+    {
+        var participantOne = UserId.New();
+        var participantTwo = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
+
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Check https://example.com", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+
+        var previews = new Dictionary<Guid, IReadOnlyList<LinkPreviewDto>>
+        {
+            [message.Id.Value] = [new LinkPreviewDto("https://example.com", "Title", "Desc", null, "Site")]
+        };
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetConversationPageAsync(
+                conversation.Id,
+                It.IsAny<MessageCursor?>(),
+                50,
+                participantOne,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MessagePage(
+                [message],
+                null,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>(),
+                previews));
+
+        var response = await _handler.HandleAsync(
+            new GetConversationMessagesInput(conversation.Id, Limit: 50),
+            participantOne,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Items.Should().HaveCount(1);
+        response.Data.Items[0].LinkPreviews.Should().NotBeNull();
+        response.Data.Items[0].LinkPreviews.Should().HaveCount(1);
+        response.Data.Items[0].LinkPreviews![0].Url.Should().Be("https://example.com");
+        response.Data.Items[0].LinkPreviews[0].Title.Should().Be("Title");
     }
 
 }
