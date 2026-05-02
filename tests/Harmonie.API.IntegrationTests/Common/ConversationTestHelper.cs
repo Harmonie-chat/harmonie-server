@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.Application.Features.Channels.SendMessage;
@@ -57,5 +58,19 @@ public static class ConversationTestHelper
         var payload = await response.Content.ReadFromJsonAsync<SendMessageResponse>();
         payload.Should().NotBeNull();
         return payload!;
+    }
+
+    public static async Task AddReactionAsync(
+        HttpClient client,
+        Guid conversationId,
+        Guid messageId,
+        string urlEncodedEmoji,
+        string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put,
+            $"/api/conversations/{conversationId}/messages/{messageId}/reactions/{urlEncodedEmoji}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

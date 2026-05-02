@@ -115,11 +115,11 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var take = limit + 1;
 
-        var cursorFilter = cursor is not null
+        var cursorCondition = cursor is not null
             ? "AND (mr.created_at_utc, mr.user_id) > (@CursorCreatedAtUtc, @CursorUserId)"
-            : "";
+            : "1=1";
 
-        var sql = $@"""
+        var sql = $@"
                    SELECT mr.user_id AS ""UserId"",
                           u.username AS ""Username"",
                           u.display_name AS ""DisplayName"",
@@ -128,7 +128,7 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
                    JOIN users u ON u.id = mr.user_id
                    WHERE mr.message_id = @MessageId
                      AND mr.emoji = @Emoji
-                     {cursorFilter}
+                     AND {cursorCondition}
                    ORDER BY mr.created_at_utc, mr.user_id
                    LIMIT @Take;
 
@@ -136,7 +136,7 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
                    FROM message_reactions
                    WHERE message_id = @MessageId
                      AND emoji = @Emoji;
-                   """;
+                   ";
 
         var parameters = new DynamicParameters();
         parameters.Add("MessageId", messageId.Value);
@@ -156,7 +156,7 @@ public sealed class MessageReactionRepository : IMessageReactionRepository
 
         using var multi = await connection.QueryMultipleAsync(command);
         var rows = (await multi.ReadAsync<ReactionUserDetailRow>()).ToArray();
-        var totalCount = await multi.ReadSingleAsync<int>();
+        var totalCount = (await multi.ReadAsync<int>()).Single();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
