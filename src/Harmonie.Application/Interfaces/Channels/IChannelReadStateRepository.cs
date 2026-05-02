@@ -1,3 +1,4 @@
+using Harmonie.Domain.Entities.Channels;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -7,10 +8,7 @@ namespace Harmonie.Application.Interfaces.Channels;
 public interface IChannelReadStateRepository
 {
     Task UpsertAsync(
-        UserId userId,
-        GuildChannelId channelId,
-        MessageId lastReadMessageId,
-        DateTime readAtUtc,
+        ChannelReadState state,
         CancellationToken cancellationToken = default);
 
     Task<MessageId?> GetLastReadMessageIdAsync(

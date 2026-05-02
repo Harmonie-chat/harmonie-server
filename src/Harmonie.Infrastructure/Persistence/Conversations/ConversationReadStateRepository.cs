@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Conversations;
+using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -17,10 +18,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
     }
 
     public async Task UpsertAsync(
-        UserId userId,
-        ConversationId conversationId,
-        MessageId lastReadMessageId,
-        DateTime readAtUtc,
+        ConversationReadState state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -37,10 +35,10 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
             sql,
             new
             {
-                UserId = userId.Value,
-                ConversationId = conversationId.Value,
-                LastReadMessageId = lastReadMessageId.Value,
-                ReadAtUtc = readAtUtc
+                UserId = state.UserId.Value,
+                ConversationId = state.ConversationId.Value,
+                LastReadMessageId = state.LastReadMessageId.Value,
+                ReadAtUtc = state.ReadAtUtc
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);

@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Domain.Entities.Channels;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -17,10 +18,7 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
     }
 
     public async Task UpsertAsync(
-        UserId userId,
-        GuildChannelId channelId,
-        MessageId lastReadMessageId,
-        DateTime readAtUtc,
+        ChannelReadState state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -37,10 +35,10 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
             sql,
             new
             {
-                UserId = userId.Value,
-                ChannelId = channelId.Value,
-                LastReadMessageId = lastReadMessageId.Value,
-                ReadAtUtc = readAtUtc
+                UserId = state.UserId.Value,
+                ChannelId = state.ChannelId.Value,
+                LastReadMessageId = state.LastReadMessageId.Value,
+                ReadAtUtc = state.ReadAtUtc
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);

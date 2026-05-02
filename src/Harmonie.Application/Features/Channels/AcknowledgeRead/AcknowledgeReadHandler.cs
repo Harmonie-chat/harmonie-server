@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Domain.Entities.Channels;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -82,8 +83,16 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCh
             resolvedMessageId = latestMessageId;
         }
 
+        var state = ChannelReadState.Create(currentUserId, request.ChannelId, resolvedMessageId);
+        if (state.IsFailure || state.Value is null)
+        {
+            return ApplicationResponse<bool>.Fail(
+                ApplicationErrorCodes.Common.DomainRuleViolation,
+                state.Error ?? "Invalid read state");
+        }
+
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _channelReadStateRepository.UpsertAsync(currentUserId, request.ChannelId, resolvedMessageId, DateTime.UtcNow, cancellationToken);
+        await _channelReadStateRepository.UpsertAsync(state.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);
