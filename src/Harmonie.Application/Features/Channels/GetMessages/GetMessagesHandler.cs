@@ -84,6 +84,8 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
             .Select(x =>
             {
                 page.ReactionsByMessageId.TryGetValue(x.Id.Value, out var reactions);
+                IReadOnlyList<LinkPreviewDto>? previews = null;
+                page.LinkPreviewsByMessageId?.TryGetValue(x.Id.Value, out previews);
                 return new GetMessagesItemResponse(
                     MessageId: x.Id.Value,
                     AuthorUserId: x.AuthorUserId.Value,
@@ -92,6 +94,7 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
                     Reactions: reactions?.Select(r => new MessageReactionDto(r.Emoji, r.Count, r.ReactedByCaller,
                         r.Users.Select(u => new ReactionUserDto(u.UserId, u.Username, u.DisplayName)).ToArray())).ToArray()
                               ?? Array.Empty<MessageReactionDto>(),
+                    LinkPreviews: previews?.ToArray(),
                     CreatedAtUtc: x.CreatedAtUtc,
                     UpdatedAtUtc: x.UpdatedAtUtc);
             })

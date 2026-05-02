@@ -1,4 +1,5 @@
 using Dapper;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -137,5 +138,22 @@ internal static class MessageRepositoryHelpers
             row.UpdatedAtUtc,
             row.DeletedAtUtc,
             attachments);
+    }
+
+    internal static IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>> BuildLinkPreviewsDictionary(
+        IEnumerable<MessageLinkPreviewRow> rows)
+    {
+        return rows
+            .GroupBy(row => row.MessageId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<LinkPreviewDto>)group
+                    .Select(row => new LinkPreviewDto(
+                        row.Url,
+                        row.Title,
+                        row.Description,
+                        row.ImageUrl,
+                        row.SiteName))
+                    .ToArray());
     }
 }

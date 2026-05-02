@@ -16,5 +16,6 @@ public sealed record GetMessagesItemResponse(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     IReadOnlyList<MessageReactionDto> Reactions,
+    IReadOnlyList<LinkPreviewDto>? LinkPreviews,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);
