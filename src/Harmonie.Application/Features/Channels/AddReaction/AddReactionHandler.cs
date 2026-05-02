@@ -89,7 +89,14 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ChannelAddReactio
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionAddedSafelyAsync(
-            new ChannelReactionAddedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, request.Emoji));
+            new ChannelReactionAddedNotification(
+                request.MessageId,
+                request.ChannelId,
+                ctx.Channel.GuildId,
+                currentUserId,
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

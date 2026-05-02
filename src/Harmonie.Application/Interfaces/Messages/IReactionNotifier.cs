@@ -30,12 +30,16 @@ public sealed record ChannelReactionAddedNotification(
     GuildChannelId ChannelId,
     GuildId GuildId,
     UserId UserId,
+    string Username,
+    string? DisplayName,
     string Emoji);
 
 public sealed record ConversationReactionAddedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
     UserId UserId,
+    string Username,
+    string? DisplayName,
     string Emoji);
 
 public sealed record ChannelReactionRemovedNotification(
@@ -43,10 +47,14 @@ public sealed record ChannelReactionRemovedNotification(
     GuildChannelId ChannelId,
     GuildId GuildId,
     UserId UserId,
+    string Username,
+    string? DisplayName,
     string Emoji);
 
 public sealed record ConversationReactionRemovedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
     UserId UserId,
+    string Username,
+    string? DisplayName,
     string Emoji);

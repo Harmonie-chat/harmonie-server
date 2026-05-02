@@ -80,7 +80,14 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionRemovedSafelyAsync(
-            new ChannelReactionRemovedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId, currentUserId, request.Emoji));
+            new ChannelReactionRemovedNotification(
+                request.MessageId,
+                request.ChannelId,
+                ctx.Channel.GuildId,
+                currentUserId,
+                ctx.CallerUsername ?? string.Empty,
+                ctx.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

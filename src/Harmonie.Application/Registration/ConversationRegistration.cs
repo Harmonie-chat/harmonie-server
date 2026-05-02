@@ -9,6 +9,7 @@ using Harmonie.Application.Features.Conversations.EditMessage;
 using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
+using Harmonie.Application.Features.Conversations.GetReactionUsers;
 using Harmonie.Application.Features.Conversations.RemoveReaction;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Features.Conversations.SendMessage;
@@ -39,6 +40,7 @@ public static class ConversationRegistration
         // Reactions
         services.AddAuthenticatedHandler<ConversationAddReactionInput, bool, AddReactionHandler>();
         services.AddAuthenticatedHandler<ConversationRemoveReactionInput, bool, RemoveReactionHandler>();
+        services.AddAuthenticatedHandler<GetConversationReactionUsersInput, GetReactionUsersResponse, GetReactionUsersHandler>();
 
         return services;
     }

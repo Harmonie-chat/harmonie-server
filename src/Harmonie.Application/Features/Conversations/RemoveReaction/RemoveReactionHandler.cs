@@ -71,7 +71,13 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionRemovedSafelyAsync(
-            new ConversationReactionRemovedNotification(request.MessageId, request.ConversationId, currentUserId, request.Emoji));
+            new ConversationReactionRemovedNotification(
+                request.MessageId,
+                request.ConversationId,
+                currentUserId,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

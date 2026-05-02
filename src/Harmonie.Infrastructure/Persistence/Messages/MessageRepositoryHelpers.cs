@@ -75,17 +75,34 @@ internal static class MessageRepositoryHelpers
     }
 
     internal static IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> BuildReactionsDictionary(
-        IEnumerable<ReactionSummaryRow> rows)
+        IEnumerable<ReactionSummaryRow> summaryRows,
+        IEnumerable<ReactionUserRow> userRows)
     {
-        return rows
+        var usersByKey = userRows
+            .GroupBy(row => (row.MessageId, row.Emoji))
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ReactionUser>)group
+                    .Select(row => new ReactionUser(
+                        row.UserId,
+                        row.Username,
+                        row.DisplayName))
+                    .ToArray());
+
+        return summaryRows
             .GroupBy(row => row.MessageId)
             .ToDictionary(
                 group => group.Key,
                 group => (IReadOnlyList<MessageReactionSummary>)group
-                    .Select(row => new MessageReactionSummary(
-                        row.Emoji,
-                        row.Count,
-                        row.ReactedByCaller))
+                    .Select(row =>
+                    {
+                        usersByKey.TryGetValue((row.MessageId, row.Emoji), out var users);
+                        return new MessageReactionSummary(
+                            row.Emoji,
+                            row.Count,
+                            row.ReactedByCaller,
+                            users ?? Array.Empty<ReactionUser>());
+                    })
                     .ToArray());
     }
 

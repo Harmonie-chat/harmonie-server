@@ -80,7 +80,13 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ConversationAddRe
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyReactionAddedSafelyAsync(
-            new ConversationReactionAddedNotification(request.MessageId, request.ConversationId, currentUserId, request.Emoji));
+            new ConversationReactionAddedNotification(
+                request.MessageId,
+                request.ConversationId,
+                currentUserId,
+                access.CallerUsername ?? string.Empty,
+                access.CallerDisplayName,
+                request.Emoji));
 
         return ApplicationResponse<bool>.Ok(true);
     }

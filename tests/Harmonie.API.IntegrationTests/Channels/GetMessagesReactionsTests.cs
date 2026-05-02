@@ -68,6 +68,8 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
         reactions[0].Emoji.Should().Be("\U0001f44d");
         reactions[0].Count.Should().Be(1);
         reactions[0].ReactedByMe.Should().BeTrue();
+        reactions[0].Users.Should().HaveCount(1);
+        reactions[0].Users[0].UserId.Should().Be(owner.UserId);
     }
 
     [Fact]
@@ -150,6 +152,8 @@ public sealed class GetMessagesReactionsTests : IClassFixture<HarmonieWebApplica
         reactions[0].Emoji.Should().Be("\u2764");
         reactions[0].Count.Should().Be(1);
         reactions[0].ReactedByMe.Should().BeTrue();
+        reactions[0].Users.Should().HaveCount(1);
+        reactions[0].Users[0].UserId.Should().Be(caller.UserId);
     }
 
     [Fact]

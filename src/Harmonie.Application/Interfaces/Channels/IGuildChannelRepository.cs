@@ -9,7 +9,9 @@ namespace Harmonie.Application.Interfaces.Channels;
 
 public sealed record ChannelAccessContext(
     GuildChannel Channel,
-    GuildRole? CallerRole);
+    GuildRole? CallerRole,
+    string? CallerUsername = null,
+    string? CallerDisplayName = null);
 
 public sealed record ChannelParticipantProfile(
     Username Username,
