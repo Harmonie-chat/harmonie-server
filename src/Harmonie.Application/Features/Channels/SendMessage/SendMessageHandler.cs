@@ -10,7 +10,6 @@ using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
@@ -20,14 +19,13 @@ public sealed record SendChannelMessageInput(GuildChannelId ChannelId, string? C
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessageInput, SendMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan LinkPreviewTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IMessageRepository _channelMessageRepository;
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
-    private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -36,7 +34,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
-        IServiceScopeFactory serviceScopeFactory,
+        LinkPreviewResolutionService linkPreviewService,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -44,7 +42,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
-        _serviceScopeFactory = serviceScopeFactory;
+        _linkPreviewService = linkPreviewService;
         _logger = logger;
     }
 
@@ -146,11 +144,12 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         var urls = LinkPreviewResolutionService.ParseUrls(messageResult.Value.Content?.Value);
         if (urls.Count > 0)
         {
-            _ = ResolveLinkPreviewsSafelyAsync(
+            _ = _linkPreviewService.ResolveAndNotifyForChannelAsync(
                 messageResult.Value.Id,
                 messageChannelId,
                 ctx.Channel.GuildId,
-                urls);
+                urls,
+                cancellationToken);
         }
 
         var payload = new SendMessageResponse(
@@ -174,44 +173,5 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             "SendMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
             notification.MessageId,
             notification.ChannelId);
-    }
-
-    private async Task ResolveLinkPreviewsSafelyAsync(
-        MessageId messageId,
-        GuildChannelId channelId,
-        GuildId guildId,
-        IReadOnlyList<Uri> urls)
-    {
-        try
-        {
-            using var cts = new CancellationTokenSource(LinkPreviewTimeout);
-
-            using var scope = _serviceScopeFactory.CreateScope();
-            var linkPreviewService = scope.ServiceProvider.GetRequiredService<LinkPreviewResolutionService>();
-            var textChannelNotifier = scope.ServiceProvider.GetRequiredService<ITextChannelNotifier>();
-
-            var previews = await linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
-
-            if (previews.Count > 0)
-            {
-                await BestEffortNotificationHelper.TryNotifyAsync(
-                    token => textChannelNotifier.NotifyMessagePreviewUpdatedAsync(
-                        new TextChannelMessagePreviewUpdatedNotification(messageId, channelId, guildId, previews),
-                        token),
-                    NotificationTimeout,
-                    _logger,
-                    "Link preview notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-                    messageId,
-                    channelId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "Link preview resolution failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-                messageId,
-                channelId);
-        }
     }
 }

@@ -1,7 +1,14 @@
+using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Entities.Messages;
+using Harmonie.Domain.ValueObjects.Channels;
+using Harmonie.Domain.ValueObjects.Conversations;
+using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Messages.ResolveLinkPreviews;
@@ -9,19 +16,18 @@ namespace Harmonie.Application.Features.Messages.ResolveLinkPreviews;
 public sealed class LinkPreviewResolutionService
 {
     private static readonly TimeSpan PreviewCacheMaxAge = TimeSpan.FromHours(24);
+    private static readonly TimeSpan ResolutionTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
     private const int MaxUrlsPerMessage = 5;
 
-    private readonly ILinkPreviewRepository _linkPreviewRepository;
-    private readonly ILinkPreviewFetcher _linkPreviewFetcher;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<LinkPreviewResolutionService> _logger;
 
     public LinkPreviewResolutionService(
-        ILinkPreviewRepository linkPreviewRepository,
-        ILinkPreviewFetcher linkPreviewFetcher,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<LinkPreviewResolutionService> logger)
     {
-        _linkPreviewRepository = linkPreviewRepository;
-        _linkPreviewFetcher = linkPreviewFetcher;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -52,10 +58,95 @@ public sealed class LinkPreviewResolutionService
         return urls;
     }
 
-    public async Task<IReadOnlyList<LinkPreviewDto>> ResolveForMessageAsync(
+    public async Task ResolveAndNotifyForChannelAsync(
         MessageId messageId,
+        GuildChannelId channelId,
+        GuildId guildId,
         IReadOnlyList<Uri> urls,
         CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(ResolutionTimeout);
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ILinkPreviewRepository>();
+            var fetcher = scope.ServiceProvider.GetRequiredService<ILinkPreviewFetcher>();
+            var notifier = scope.ServiceProvider.GetRequiredService<ITextChannelNotifier>();
+
+            var previews = await ResolveAsync(messageId, urls, repo, fetcher, cts.Token);
+
+            if (previews.Count > 0)
+            {
+                await BestEffortNotificationHelper.TryNotifyAsync(
+                    token => notifier.NotifyMessagePreviewUpdatedAsync(
+                        new TextChannelMessagePreviewUpdatedNotification(messageId, channelId, guildId, previews),
+                        token),
+                    NotificationTimeout,
+                    _logger,
+                    "Link preview channel notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+                    messageId,
+                    channelId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Link preview channel resolution failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
+                messageId,
+                channelId);
+        }
+    }
+
+    public async Task ResolveAndNotifyForConversationAsync(
+        MessageId messageId,
+        ConversationId conversationId,
+        IReadOnlyList<Uri> urls,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(ResolutionTimeout);
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ILinkPreviewRepository>();
+            var fetcher = scope.ServiceProvider.GetRequiredService<ILinkPreviewFetcher>();
+            var notifier = scope.ServiceProvider.GetRequiredService<IConversationMessageNotifier>();
+
+            var previews = await ResolveAsync(messageId, urls, repo, fetcher, cts.Token);
+
+            if (previews.Count > 0)
+            {
+                await BestEffortNotificationHelper.TryNotifyAsync(
+                    token => notifier.NotifyMessagePreviewUpdatedAsync(
+                        new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, previews),
+                        token),
+                    NotificationTimeout,
+                    _logger,
+                    "Link preview conversation notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+                    messageId,
+                    conversationId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Link preview conversation resolution failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
+                messageId,
+                conversationId);
+        }
+    }
+
+    private async Task<IReadOnlyList<LinkPreviewDto>> ResolveAsync(
+        MessageId messageId,
+        IReadOnlyList<Uri> urls,
+        ILinkPreviewRepository repo,
+        ILinkPreviewFetcher fetcher,
+        CancellationToken cancellationToken)
     {
         var previews = new List<LinkPreviewDto>(urls.Count);
 
@@ -66,7 +157,7 @@ public sealed class LinkPreviewResolutionService
 
             try
             {
-                var preview = await ResolveSingleUrlAsync(messageId, url, cancellationToken);
+                var preview = await ResolveSingleUrlAsync(messageId, url, repo, fetcher, cancellationToken);
                 if (preview is not null)
                     previews.Add(preview);
             }
@@ -87,18 +178,20 @@ public sealed class LinkPreviewResolutionService
         return previews;
     }
 
-    private async Task<LinkPreviewDto?> ResolveSingleUrlAsync(
+    private static async Task<LinkPreviewDto?> ResolveSingleUrlAsync(
         MessageId messageId,
         Uri url,
+        ILinkPreviewRepository repo,
+        ILinkPreviewFetcher fetcher,
         CancellationToken cancellationToken)
     {
         var urlText = url.ToString();
 
-        var cached = await _linkPreviewRepository.TryGetRecentPreviewAsync(
+        var cached = await repo.TryGetRecentPreviewAsync(
             urlText, PreviewCacheMaxAge, cancellationToken);
         if (cached is not null)
         {
-            await _linkPreviewRepository.AddAsync(
+            await repo.AddAsync(
                 MessageLinkPreview.Rehydrate(
                     messageId,
                     urlText,
@@ -111,7 +204,7 @@ public sealed class LinkPreviewResolutionService
             return MapToDto(urlText, cached.Title, cached.Description, cached.ImageUrl, cached.SiteName);
         }
 
-        var metadata = await _linkPreviewFetcher.FetchAsync(url, cancellationToken);
+        var metadata = await fetcher.FetchAsync(url, cancellationToken);
         if (metadata is null)
             return null;
 
@@ -125,7 +218,7 @@ public sealed class LinkPreviewResolutionService
             metadata.SiteName,
             DateTime.UtcNow);
 
-        await _linkPreviewRepository.AddAsync(preview, cancellationToken);
+        await repo.AddAsync(preview, cancellationToken);
 
         return MapToDto(resolvedUrl, metadata.Title, metadata.Description, metadata.ImageUrl, metadata.SiteName);
     }

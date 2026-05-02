@@ -52,16 +52,15 @@ public sealed class SendConversationMessageHandlerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var linkPreviewService = new LinkPreviewResolutionService(
-            _linkPreviewRepositoryMock.Object,
-            _linkPreviewFetcherMock.Object,
-            NullLogger<LinkPreviewResolutionService>.Instance);
-
         var scopeMock = new Mock<IServiceScope>();
-        scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(LinkPreviewResolutionService)))
-            .Returns(linkPreviewService);
-        scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(IConversationMessageNotifier)))
+        var scopeProviderMock = new Mock<IServiceProvider>();
+        scopeProviderMock.Setup(s => s.GetService(typeof(ILinkPreviewRepository)))
+            .Returns(_linkPreviewRepositoryMock.Object);
+        scopeProviderMock.Setup(s => s.GetService(typeof(ILinkPreviewFetcher)))
+            .Returns(_linkPreviewFetcherMock.Object);
+        scopeProviderMock.Setup(s => s.GetService(typeof(IConversationMessageNotifier)))
             .Returns(_directMessageNotifierMock.Object);
+        scopeMock.Setup(s => s.ServiceProvider).Returns(scopeProviderMock.Object);
 
         _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
         _serviceScopeFactoryMock.Setup(f => f.CreateScope())
@@ -73,7 +72,9 @@ public sealed class SendConversationMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _unitOfWorkMock.Object,
             _directMessageNotifierMock.Object,
-            _serviceScopeFactoryMock.Object,
+            new LinkPreviewResolutionService(
+                _serviceScopeFactoryMock.Object,
+                NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<SendMessageHandler>.Instance);
     }
 

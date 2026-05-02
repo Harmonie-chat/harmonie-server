@@ -8,7 +8,6 @@ using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SendMessage;
@@ -18,14 +17,13 @@ public sealed record SendConversationMessageInput(ConversationId ConversationId,
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse>
 {
     private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan LinkPreviewTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _conversationMessageRepository;
     private readonly MessageAttachmentResolver _messageAttachmentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
-    private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -34,7 +32,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         MessageAttachmentResolver messageAttachmentResolver,
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
-        IServiceScopeFactory serviceScopeFactory,
+        LinkPreviewResolutionService linkPreviewService,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -42,7 +40,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _messageAttachmentResolver = messageAttachmentResolver;
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
-        _serviceScopeFactory = serviceScopeFactory;
+        _linkPreviewService = linkPreviewService;
         _logger = logger;
     }
 
@@ -135,10 +133,11 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         var urls = LinkPreviewResolutionService.ParseUrls(messageResult.Value.Content?.Value);
         if (urls.Count > 0)
         {
-            _ = ResolveLinkPreviewsSafelyAsync(
+            _ = _linkPreviewService.ResolveAndNotifyForConversationAsync(
                 messageResult.Value.Id,
                 messageConversationId,
-                urls);
+                urls,
+                cancellationToken);
         }
 
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
@@ -160,43 +159,5 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             "SendConversationMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
             notification.MessageId,
             notification.ConversationId);
-    }
-
-    private async Task ResolveLinkPreviewsSafelyAsync(
-        MessageId messageId,
-        ConversationId conversationId,
-        IReadOnlyList<Uri> urls)
-    {
-        try
-        {
-            using var cts = new CancellationTokenSource(LinkPreviewTimeout);
-
-            using var scope = _serviceScopeFactory.CreateScope();
-            var linkPreviewService = scope.ServiceProvider.GetRequiredService<LinkPreviewResolutionService>();
-            var conversationMessageNotifier = scope.ServiceProvider.GetRequiredService<IConversationMessageNotifier>();
-
-            var previews = await linkPreviewService.ResolveForMessageAsync(messageId, urls, cts.Token);
-
-            if (previews.Count > 0)
-            {
-                await BestEffortNotificationHelper.TryNotifyAsync(
-                    token => conversationMessageNotifier.NotifyMessagePreviewUpdatedAsync(
-                        new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, previews),
-                        token),
-                    NotificationTimeout,
-                    _logger,
-                    "Conversation link preview notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-                    messageId,
-                    conversationId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "Conversation link preview resolution failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-                messageId,
-                conversationId);
-        }
     }
 }
