@@ -76,13 +76,6 @@ public sealed class PinMessageHandler : IAuthenticatedHandler<ChannelPinMessageI
                 "Message was not found");
         }
 
-        var isAlreadyPinned = await _pinnedMessageRepository.IsPinnedAsync(request.MessageId, cancellationToken);
-        if (isAlreadyPinned)
-        {
-            return ApplicationResponse<bool>.Ok(true);
-        }
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
         var pinnedMessage = PinnedMessage.Create(request.MessageId, currentUserId);
         if (pinnedMessage.IsFailure || pinnedMessage.Value is null)
         {
@@ -91,6 +84,7 @@ public sealed class PinMessageHandler : IAuthenticatedHandler<ChannelPinMessageI
                 pinnedMessage.Error ?? "Invalid pin");
         }
 
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
         await _pinnedMessageRepository.AddAsync(pinnedMessage.Value, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 

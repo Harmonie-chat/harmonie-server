@@ -67,12 +67,6 @@ public sealed class UnpinMessageHandler : IAuthenticatedHandler<ConversationUnpi
                 "Message was not found");
         }
 
-        var isPinned = await _pinnedMessageRepository.IsPinnedAsync(request.MessageId, cancellationToken);
-        if (!isPinned)
-        {
-            return ApplicationResponse<bool>.Ok(true);
-        }
-
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
         await _pinnedMessageRepository.RemoveAsync(request.MessageId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
