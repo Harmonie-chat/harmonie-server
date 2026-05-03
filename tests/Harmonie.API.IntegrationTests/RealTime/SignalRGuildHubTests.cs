@@ -66,6 +66,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -120,6 +121,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.ChannelId.Should().Be(channelId.ToString());
         eventPayload.Name.Should().Be($"renamed-{prefix}");
     }
@@ -175,7 +177,9 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.ChannelId.Should().Be(channelId.ToString());
+        eventPayload.ChannelName.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -237,6 +241,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.Channels.Should().NotBeEmpty();
 
         var reorderedCh1 = eventPayload.Channels.First(c => c.ChannelId == ch1.ToString());
@@ -287,6 +292,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().NotBeNullOrEmpty();
     }
 
@@ -337,6 +343,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().NotBeNullOrEmpty();
     }
 
@@ -387,6 +394,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().Be(targetMember.UserId.ToString());
     }
 
@@ -405,20 +413,24 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
             .Build();
     }
 
-    private sealed record SignalRGuildDeletedEvent(string GuildId);
+    private sealed record SignalRGuildDeletedEvent(string GuildId, string GuildName);
 
     private sealed record SignalRChannelUpdatedEvent(
         string GuildId,
+        string GuildName,
         string ChannelId,
         string Name,
         int Position);
 
     private sealed record SignalRChannelDeletedEvent(
         string GuildId,
-        string ChannelId);
+        string GuildName,
+        string ChannelId,
+        string ChannelName);
 
     private sealed record SignalRChannelsReorderedEvent(
         string GuildId,
+        string GuildName,
         SignalRChannelPositionItem[] Channels);
 
     private sealed record SignalRChannelPositionItem(
@@ -427,6 +439,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
     private sealed record SignalRMemberJoinedEvent(
         string GuildId,
+        string GuildName,
         string UserId,
         string Username,
         string? DisplayName,
@@ -434,6 +447,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
     private sealed record SignalRMemberLeftEvent(
         string GuildId,
+        string GuildName,
         string UserId,
         string Username,
         string? DisplayName);
@@ -484,6 +498,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().Be(targetMember.UserId.ToString());
     }
 
@@ -534,6 +549,7 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(createGuildPayload.GuildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().Be(targetMember.UserId.ToString());
         eventPayload.NewRole.Should().Be("Admin");
     }
@@ -588,18 +604,21 @@ public sealed class SignalRGuildHubTests : IClassFixture<HarmonieWebApplicationF
 
     private sealed record SignalRMemberBannedEvent(
         string GuildId,
+        string GuildName,
         string UserId,
         string Username,
         string? DisplayName);
 
     private sealed record SignalRMemberRemovedEvent(
         string GuildId,
+        string GuildName,
         string UserId,
         string Username,
         string? DisplayName);
 
     private sealed record SignalRMemberRoleUpdatedEvent(
         string GuildId,
+        string GuildName,
         string UserId,
         string Username,
         string? DisplayName,
