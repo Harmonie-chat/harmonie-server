@@ -82,10 +82,9 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelP
             .Select(x => new GetPinnedMessagesItemResponse(
                 MessageId: x.MessageId,
                 AuthorUserId: x.AuthorUserId,
+                AuthorUsername: x.AuthorUsername,
+                AuthorDisplayName: x.AuthorDisplayName,
                 Content: x.Content,
-                Attachments: x.Attachments,
-                Reactions: x.Reactions,
-                LinkPreviews: x.LinkPreviews,
                 CreatedAtUtc: x.CreatedAtUtc,
                 UpdatedAtUtc: x.UpdatedAtUtc,
                 PinnedByUserId: x.PinnedByUserId,

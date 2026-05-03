@@ -1,6 +1,4 @@
-using System.Data;
 using Dapper;
-using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -123,6 +121,8 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         var sql = $@"
                    SELECT m.id AS ""Id"",
                           m.author_user_id AS ""AuthorUserId"",
+                          u.username AS ""AuthorUsername"",
+                          u.display_name AS ""AuthorDisplayName"",
                           m.content AS ""Content"",
                           m.created_at_utc AS ""CreatedAtUtc"",
                           m.updated_at_utc AS ""UpdatedAtUtc"",
@@ -131,6 +131,7 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
                           pm.pinned_at_utc AS ""PinnedAtUtc""
                    FROM pinned_messages pm
                    INNER JOIN messages m ON m.id = pm.message_id
+                   INNER JOIN users u ON u.id = m.author_user_id
                    WHERE m.{context.Filter}
                      AND {cursorCondition}
                    ORDER BY pm.pinned_at_utc DESC, pm.message_id DESC
@@ -151,38 +152,17 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
 
-        var messageIds = pageRows.Select(r => r.Id).ToArray();
-
-        var attachmentsByMessageId = await MessageRepositoryHelpers.GetAttachmentsByMessageIdsAsync(
-            _dbSession, messageIds, cancellationToken);
-
-        var (reactionsByMessageId, linkPreviewsByMessageId) = await GetReactionsAndLinkPreviewsAsync(
-            messageIds, callerId, cancellationToken);
-
         var items = pageRows
-            .Select(row =>
-            {
-                attachmentsByMessageId.TryGetValue(row.Id, out var attachments);
-                reactionsByMessageId.TryGetValue(row.Id, out var reactions);
-                linkPreviewsByMessageId.TryGetValue(row.Id, out var linkPreviews);
-
-                return new PinnedMessageSummary(
-                    MessageId: row.Id,
-                    AuthorUserId: row.AuthorUserId,
-                    Content: row.DeletedAtUtc is null ? row.Content : null,
-                    Attachments: attachments?.Select(a => new MessageAttachmentDto(
-                        a.FileId.Value, a.FileName, a.ContentType, a.SizeBytes)).ToArray()
-                        ?? Array.Empty<MessageAttachmentDto>(),
-                    Reactions: reactions?.Select(r => new MessageReactionDto(
-                        r.Emoji, r.Count, r.ReactedByCaller,
-                        r.Users.Select(u => new ReactionUserDto(u.UserId, u.Username, u.DisplayName)).ToArray())).ToArray()
-                        ?? Array.Empty<MessageReactionDto>(),
-                    LinkPreviews: linkPreviews?.ToArray(),
-                    CreatedAtUtc: row.CreatedAtUtc,
-                    UpdatedAtUtc: row.UpdatedAtUtc,
-                    PinnedByUserId: row.PinnedByUserId,
-                    PinnedAtUtc: row.PinnedAtUtc);
-            })
+            .Select(row => new PinnedMessageSummary(
+                MessageId: row.Id,
+                AuthorUserId: row.AuthorUserId,
+                AuthorUsername: row.AuthorUsername ?? string.Empty,
+                AuthorDisplayName: row.AuthorDisplayName,
+                Content: row.DeletedAtUtc is null ? row.Content : null,
+                CreatedAtUtc: row.CreatedAtUtc,
+                UpdatedAtUtc: row.UpdatedAtUtc,
+                PinnedByUserId: row.PinnedByUserId,
+                PinnedAtUtc: row.PinnedAtUtc))
             .ToArray();
 
         PinnedMessagesCursor? nextCursor = null;
@@ -195,66 +175,5 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         return new PinnedMessagesPage(items, nextCursor);
     }
 
-    private async Task<(IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> Reactions,
-        IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>> LinkPreviews)> GetReactionsAndLinkPreviewsAsync(
-        Guid[] messageIds,
-        UserId callerId,
-        CancellationToken cancellationToken)
-    {
-        if (messageIds.Length == 0)
-            return (new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>(),
-                    new Dictionary<Guid, IReadOnlyList<LinkPreviewDto>>());
-
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-
-        var sql = $@"
-                   SELECT message_id AS ""MessageId"",
-                          emoji AS ""Emoji"",
-                          COUNT(*) AS ""Count"",
-                          BOOL_OR(user_id = @CallerId) AS ""ReactedByCaller""
-                   FROM message_reactions
-                   WHERE message_id = ANY(@MessageIds)
-                   GROUP BY message_id, emoji;
-
-                   SELECT mr.message_id AS ""MessageId"",
-                          mr.emoji AS ""Emoji"",
-                          u.id AS ""UserId"",
-                          u.username AS ""Username"",
-                          u.display_name AS ""DisplayName""
-                   FROM message_reactions mr
-                   JOIN users u ON u.id = mr.user_id
-                   WHERE mr.message_id = ANY(@MessageIds)
-                   ORDER BY mr.message_id, mr.emoji, mr.created_at_utc;
-
-                   SELECT message_id AS ""MessageId"",
-                          url AS ""Url"",
-                          title AS ""Title"",
-                          description AS ""Description"",
-                          image_url AS ""ImageUrl"",
-                          site_name AS ""SiteName""
-                   FROM message_link_previews
-                   WHERE message_id = ANY(@MessageIds);
-                   ";
-
-        var parameters = new DynamicParameters();
-        parameters.Add("MessageIds", messageIds);
-        parameters.Add("CallerId", callerId.Value);
-
-        var command = new CommandDefinition(
-            sql,
-            parameters,
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken);
-
-        using var multi = await connection.QueryMultipleAsync(command);
-
-        var reactionSummaries = (await multi.ReadAsync<ReactionSummaryRow>()).ToArray();
-        var reactionUsers = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
-        var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
-
-        var reactions = MessageRepositoryHelpers.BuildReactionsDictionary(reactionSummaries, reactionUsers);
-        var linkPreviews = MessageRepositoryHelpers.BuildLinkPreviewsDictionary(linkPreviewRows);
-
-        return (reactions, linkPreviews);
-    }
 }
+

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
-using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Conversations.GetPinnedMessages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -95,10 +94,9 @@ public sealed class GetConversationPinnedMessagesHandlerTests
         var summaries = new[]
         {
             new PinnedMessageSummary(
-                MessageId: Guid.NewGuid(), AuthorUserId: participant.Value, Content: "pinned dm",
-                Attachments: Array.Empty<MessageAttachmentDto>(),
-                Reactions: Array.Empty<MessageReactionDto>(),
-                LinkPreviews: null,
+                MessageId: Guid.NewGuid(), AuthorUserId: participant.Value,
+                AuthorUsername: "dm_user", AuthorDisplayName: "DM User",
+                Content: "pinned dm",
                 CreatedAtUtc: now, UpdatedAtUtc: null,
                 PinnedByUserId: participant.Value, PinnedAtUtc: now)
         };

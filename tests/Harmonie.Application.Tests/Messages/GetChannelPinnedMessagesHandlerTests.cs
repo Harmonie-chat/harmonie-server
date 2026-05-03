@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
-using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.GetPinnedMessages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Messages;
@@ -110,17 +109,15 @@ public sealed class GetChannelPinnedMessagesHandlerTests
         var summaries = new[]
         {
             new PinnedMessageSummary(
-                MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(), Content: "second",
-                Attachments: Array.Empty<MessageAttachmentDto>(),
-                Reactions: Array.Empty<MessageReactionDto>(),
-                LinkPreviews: null,
+                MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(),
+                AuthorUsername: "second_user", AuthorDisplayName: "Second",
+                Content: "second",
                 CreatedAtUtc: now.AddMinutes(-2), UpdatedAtUtc: null,
                 PinnedByUserId: Guid.NewGuid(), PinnedAtUtc: now.AddMinutes(-1)),
             new PinnedMessageSummary(
-                MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(), Content: "first",
-                Attachments: Array.Empty<MessageAttachmentDto>(),
-                Reactions: Array.Empty<MessageReactionDto>(),
-                LinkPreviews: null,
+                MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(),
+                AuthorUsername: "first_user", AuthorDisplayName: "First",
+                Content: "first",
                 CreatedAtUtc: now.AddMinutes(-10), UpdatedAtUtc: null,
                 PinnedByUserId: Guid.NewGuid(), PinnedAtUtc: now)
         };
