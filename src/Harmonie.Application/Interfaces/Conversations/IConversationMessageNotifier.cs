@@ -27,6 +27,8 @@ public interface IConversationMessageNotifier
 public sealed record ConversationMessageCreatedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
@@ -38,14 +40,20 @@ public sealed record ConversationMessageCreatedNotification(
 public sealed record ConversationMessageUpdatedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     string? Content,
     DateTime UpdatedAtUtc);
 
 public sealed record ConversationMessageDeletedNotification(
     MessageId MessageId,
-    ConversationId ConversationId);
+    ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType);
 
 public sealed record ConversationMessagePreviewUpdatedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     IReadOnlyList<LinkPreviewDto> Previews);

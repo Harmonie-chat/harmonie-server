@@ -218,7 +218,9 @@ public sealed class DeleteConversationMessageHandlerTests
             x => x.NotifyMessageDeletedAsync(
                 It.Is<ConversationMessageDeletedNotification>(n =>
                     n.MessageId == messageId
-                    && n.ConversationId == conversation.Id),
+                    && n.ConversationId == conversation.Id
+                    && n.ConversationName == null
+                    && n.ConversationType == "Direct"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

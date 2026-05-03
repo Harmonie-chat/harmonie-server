@@ -196,6 +196,8 @@ public sealed class AddConversationReactionHandlerTests
             x => x.NotifyReactionAddedToConversationAsync(
                 It.Is<ConversationReactionAddedNotification>(n =>
                     n.ConversationId == conversation.Id &&
+                    n.ConversationName == null &&
+                    n.ConversationType == "Direct" &&
                     n.MessageId == messageId &&
                     n.UserId == participantOne &&
                     n.Username == TestUsername &&

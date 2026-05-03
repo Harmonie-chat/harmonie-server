@@ -104,6 +104,8 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
             new ConversationMessageUpdatedNotification(
                 message.Id,
                 messageConversationId,
+                access.Conversation.Name,
+                access.Conversation.Type.ToString(),
                 message.Content?.Value,
                 updatedAtUtc.Value));
 

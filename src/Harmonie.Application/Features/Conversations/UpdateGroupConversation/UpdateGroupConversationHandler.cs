@@ -78,7 +78,8 @@ public sealed class UpdateGroupConversationHandler : IAuthenticatedHandler<Updat
             ct => _conversationNotifier.NotifyConversationUpdatedAsync(
                 new ConversationUpdatedNotification(
                     ConversationId: conversation.Id,
-                    Name: conversation.Name),
+                    Name: conversation.Name,
+                    ConversationType: conversation.Type.ToString()),
                 ct),
             NotificationTimeout,
             _logger,

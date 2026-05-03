@@ -68,6 +68,8 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
             ct => _conversationNotifier.NotifyParticipantLeftAsync(
                 new ConversationParticipantLeftNotification(
                     request.ConversationId,
+                    access.Conversation.Name,
+                    access.Conversation.Type.ToString(),
                     currentUserId,
                     access.CallerUsername ?? string.Empty,
                     access.CallerDisplayName), ct),

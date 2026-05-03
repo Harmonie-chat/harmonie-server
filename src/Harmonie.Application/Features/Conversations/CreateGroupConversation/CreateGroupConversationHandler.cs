@@ -72,6 +72,7 @@ public sealed class CreateGroupConversationHandler : IAuthenticatedHandler<Creat
                     new ConversationCreatedNotification(
                         ConversationId: conversation.Id,
                         Name: conversation.Name,
+                        ConversationType: conversation.Type.ToString(),
                         Participants: participantDtos),
                     ct);
             },

@@ -188,6 +188,8 @@ public sealed class UnpinConversationMessageHandlerTests
             x => x.NotifyMessageUnpinnedInConversationAsync(
                 It.Is<ConversationPinRemovedNotification>(n =>
                     n.ConversationId == conversation.Id &&
+                    n.ConversationName == null &&
+                    n.ConversationType == "Direct" &&
                     n.MessageId == messageId &&
                     n.UnpinnedByUserId == participant &&
                     n.UnpinnedByUsername == TestUsername &&

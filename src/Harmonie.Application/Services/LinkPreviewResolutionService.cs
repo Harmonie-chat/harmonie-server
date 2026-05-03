@@ -137,6 +137,8 @@ public sealed class LinkPreviewResolutionService
     public async Task ResolveAndNotifyForConversationAsync(
         MessageId messageId,
         ConversationId conversationId,
+        string? conversationName,
+        string conversationType,
         IReadOnlyList<Uri> urls,
         CancellationToken cancellationToken = default)
     {
@@ -156,7 +158,7 @@ public sealed class LinkPreviewResolutionService
             {
                 await BestEffortNotificationHelper.TryNotifyAsync(
                     token => notifier.NotifyMessagePreviewUpdatedAsync(
-                        new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, previews),
+                        new ConversationMessagePreviewUpdatedNotification(messageId, conversationId, conversationName, conversationType, previews),
                         token),
                     NotificationTimeout,
                     _logger,

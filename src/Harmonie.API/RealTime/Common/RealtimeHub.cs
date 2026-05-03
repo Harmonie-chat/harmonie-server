@@ -133,6 +133,8 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
             Username: access.CallerUsername ?? string.Empty,
             DisplayName: access.CallerDisplayName,
             ConversationId: conversationId,
+            ConversationName: access.Conversation.Name,
+            ConversationType: access.Conversation.Type.ToString(),
             Timestamp: DateTime.UtcNow);
 
         await Clients.GroupExcept(
@@ -195,4 +197,6 @@ public sealed record ConversationUserTypingEvent(
     string Username,
     string? DisplayName,
     Guid ConversationId,
+    string? ConversationName,
+    string ConversationType,
     DateTime Timestamp);

@@ -225,7 +225,9 @@ public sealed class DeleteConversationHandlerTests
         _conversationNotifierMock.Verify(
             x => x.NotifyParticipantLeftAsync(
                 It.Is<ConversationParticipantLeftNotification>(n =>
-                    n.ConversationId == groupConversation.Id && n.UserId == callerId && n.Username == "leaver" && n.DisplayName == "Leaver Display"),
+                    n.ConversationId == groupConversation.Id && n.UserId == callerId && n.Username == "leaver" && n.DisplayName == "Leaver Display"
+                    && n.ConversationName == groupConversation.Name
+                    && n.ConversationType == "Group"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

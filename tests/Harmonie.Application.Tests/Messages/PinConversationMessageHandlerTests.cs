@@ -188,6 +188,8 @@ public sealed class PinConversationMessageHandlerTests
             x => x.NotifyMessagePinnedInConversationAsync(
                 It.Is<ConversationPinAddedNotification>(n =>
                     n.ConversationId == conversation.Id &&
+                    n.ConversationName == null &&
+                    n.ConversationType == "Direct" &&
                     n.MessageId == messageId &&
                     n.PinnedByUserId == participant &&
                     n.PinnedByUsername == TestUsername &&

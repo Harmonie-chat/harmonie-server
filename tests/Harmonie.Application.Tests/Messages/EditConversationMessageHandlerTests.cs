@@ -256,6 +256,8 @@ public sealed class EditConversationMessageHandlerTests
                 It.Is<ConversationMessageUpdatedNotification>(n =>
                     n.MessageId == message.Id
                     && n.ConversationId == conversation.Id
+                    && n.ConversationName == null
+                    && n.ConversationType == "Direct"
                     && n.Content == "updated content"),
                 It.IsAny<CancellationToken>()),
             Times.Once);

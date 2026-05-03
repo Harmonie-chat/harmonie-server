@@ -88,6 +88,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                         new ConversationCreatedNotification(
                             ConversationId: conversationId,
                             Name: null,
+                            ConversationType: "Direct",
                             Participants: participantDtos),
                         ct);
                 },
