@@ -21,8 +21,12 @@ public sealed class SignalRUserProfileNotifier : IUserProfileNotifier
 
         var payload = new UserProfileUpdatedEvent(
             UserId: notification.UserId.Value,
+            Username: notification.Username,
             DisplayName: notification.DisplayName,
-            AvatarFileId: notification.AvatarFileId?.Value);
+            AvatarFileId: notification.AvatarFileId?.Value,
+            AvatarColor: notification.AvatarColor,
+            AvatarIcon: notification.AvatarIcon,
+            AvatarBg: notification.AvatarBg);
 
         var broadcastTasks = notification.GuildIds
             .Select(guildId =>
@@ -41,5 +45,9 @@ public sealed class SignalRUserProfileNotifier : IUserProfileNotifier
 
 public sealed record UserProfileUpdatedEvent(
     Guid UserId,
+    string Username,
     string? DisplayName,
-    Guid? AvatarFileId);
+    Guid? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg);
