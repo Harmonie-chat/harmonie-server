@@ -92,7 +92,9 @@ public sealed class AddReactionHandler : IAuthenticatedHandler<ChannelAddReactio
             new ChannelReactionAddedNotification(
                 request.MessageId,
                 request.ChannelId,
+                ctx.Channel.Name,
                 ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty,
                 currentUserId,
                 ctx.CallerUsername ?? string.Empty,
                 ctx.CallerDisplayName,

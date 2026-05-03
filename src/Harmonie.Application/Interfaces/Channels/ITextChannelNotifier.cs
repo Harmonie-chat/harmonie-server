@@ -28,7 +28,9 @@ public interface ITextChannelNotifier
 public sealed record TextChannelMessageCreatedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     UserId AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
@@ -39,17 +41,23 @@ public sealed record TextChannelMessageCreatedNotification(
 public sealed record TextChannelMessageUpdatedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     string? Content,
     DateTime UpdatedAtUtc);
 
 public sealed record TextChannelMessageDeletedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
-    GuildId GuildId);
+    string ChannelName,
+    GuildId GuildId,
+    string GuildName);
 
 public sealed record TextChannelMessagePreviewUpdatedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     IReadOnlyList<LinkPreviewDto> Previews);

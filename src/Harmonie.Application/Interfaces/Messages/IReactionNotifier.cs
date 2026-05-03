@@ -28,7 +28,9 @@ public interface IReactionNotifier
 public sealed record ChannelReactionAddedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     UserId UserId,
     string Username,
     string? DisplayName,
@@ -45,7 +47,9 @@ public sealed record ConversationReactionAddedNotification(
 public sealed record ChannelReactionRemovedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     UserId UserId,
     string Username,
     string? DisplayName,

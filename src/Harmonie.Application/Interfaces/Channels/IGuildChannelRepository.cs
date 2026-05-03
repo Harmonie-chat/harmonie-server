@@ -11,7 +11,8 @@ public sealed record ChannelAccessContext(
     GuildChannel Channel,
     GuildRole? CallerRole,
     string? CallerUsername = null,
-    string? CallerDisplayName = null);
+    string? CallerDisplayName = null,
+    string? GuildName = null);
 
 public sealed record ChannelParticipantProfile(
     Username Username,

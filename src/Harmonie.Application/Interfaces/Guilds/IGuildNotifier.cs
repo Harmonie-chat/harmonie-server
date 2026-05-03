@@ -58,16 +58,19 @@ public interface IGuildNotifier
 }
 
 public sealed record GuildDeletedNotification(
-    GuildId GuildId);
+    GuildId GuildId,
+    string GuildName);
 
 public sealed record GuildOwnershipTransferredNotification(
     GuildId GuildId,
+    string GuildName,
     UserId NewOwnerUserId,
     string NewOwnerUsername,
     string? NewOwnerDisplayName);
 
 public sealed record ChannelCreatedNotification(
     GuildId GuildId,
+    string GuildName,
     GuildChannelId ChannelId,
     string Name,
     GuildChannelType Type,
@@ -76,16 +79,20 @@ public sealed record ChannelCreatedNotification(
 
 public sealed record ChannelUpdatedNotification(
     GuildId GuildId,
+    string GuildName,
     GuildChannelId ChannelId,
     string Name,
     int Position);
 
 public sealed record ChannelDeletedNotification(
     GuildId GuildId,
-    GuildChannelId ChannelId);
+    string GuildName,
+    GuildChannelId ChannelId,
+    string ChannelName);
 
 public sealed record ChannelsReorderedNotification(
     GuildId GuildId,
+    string GuildName,
     IReadOnlyList<ChannelPositionItem> Channels);
 
 public sealed record ChannelPositionItem(
@@ -94,6 +101,7 @@ public sealed record ChannelPositionItem(
 
 public sealed record MemberJoinedNotification(
     GuildId GuildId,
+    string GuildName,
     UserId UserId,
     string Username,
     string? DisplayName,
@@ -101,24 +109,28 @@ public sealed record MemberJoinedNotification(
 
 public sealed record MemberLeftNotification(
     GuildId GuildId,
+    string GuildName,
     UserId UserId,
     string Username,
     string? DisplayName);
 
 public sealed record MemberBannedNotification(
     GuildId GuildId,
+    string GuildName,
     UserId BannedUserId,
     string Username,
     string? DisplayName);
 
 public sealed record MemberRemovedNotification(
     GuildId GuildId,
+    string GuildName,
     UserId RemovedUserId,
     string Username,
     string? DisplayName);
 
 public sealed record MemberRoleUpdatedNotification(
     GuildId GuildId,
+    string GuildName,
     UserId UserId,
     string Username,
     string? DisplayName,

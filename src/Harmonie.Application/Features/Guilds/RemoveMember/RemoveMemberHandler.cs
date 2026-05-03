@@ -81,6 +81,7 @@ public sealed class RemoveMemberHandler : IAuthenticatedHandler<RemoveMemberInpu
             ct => _guildNotifier.NotifyMemberRemovedAsync(
                 new MemberRemovedNotification(
                     GuildId: request.GuildId,
+                    GuildName: ctx.Guild.Name.Value,
                     RemovedUserId: request.TargetId,
                     Username: targetInfo!.Username,
                     DisplayName: targetInfo.DisplayName),

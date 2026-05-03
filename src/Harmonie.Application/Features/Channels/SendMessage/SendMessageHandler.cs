@@ -133,7 +133,9 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             new TextChannelMessageCreatedNotification(
                 messageResult.Value.Id,
                 messageChannelId,
+                ctx.Channel.Name,
                 ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty,
                 messageResult.Value.AuthorUserId,
                 ctx.CallerUsername ?? string.Empty,
                 ctx.CallerDisplayName,
@@ -150,7 +152,9 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             _ = _linkPreviewService.ResolveAndNotifyForChannelAsync(
                 messageResult.Value.Id,
                 messageChannelId,
+                ctx.Channel.Name,
                 ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty,
                 urls,
                 cancellationToken);
         }

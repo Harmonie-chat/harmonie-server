@@ -86,6 +86,7 @@ public sealed class TransferOwnershipHandler
         await NotifyOwnershipTransferredSafelyAsync(
             new GuildOwnershipTransferredNotification(
                 request.GuildId,
+                ctx.Guild.Name.Value,
                 request.NewOwnerId,
                 ctx.CallerUsername ?? string.Empty,
                 ctx.CallerDisplayName));

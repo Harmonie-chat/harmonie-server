@@ -127,6 +127,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 ct => _guildNotifier.NotifyMemberBannedAsync(
                     new MemberBannedNotification(
                         GuildId: request.GuildId,
+                        GuildName: ctx.Guild.Name.Value,
                         BannedUserId: request.TargetId,
                         Username: targetInfo!.Username,
                         DisplayName: targetInfo.DisplayName),

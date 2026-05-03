@@ -93,7 +93,9 @@ public sealed class LinkPreviewResolutionService
     public async Task ResolveAndNotifyForChannelAsync(
         MessageId messageId,
         GuildChannelId channelId,
+        string channelName,
         GuildId guildId,
+        string guildName,
         IReadOnlyList<Uri> urls,
         CancellationToken cancellationToken = default)
     {
@@ -113,7 +115,7 @@ public sealed class LinkPreviewResolutionService
             {
                 await BestEffortNotificationHelper.TryNotifyAsync(
                     token => notifier.NotifyMessagePreviewUpdatedAsync(
-                        new TextChannelMessagePreviewUpdatedNotification(messageId, channelId, guildId, previews),
+                        new TextChannelMessagePreviewUpdatedNotification(messageId, channelId, channelName, guildId, guildName, previews),
                         token),
                     NotificationTimeout,
                     _logger,

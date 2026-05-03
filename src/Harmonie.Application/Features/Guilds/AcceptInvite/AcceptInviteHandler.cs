@@ -14,6 +14,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IGuildBanRepository _guildBanRepository;
+    private readonly IGuildRepository _guildRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUserRepository _userRepository;
@@ -24,6 +25,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         IGuildInviteRepository guildInviteRepository,
         IGuildMemberRepository guildMemberRepository,
         IGuildBanRepository guildBanRepository,
+        IGuildRepository guildRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
         IUserRepository userRepository,
@@ -33,6 +35,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         _guildInviteRepository = guildInviteRepository;
         _guildMemberRepository = guildMemberRepository;
         _guildBanRepository = guildBanRepository;
+        _guildRepository = guildRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
         _userRepository = userRepository;
@@ -98,6 +101,9 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
                 memberResult.Error ?? "Unable to create guild membership");
         }
 
+        var guild = await _guildRepository.GetByIdAsync(invite.GuildId, cancellationToken);
+        var guildName = guild?.Name.Value ?? "Unknown Guild";
+
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
 
         var added = await _guildMemberRepository.TryAddAsync(memberResult.Value, cancellationToken);
@@ -125,6 +131,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
             ct => _guildNotifier.NotifyMemberJoinedAsync(
                 new MemberJoinedNotification(
                     GuildId: invite.GuildId,
+                    GuildName: guildName,
                     UserId: currentUserId,
                     Username: user?.Username.Value ?? string.Empty,
                     DisplayName: user?.DisplayName,

@@ -118,6 +118,7 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
         await _guildNotifier.NotifyChannelsReorderedAsync(
             new ChannelsReorderedNotification(
                 GuildId: input.GuildId,
+                GuildName: ctx.Guild.Name.Value,
                 Channels: updatedChannels
                     .Select(c => new ChannelPositionItem(c.Id, c.Position))
                     .ToArray()),

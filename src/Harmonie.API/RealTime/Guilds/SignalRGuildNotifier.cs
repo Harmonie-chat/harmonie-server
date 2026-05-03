@@ -23,7 +23,8 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
         ArgumentNullException.ThrowIfNull(notification);
 
         var payload = new GuildDeletedEvent(
-            GuildId: notification.GuildId.Value);
+            GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
@@ -38,6 +39,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new GuildOwnershipTransferredEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             NewOwnerUserId: notification.NewOwnerUserId.Value,
             NewOwnerUsername: notification.NewOwnerUsername,
             NewOwnerDisplayName: notification.NewOwnerDisplayName);
@@ -55,6 +57,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new ChannelCreatedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
             Name: notification.Name,
             Type: notification.Type.ToString(),
@@ -74,6 +77,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new ChannelUpdatedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
             Name: notification.Name,
             Position: notification.Position);
@@ -91,7 +95,9 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new ChannelDeletedEvent(
             GuildId: notification.GuildId.Value,
-            ChannelId: notification.ChannelId.Value);
+            GuildName: notification.GuildName,
+            ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetGuildGroupName(notification.GuildId))
@@ -106,6 +112,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new ChannelsReorderedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             Channels: notification.Channels
                 .Select(c => new ChannelPositionItemEvent(c.ChannelId.Value, c.Position))
                 .ToArray());
@@ -123,6 +130,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new MemberJoinedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName,
@@ -141,6 +149,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new MemberLeftEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName);
@@ -158,6 +167,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var memberBannedPayload = new MemberBannedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             UserId: notification.BannedUserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName);
@@ -170,7 +180,8 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
         if (connectionIds.Count > 0)
         {
             var youWereBannedPayload = new YouWereBannedEvent(
-                GuildId: notification.GuildId.Value);
+                GuildId: notification.GuildId.Value,
+                GuildName: notification.GuildName);
 
             await _hubContext.Clients
                 .Clients(connectionIds)
@@ -186,6 +197,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var memberRemovedPayload = new MemberRemovedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             UserId: notification.RemovedUserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName);
@@ -198,7 +210,8 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
         if (connectionIds.Count > 0)
         {
             var youWereKickedPayload = new YouWereKickedEvent(
-                GuildId: notification.GuildId.Value);
+                GuildId: notification.GuildId.Value,
+                GuildName: notification.GuildName);
 
             await _hubContext.Clients
                 .Clients(connectionIds)
@@ -214,6 +227,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new MemberRoleUpdatedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName,
@@ -232,7 +246,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new GuildUpdatedEvent(
             GuildId: notification.GuildId.Value,
-            Name: notification.Name,
+            GuildName: notification.Name,
             IconFileId: notification.IconFileId?.Value);
 
         await _hubContext.Clients
@@ -242,16 +256,19 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 }
 
 public sealed record GuildDeletedEvent(
-    Guid GuildId);
+    Guid GuildId,
+    string GuildName);
 
 public sealed record GuildOwnershipTransferredEvent(
     Guid GuildId,
+    string GuildName,
     Guid NewOwnerUserId,
     string NewOwnerUsername,
     string? NewOwnerDisplayName);
 
 public sealed record ChannelCreatedEvent(
     Guid GuildId,
+    string GuildName,
     Guid ChannelId,
     string Name,
     string Type,
@@ -260,16 +277,20 @@ public sealed record ChannelCreatedEvent(
 
 public sealed record ChannelUpdatedEvent(
     Guid GuildId,
+    string GuildName,
     Guid ChannelId,
     string Name,
     int Position);
 
 public sealed record ChannelDeletedEvent(
     Guid GuildId,
-    Guid ChannelId);
+    string GuildName,
+    Guid ChannelId,
+    string ChannelName);
 
 public sealed record ChannelsReorderedEvent(
     Guid GuildId,
+    string GuildName,
     ChannelPositionItemEvent[] Channels);
 
 public sealed record ChannelPositionItemEvent(
@@ -278,6 +299,7 @@ public sealed record ChannelPositionItemEvent(
 
 public sealed record MemberJoinedEvent(
     Guid GuildId,
+    string GuildName,
     Guid UserId,
     string Username,
     string? DisplayName,
@@ -285,30 +307,36 @@ public sealed record MemberJoinedEvent(
 
 public sealed record MemberLeftEvent(
     Guid GuildId,
+    string GuildName,
     Guid UserId,
     string Username,
     string? DisplayName);
 
 public sealed record MemberBannedEvent(
     Guid GuildId,
+    string GuildName,
     Guid UserId,
     string Username,
     string? DisplayName);
 
 public sealed record YouWereBannedEvent(
-    Guid GuildId);
+    Guid GuildId,
+    string GuildName);
 
 public sealed record MemberRemovedEvent(
     Guid GuildId,
+    string GuildName,
     Guid UserId,
     string Username,
     string? DisplayName);
 
 public sealed record YouWereKickedEvent(
-    Guid GuildId);
+    Guid GuildId,
+    string GuildName);
 
 public sealed record MemberRoleUpdatedEvent(
     Guid GuildId,
+    string GuildName,
     Guid UserId,
     string Username,
     string? DisplayName,
@@ -316,5 +344,5 @@ public sealed record MemberRoleUpdatedEvent(
 
 public sealed record GuildUpdatedEvent(
     Guid GuildId,
-    string Name,
+    string GuildName,
     Guid? IconFileId);
