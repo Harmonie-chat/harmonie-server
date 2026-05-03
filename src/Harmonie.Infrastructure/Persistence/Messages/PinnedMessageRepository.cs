@@ -15,28 +15,6 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         _dbSession = dbSession;
     }
 
-    public async Task<bool> IsPinnedAsync(
-        MessageId messageId,
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-                           SELECT EXISTS (
-                               SELECT 1
-                               FROM pinned_messages
-                               WHERE message_id = @MessageId
-                           )
-                           """;
-
-        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(
-            sql,
-            new { MessageId = messageId.Value },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken);
-
-        return await connection.ExecuteScalarAsync<bool>(command);
-    }
-
     public async Task AddAsync(
         PinnedMessage pinnedMessage,
         CancellationToken cancellationToken = default)

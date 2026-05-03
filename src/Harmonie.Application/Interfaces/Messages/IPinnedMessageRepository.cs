@@ -6,10 +6,6 @@ namespace Harmonie.Application.Interfaces.Messages;
 
 public interface IPinnedMessageRepository
 {
-    Task<bool> IsPinnedAsync(
-        MessageId messageId,
-        CancellationToken cancellationToken = default);
-
     Task AddAsync(
         PinnedMessage pinnedMessage,
         CancellationToken cancellationToken = default);
