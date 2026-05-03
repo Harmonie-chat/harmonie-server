@@ -1,3 +1,4 @@
+using Harmonie.Application.Common.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -45,6 +46,7 @@ public sealed record PinnedMessageSummary(
     string AuthorUsername,
     string? AuthorDisplayName,
     string? Content,
+    IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     Guid PinnedByUserId,

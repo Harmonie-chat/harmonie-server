@@ -1,3 +1,5 @@
+using Harmonie.Application.Common.Messages;
+
 namespace Harmonie.Application.Features.Channels.GetPinnedMessages;
 
 public sealed record GetPinnedMessagesResponse(
@@ -11,6 +13,7 @@ public sealed record GetPinnedMessagesItemResponse(
     string AuthorUsername,
     string? AuthorDisplayName,
     string? Content,
+    IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     Guid PinnedByUserId,

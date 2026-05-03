@@ -77,6 +77,7 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversa
                 AuthorUsername: x.AuthorUsername,
                 AuthorDisplayName: x.AuthorDisplayName,
                 Content: x.Content,
+                Attachments: x.Attachments,
                 CreatedAtUtc: x.CreatedAtUtc,
                 UpdatedAtUtc: x.UpdatedAtUtc,
                 PinnedByUserId: x.PinnedByUserId,

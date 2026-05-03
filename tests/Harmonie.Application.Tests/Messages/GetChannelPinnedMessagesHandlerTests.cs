@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.GetPinnedMessages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Messages;
@@ -112,12 +113,14 @@ public sealed class GetChannelPinnedMessagesHandlerTests
                 MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(),
                 AuthorUsername: "second_user", AuthorDisplayName: "Second",
                 Content: "second",
+                Attachments: Array.Empty<MessageAttachmentDto>(),
                 CreatedAtUtc: now.AddMinutes(-2), UpdatedAtUtc: null,
                 PinnedByUserId: Guid.NewGuid(), PinnedAtUtc: now.AddMinutes(-1)),
             new PinnedMessageSummary(
                 MessageId: Guid.NewGuid(), AuthorUserId: Guid.NewGuid(),
                 AuthorUsername: "first_user", AuthorDisplayName: "First",
                 Content: "first",
+                Attachments: Array.Empty<MessageAttachmentDto>(),
                 CreatedAtUtc: now.AddMinutes(-10), UpdatedAtUtc: null,
                 PinnedByUserId: Guid.NewGuid(), PinnedAtUtc: now)
         };
