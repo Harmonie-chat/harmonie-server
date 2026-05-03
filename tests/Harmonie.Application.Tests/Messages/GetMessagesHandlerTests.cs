@@ -169,10 +169,11 @@ public sealed class GetMessagesHandlerTests
         response.Data!.Items.Should().HaveCount(1);
         response.Data.Items[0].LinkPreviews.Should().NotBeNull();
         response.Data.Items[0].LinkPreviews.Should().HaveCount(1);
-        response.Data.Items[0].LinkPreviews![0].Url.Should().Be("https://example.com");
-        response.Data.Items[0].LinkPreviews[0].Title.Should().Be("Example");
-        response.Data.Items[0].LinkPreviews[0].Description.Should().Be("Description");
-        response.Data.Items[0].LinkPreviews[0].SiteName.Should().Be("Example Site");
+        var firstPreview = response.Data.Items[0].LinkPreviews![0];
+        firstPreview.Url.Should().Be("https://example.com");
+        firstPreview.Title.Should().Be("Example");
+        firstPreview.Description.Should().Be("Description");
+        firstPreview.SiteName.Should().Be("Example Site");
     }
 
     [Fact]
@@ -260,12 +261,12 @@ public sealed class GetMessagesHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Data!.Items.Should().HaveCount(1);
-        response.Data.Items[0].ReplyTo.Should().NotBeNull();
-        response.Data.Items[0].ReplyTo!.MessageId.Should().Be(targetMessageId.Value);
-        response.Data.Items[0].ReplyTo.AuthorUsername.Should().Be("targetuser");
-        response.Data.Items[0].ReplyTo.AuthorDisplayName.Should().Be("Target Display");
-        response.Data.Items[0].ReplyTo.Content.Should().Be("target message content");
-        response.Data.Items[0].ReplyTo.HasAttachments.Should().BeTrue();
+        var replyTo = response.Data.Items[0].ReplyTo!;
+        replyTo.MessageId.Should().Be(targetMessageId.Value);
+        replyTo.AuthorUsername.Should().Be("targetuser");
+        replyTo.AuthorDisplayName.Should().Be("Target Display");
+        replyTo.Content.Should().Be("target message content");
+        replyTo.HasAttachments.Should().BeTrue();
     }
 
 }
