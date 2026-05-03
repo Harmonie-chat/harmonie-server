@@ -15,6 +15,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
     private readonly IConversationRepository _conversationRepository;
     private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
+    private readonly IConversationNotifier _conversationNotifier;
     private readonly ILogger<OpenConversationHandler> _logger;
 
     public OpenConversationHandler(
@@ -22,12 +23,14 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         IConversationRepository conversationRepository,
         IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
+        IConversationNotifier conversationNotifier,
         ILogger<OpenConversationHandler> logger)
     {
         _userRepository = userRepository;
         _conversationRepository = conversationRepository;
         _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
+        _conversationNotifier = conversationNotifier;
         _logger = logger;
     }
 
@@ -71,16 +74,26 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         if (result.WasCreated)
         {
             var conversationId = result.Conversation.Id;
+
+            var participantDtos = new[] { ToParticipantDto(currentUser), ToParticipantDto(targetUser) };
+
             await BestEffortNotificationHelper.TryNotifyAsync(
                 async ct =>
                 {
                     await Task.WhenAll(
                         _realtimeGroupManager.AddUserToConversationGroupAsync(currentUserId, conversationId, ct),
                         _realtimeGroupManager.AddUserToConversationGroupAsync(targetUserId, conversationId, ct));
+
+                    await _conversationNotifier.NotifyConversationCreatedAsync(
+                        new ConversationCreatedNotification(
+                            ConversationId: conversationId,
+                            Name: null,
+                            Participants: participantDtos),
+                        ct);
                 },
                 TimeSpan.FromSeconds(5),
                 _logger,
-                "Failed to subscribe users to conversation {ConversationId} SignalR group",
+                "Failed to notify direct conversation {ConversationId} creation",
                 conversationId);
         }
         else

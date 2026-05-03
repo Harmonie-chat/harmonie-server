@@ -20,6 +20,7 @@ public sealed class OpenConversationHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
+    private readonly Mock<IConversationNotifier> _conversationNotifierMock;
     private readonly OpenConversationHandler _handler;
 
     public OpenConversationHandlerTests()
@@ -27,16 +28,22 @@ public sealed class OpenConversationHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
+        _conversationNotifierMock = new Mock<IConversationNotifier>();
 
         _participantRepositoryMock
             .Setup(x => x.GetByConversationIdAsync(It.IsAny<ConversationId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _conversationNotifierMock
+            .Setup(x => x.NotifyConversationCreatedAsync(It.IsAny<ConversationCreatedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _handler = new OpenConversationHandler(
             _userRepositoryMock.Object,
             _conversationRepositoryMock.Object,
             _participantRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            _conversationNotifierMock.Object,
             NullLogger<OpenConversationHandler>.Instance);
     }
 
