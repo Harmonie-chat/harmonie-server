@@ -62,9 +62,9 @@ public sealed class AsyncApiGeneratorTests
         var doc = CreateGenerator().Generate();
 
         doc.Operations.Should().NotBeNull();
-        doc.Operations.Should().ContainKey("Fake.sendMessage");
-        doc.Operations!["Fake.sendMessage"].Action.Should().Be("receive");
-        doc.Operations["Fake.sendMessage"].Channel.Ref.Should().Be("#/channels/Fake");
+        doc.Operations.Should().ContainKey("Fake.SendMessage");
+        doc.Operations!["Fake.SendMessage"].Action.Should().Be("receive");
+        doc.Operations["Fake.SendMessage"].Channel.Ref.Should().Be("#/channels/Fake");
     }
 
     [Fact]
@@ -72,8 +72,8 @@ public sealed class AsyncApiGeneratorTests
     {
         var doc = CreateGenerator().Generate();
 
-        doc.Operations.Should().ContainKey("Fake.onMessage");
-        doc.Operations!["Fake.onMessage"].Action.Should().Be("send");
+        doc.Operations.Should().ContainKey("Fake.OnMessage");
+        doc.Operations!["Fake.OnMessage"].Action.Should().Be("send");
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class AsyncApiGeneratorTests
     {
         var doc = CreateGenerator().Generate();
 
-        var messageKey = "Fake.onReady.Message";
+        var messageKey = "Fake.OnReady.Message";
         doc.Components!.Messages.Should().ContainKey(messageKey);
         doc.Components.Messages![messageKey].Payload.Should().BeNull();
     }
@@ -91,7 +91,7 @@ public sealed class AsyncApiGeneratorTests
     {
         var doc = CreateGenerator().Generate();
 
-        var messageKey = "Fake.onMessage.Message";
+        var messageKey = "Fake.OnMessage.Message";
         doc.Components!.Messages.Should().ContainKey(messageKey);
         doc.Components.Messages![messageKey].Payload.Should().NotBeNull();
     }
@@ -101,8 +101,8 @@ public sealed class AsyncApiGeneratorTests
     {
         var doc = CreateGenerator().Generate();
 
-        var messageKey = "Fake.sendMessage.Message";
-        var opRef = doc.Operations!["Fake.sendMessage"].Messages!.Single().Ref;
+        var messageKey = "Fake.SendMessage.Message";
+        var opRef = doc.Operations!["Fake.SendMessage"].Messages!.Single().Ref;
         opRef.Should().Be($"#/components/messages/{messageKey}");
 
         var channelRef = doc.Channels!["Fake"].Messages![messageKey].Ref;
@@ -145,6 +145,6 @@ public sealed class AsyncApiGeneratorTests
         var doc = CreateGenerator().Generate();
 
         // FakeHub has JoinRoom(string roomId, int userId) — multi-param creates a Parameters schema
-        doc.Components!.Schemas!.Should().ContainKey("Fake.joinRoom.Parameters");
+        doc.Components!.Schemas!.Should().ContainKey("Fake.JoinRoom.Parameters");
     }
 }
