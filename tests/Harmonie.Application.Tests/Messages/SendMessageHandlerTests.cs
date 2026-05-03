@@ -10,6 +10,7 @@ using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
+using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -78,6 +79,7 @@ public sealed class SendMessageHandlerTests
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
                 NullLogger<LinkPreviewResolutionService>.Instance),
+            _channelMessageRepositoryMock.Object,
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -400,6 +402,199 @@ public sealed class SendMessageHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithValidReplyTarget_ShouldIncludeReplyToInResponseAndNotification()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var targetMessageId = MessageId.New();
+        var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member, "sender", "Sender Display"));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                channel.Id,
+                null,
+                UserId.New(),
+                "targetuser",
+                "Target Display",
+                "target message content",
+                true,
+                false,
+                null));
+
+        Message? persistedMessage = null;
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Callback<Message, CancellationToken>((message, _) => persistedMessage = message)
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds, request.ReplyToMessageId),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().NotBeNull();
+        response.Data.ReplyTo!.MessageId.Should().Be(targetMessageId.Value);
+        response.Data.ReplyTo.AuthorUsername.Should().Be("targetuser");
+        response.Data.ReplyTo.AuthorDisplayName.Should().Be("Target Display");
+        response.Data.ReplyTo.Content.Should().Be("target message content");
+        response.Data.ReplyTo.HasAttachments.Should().BeTrue();
+        response.Data.ReplyTo.IsDeleted.Should().BeFalse();
+        persistedMessage.Should().NotBeNull();
+        persistedMessage!.ReplyToMessageId.Should().Be(targetMessageId);
+
+        _textChannelNotifierMock.Verify(
+            x => x.NotifyMessageCreatedAsync(
+                It.Is<TextChannelMessageCreatedNotification>(n =>
+                    n.ReplyTo != null
+                    && n.ReplyTo.MessageId == targetMessageId.Value
+                    && n.ReplyTo.AuthorUsername == "targetuser"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithReplyTargetInDifferentChannel_ShouldReturnNotFound()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var otherChannel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var targetMessageId = MessageId.New();
+        var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                otherChannel.Id,
+                null,
+                UserId.New(),
+                "targetuser",
+                null,
+                "content",
+                false,
+                false,
+                null));
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds, request.ReplyToMessageId),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithNonExistentReplyTarget_ShouldReturnNotFound()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var targetMessageId = MessageId.New();
+        var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ReplyTargetSummary?)null);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds, request.ReplyToMessageId),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithSoftDeletedReplyTarget_ShouldAcceptAndRenderDeletedShape()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var targetMessageId = MessageId.New();
+        var deletedAt = DateTime.UtcNow.AddHours(-1);
+        var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                channel.Id,
+                null,
+                UserId.New(),
+                "deleteduser",
+                "Deleted User",
+                null,
+                false,
+                true,
+                deletedAt));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds, request.ReplyToMessageId),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().NotBeNull();
+        response.Data.ReplyTo!.IsDeleted.Should().BeTrue();
+        response.Data.ReplyTo.DeletedAtUtc.Should().Be(deletedAt);
+        response.Data.ReplyTo.Content.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithoutReply_ShouldHaveNullReplyTo()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var request = new SendMessageRequest("hello");
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendChannelMessageInput(channel.Id, request.Content, request.AttachmentFileIds),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().BeNull();
     }
 
 }

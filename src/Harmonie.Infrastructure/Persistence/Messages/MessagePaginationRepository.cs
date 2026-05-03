@@ -1,4 +1,5 @@
 using Dapper;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -42,6 +43,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                           channel_id AS "ChannelId",
                           conversation_id AS "ConversationId",
                           author_user_id AS "AuthorUserId",
+                          reply_to_message_id AS "ReplyToMessageId",
                           content AS "Content",
                           created_at_utc AS "CreatedAtUtc",
                           updated_at_utc AS "UpdatedAtUtc",
@@ -137,6 +139,27 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                          {cursorFilter}
                        ORDER BY created_at_utc DESC, id DESC
                        LIMIT @Take);
+
+                   SELECT m.id AS "TargetMessageId",
+                          m.author_user_id AS "AuthorUserId",
+                          u.username AS "AuthorUsername",
+                          u.display_name AS "AuthorDisplayName",
+                          LEFT(COALESCE(m.content, ''), 200) AS "Content",
+                          m.deleted_at_utc IS NOT NULL AS "IsDeleted",
+                          m.deleted_at_utc AS "DeletedAtUtc",
+                          EXISTS(SELECT 1 FROM message_attachments ma2 WHERE ma2.message_id = m.id) AS "HasAttachments"
+                   FROM messages m
+                   JOIN users u ON u.id = m.author_user_id
+                   WHERE m.id IN (
+                       SELECT t.reply_to_message_id
+                       FROM messages t
+                       WHERE t.channel_id = @ChannelId
+                         AND t.reply_to_message_id IS NOT NULL
+                         AND t.deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY t.created_at_utc DESC, t.id DESC
+                       LIMIT @Take)
+                   ORDER BY m.id;
                    """;
 
         var parameters = new DynamicParameters();
@@ -163,6 +186,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
         var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
         var pinnedRows = (await multi.ReadAsync<PinnedMessageIdRow>()).ToArray();
+        var replyPreviewRows = (await multi.ReadAsync<ReplyPreviewRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -178,6 +202,19 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
 
         var pinnedMessageIds = new HashSet<Guid>(
             pinnedRows.Where(r => pageMessageIds.Contains(r.MessageId)).Select(r => r.MessageId));
+
+        var replyPreviewsByTargetMessageId = replyPreviewRows
+            .ToDictionary(
+                r => r.TargetMessageId,
+                r => new ReplyPreviewDto(
+                    r.TargetMessageId,
+                    r.AuthorUserId,
+                    r.AuthorDisplayName,
+                    r.AuthorUsername,
+                    r.IsDeleted ? null : r.Content,
+                    r.HasAttachments,
+                    r.IsDeleted,
+                    r.DeletedAtUtc));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -203,7 +240,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, replyPreviewsByTargetMessageId, lastReadState);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
@@ -228,6 +265,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                           channel_id AS "ChannelId",
                           conversation_id AS "ConversationId",
                           author_user_id AS "AuthorUserId",
+                          reply_to_message_id AS "ReplyToMessageId",
                           content AS "Content",
                           created_at_utc AS "CreatedAtUtc",
                           updated_at_utc AS "UpdatedAtUtc",
@@ -323,6 +361,27 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                          {cursorFilter}
                        ORDER BY created_at_utc DESC, id DESC
                        LIMIT @Take);
+
+                   SELECT m.id AS "TargetMessageId",
+                          m.author_user_id AS "AuthorUserId",
+                          u.username AS "AuthorUsername",
+                          u.display_name AS "AuthorDisplayName",
+                          LEFT(COALESCE(m.content, ''), 200) AS "Content",
+                          m.deleted_at_utc IS NOT NULL AS "IsDeleted",
+                          m.deleted_at_utc AS "DeletedAtUtc",
+                          EXISTS(SELECT 1 FROM message_attachments ma2 WHERE ma2.message_id = m.id) AS "HasAttachments"
+                   FROM messages m
+                   JOIN users u ON u.id = m.author_user_id
+                   WHERE m.id IN (
+                       SELECT t.reply_to_message_id
+                       FROM messages t
+                       WHERE t.conversation_id = @ConversationId
+                         AND t.reply_to_message_id IS NOT NULL
+                         AND t.deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY t.created_at_utc DESC, t.id DESC
+                       LIMIT @Take)
+                   ORDER BY m.id;
                    """;
 
         var parameters = new DynamicParameters();
@@ -349,6 +408,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
         var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
         var pinnedRows = (await multi.ReadAsync<PinnedMessageIdRow>()).ToArray();
+        var replyPreviewRows = (await multi.ReadAsync<ReplyPreviewRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -364,6 +424,19 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
 
         var pinnedMessageIds = new HashSet<Guid>(
             pinnedRows.Where(r => pageMessageIds.Contains(r.MessageId)).Select(r => r.MessageId));
+
+        var replyPreviewsByTargetMessageId = replyPreviewRows
+            .ToDictionary(
+                r => r.TargetMessageId,
+                r => new ReplyPreviewDto(
+                    r.TargetMessageId,
+                    r.AuthorUserId,
+                    r.AuthorDisplayName,
+                    r.AuthorUsername,
+                    r.IsDeleted ? null : r.Content,
+                    r.HasAttachments,
+                    r.IsDeleted,
+                    r.DeletedAtUtc));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -389,7 +462,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, replyPreviewsByTargetMessageId, lastReadState);
     }
 
     private sealed class ReadStateRow

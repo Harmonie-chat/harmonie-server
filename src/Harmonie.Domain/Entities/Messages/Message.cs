@@ -17,6 +17,8 @@ public sealed class Message : Entity<MessageId>
 
     public MessageContent? Content { get; private set; }
 
+    public MessageId? ReplyToMessageId { get; private set; }
+
     public IReadOnlyList<MessageAttachment> Attachments { get; private set; } = Array.Empty<MessageAttachment>();
 
     public DateTime? DeletedAtUtc { get; private set; }
@@ -26,6 +28,7 @@ public sealed class Message : Entity<MessageId>
         GuildChannelId? channelId,
         ConversationId? conversationId,
         UserId authorUserId,
+        MessageId? replyToMessageId,
         MessageContent? content,
         IReadOnlyList<MessageAttachment> attachments,
         DateTime createdAtUtc,
@@ -36,6 +39,7 @@ public sealed class Message : Entity<MessageId>
         ChannelId = channelId;
         ConversationId = conversationId;
         AuthorUserId = authorUserId;
+        ReplyToMessageId = replyToMessageId;
         Content = content;
         Attachments = attachments.ToArray();
         CreatedAtUtc = createdAtUtc;
@@ -47,7 +51,8 @@ public sealed class Message : Entity<MessageId>
         GuildChannelId channelId,
         UserId authorUserId,
         MessageContent? content,
-        IReadOnlyList<MessageAttachment>? attachments = null)
+        IReadOnlyList<MessageAttachment>? attachments = null,
+        MessageId? replyToMessageId = null)
     {
         if (channelId is null)
             return Result.Failure<Message>("Channel ID is required");
@@ -65,6 +70,7 @@ public sealed class Message : Entity<MessageId>
             channelId,
             conversationId: null,
             authorUserId,
+            replyToMessageId,
             content,
             attachments,
             DateTime.UtcNow,
@@ -76,7 +82,8 @@ public sealed class Message : Entity<MessageId>
         ConversationId conversationId,
         UserId authorUserId,
         MessageContent? content,
-        IReadOnlyList<MessageAttachment>? attachments = null)
+        IReadOnlyList<MessageAttachment>? attachments = null,
+        MessageId? replyToMessageId = null)
     {
         if (conversationId is null)
             return Result.Failure<Message>("Conversation ID is required");
@@ -94,6 +101,7 @@ public sealed class Message : Entity<MessageId>
             channelId: null,
             conversationId,
             authorUserId,
+            replyToMessageId,
             content,
             attachments,
             DateTime.UtcNow,
@@ -140,6 +148,7 @@ public sealed class Message : Entity<MessageId>
         GuildChannelId? channelId,
         ConversationId? conversationId,
         UserId authorUserId,
+        MessageId? replyToMessageId,
         MessageContent? content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc,
@@ -157,6 +166,7 @@ public sealed class Message : Entity<MessageId>
             channelId,
             conversationId,
             authorUserId,
+            replyToMessageId,
             content,
             attachments ?? Array.Empty<MessageAttachment>(),
             createdAtUtc,

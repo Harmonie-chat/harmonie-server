@@ -175,4 +175,97 @@ public sealed class GetMessagesHandlerTests
         response.Data.Items[0].LinkPreviews[0].SiteName.Should().Be("Example Site");
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenMessageHasNoReply_ShouldHaveNullReplyTo()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "no reply", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetChannelPageAsync(
+                channel.Id,
+                It.IsAny<MessageCursor?>(),
+                50,
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MessagePage(
+                [message],
+                null,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>()));
+
+        var response = await _handler.HandleAsync(
+            new GetChannelMessagesInput(channel.Id, Limit: 50),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Items.Should().HaveCount(1);
+        response.Data.Items[0].ReplyTo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMessageHasReplyTo_ShouldIncludeReplyToFromPageData()
+    {
+        var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
+        var userId = UserId.New();
+        var targetMessageId = MessageId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
+
+        var message = ApplicationTestBuilders.CreateChannelMessage(
+            channel.Id, userId, content: "replying",
+            createdAtUtc: DateTime.UtcNow.AddMinutes(-1),
+            replyToMessageId: targetMessageId);
+
+        var replyPreviews = new Dictionary<Guid, ReplyPreviewDto>
+        {
+            [targetMessageId.Value] = new ReplyPreviewDto(
+                targetMessageId.Value,
+                Guid.NewGuid(),
+                "Target Display",
+                "targetuser",
+                "target message content",
+                true,
+                false,
+                null)
+        };
+
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetChannelPageAsync(
+                channel.Id,
+                It.IsAny<MessageCursor?>(),
+                50,
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MessagePage(
+                [message],
+                null,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>(),
+                ReplyPreviewsByTargetMessageId: replyPreviews));
+
+        var response = await _handler.HandleAsync(
+            new GetChannelMessagesInput(channel.Id, Limit: 50),
+            userId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Items.Should().HaveCount(1);
+        response.Data.Items[0].ReplyTo.Should().NotBeNull();
+        response.Data.Items[0].ReplyTo!.MessageId.Should().Be(targetMessageId.Value);
+        response.Data.Items[0].ReplyTo.AuthorUsername.Should().Be("targetuser");
+        response.Data.Items[0].ReplyTo.AuthorDisplayName.Should().Be("Target Display");
+        response.Data.Items[0].ReplyTo.Content.Should().Be("target message content");
+        response.Data.Items[0].ReplyTo.HasAttachments.Should().BeTrue();
+    }
+
 }

@@ -93,7 +93,8 @@ internal static class ApplicationTestBuilders
         UserId authorId,
         string content = "test content",
         DateTime? createdAtUtc = null,
-        IReadOnlyList<MessageAttachment>? attachments = null)
+        IReadOnlyList<MessageAttachment>? attachments = null,
+        MessageId? replyToMessageId = null)
     {
         var contentResult = MessageContent.Create(content);
         if (contentResult.IsFailure || contentResult.Value is null)
@@ -104,6 +105,7 @@ internal static class ApplicationTestBuilders
             channelId: channelId,
             conversationId: null,
             authorUserId: authorId,
+            replyToMessageId: replyToMessageId,
             content: contentResult.Value,
             createdAtUtc: createdAtUtc ?? DateTime.UtcNow,
             updatedAtUtc: null,
@@ -116,7 +118,8 @@ internal static class ApplicationTestBuilders
         UserId authorUserId,
         string content = "original content",
         DateTime? createdAtUtc = null,
-        IReadOnlyList<MessageAttachment>? attachments = null)
+        IReadOnlyList<MessageAttachment>? attachments = null,
+        MessageId? replyToMessageId = null)
     {
         var contentResult = MessageContent.Create(content);
         if (contentResult.IsFailure || contentResult.Value is null)
@@ -127,6 +130,7 @@ internal static class ApplicationTestBuilders
             channelId: null,
             conversationId: conversationId,
             authorUserId: authorUserId,
+            replyToMessageId: replyToMessageId,
             content: contentResult.Value,
             createdAtUtc: createdAtUtc ?? DateTime.UtcNow.AddMinutes(-1),
             updatedAtUtc: null,

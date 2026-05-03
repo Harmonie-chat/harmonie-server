@@ -29,6 +29,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
             AuthorDisplayName: notification.AuthorDisplayName,
             Content: notification.Content,
             Attachments: notification.Attachments,
+            ReplyTo: notification.ReplyTo,
             CreatedAtUtc: notification.CreatedAtUtc);
 
         await _hubContext.Clients
@@ -97,6 +98,7 @@ public sealed record ConversationMessageCreatedEvent(
     string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
+    ReplyPreviewDto? ReplyTo,
     DateTime CreatedAtUtc);
 
 public sealed record ConversationMessageUpdatedEvent(

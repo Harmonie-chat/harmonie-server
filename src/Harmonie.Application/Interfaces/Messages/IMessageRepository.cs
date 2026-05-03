@@ -9,6 +9,18 @@ using Harmonie.Domain.ValueObjects.Users;
 
 namespace Harmonie.Application.Interfaces.Messages;
 
+public sealed record ReplyTargetSummary(
+    MessageId MessageId,
+    GuildChannelId? ChannelId,
+    ConversationId? ConversationId,
+    UserId AuthorUserId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
+    string? Content,
+    bool HasAttachments,
+    bool IsDeleted,
+    DateTime? DeletedAtUtc);
+
 public interface IMessageRepository
 {
     Task AddAsync(
@@ -40,6 +52,10 @@ public interface IMessageRepository
         ConversationId conversationId,
         CancellationToken cancellationToken = default);
 
+    Task<ReplyTargetSummary?> GetReplyTargetSummaryAsync(
+        MessageId messageId,
+        CancellationToken cancellationToken = default);
+
     Task<int> SoftDeleteByAuthorInGuildAsync(
         GuildId guildId,
         UserId authorUserId,
@@ -57,6 +73,7 @@ public sealed record MessagePage(
     IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId,
     IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>>? LinkPreviewsByMessageId = null,
     IReadOnlySet<Guid>? PinnedMessageIds = null,
+    IReadOnlyDictionary<Guid, ReplyPreviewDto>? ReplyPreviewsByTargetMessageId = null,
     MessageReadState? LastReadState = null);
 
 public sealed record SearchGuildMessagesQuery(

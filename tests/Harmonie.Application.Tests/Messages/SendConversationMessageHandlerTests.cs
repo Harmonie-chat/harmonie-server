@@ -10,6 +10,7 @@ using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.Entities.Messages;
+using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.Entities.Uploads;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
@@ -75,6 +76,7 @@ public sealed class SendConversationMessageHandlerTests
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
                 NullLogger<LinkPreviewResolutionService>.Instance),
+            _directMessageRepositoryMock.Object,
             NullLogger<SendMessageHandler>.Instance);
     }
 
@@ -303,5 +305,193 @@ public sealed class SendConversationMessageHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithValidReplyTarget_ShouldIncludeReplyToInResponseAndNotification()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+        var targetMessageId = MessageId.New();
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId), CallerUsername: "sender", CallerDisplayName: "Sender Display"));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                null,
+                conversation.Id,
+                UserId.New(),
+                "targetuser",
+                "Target Display",
+                "target message content",
+                false,
+                false,
+                null));
+
+        Message? persistedMessage = null;
+        _directMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Callback<Message, CancellationToken>((message, _) => persistedMessage = message)
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "hello", ReplyToMessageId: targetMessageId.Value),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().NotBeNull();
+        response.Data.ReplyTo!.MessageId.Should().Be(targetMessageId.Value);
+        response.Data.ReplyTo.AuthorUsername.Should().Be("targetuser");
+        response.Data.ReplyTo.AuthorDisplayName.Should().Be("Target Display");
+        response.Data.ReplyTo.Content.Should().Be("target message content");
+        response.Data.ReplyTo.HasAttachments.Should().BeFalse();
+        response.Data.ReplyTo.IsDeleted.Should().BeFalse();
+        persistedMessage.Should().NotBeNull();
+        persistedMessage!.ReplyToMessageId.Should().Be(targetMessageId);
+
+        _directMessageNotifierMock.Verify(
+            x => x.NotifyMessageCreatedAsync(
+                It.Is<ConversationMessageCreatedNotification>(n =>
+                    n.ReplyTo != null
+                    && n.ReplyTo.MessageId == targetMessageId.Value
+                    && n.ReplyTo.AuthorUsername == "targetuser"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithReplyTargetInDifferentConversation_ShouldReturnNotFound()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+        var otherConversation = ApplicationTestBuilders.CreateConversation(UserId.New(), UserId.New());
+        var targetMessageId = MessageId.New();
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                null,
+                otherConversation.Id,
+                UserId.New(),
+                "targetuser",
+                null,
+                "content",
+                false,
+                false,
+                null));
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "hello", ReplyToMessageId: targetMessageId.Value),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithNonExistentReplyTarget_ShouldReturnNotFound()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+        var targetMessageId = MessageId.New();
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ReplyTargetSummary?)null);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "hello", ReplyToMessageId: targetMessageId.Value),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
+        _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithSoftDeletedReplyTarget_ShouldAcceptAndRenderDeletedShape()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+        var targetMessageId = MessageId.New();
+        var deletedAt = DateTime.UtcNow.AddHours(-1);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplyTargetSummary(
+                targetMessageId,
+                null,
+                conversation.Id,
+                UserId.New(),
+                "deleteduser",
+                "Deleted User",
+                null,
+                false,
+                true,
+                deletedAt));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "hello", ReplyToMessageId: targetMessageId.Value),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().NotBeNull();
+        response.Data.ReplyTo!.IsDeleted.Should().BeTrue();
+        response.Data.ReplyTo.DeletedAtUtc.Should().Be(deletedAt);
+        response.Data.ReplyTo.Content.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithoutReply_ShouldHaveNullReplyTo()
+    {
+        var currentUserId = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, currentUserId)));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.HandleAsync(
+            new SendConversationMessageInput(conversation.Id, "hello"),
+            currentUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.ReplyTo.Should().BeNull();
     }
 }

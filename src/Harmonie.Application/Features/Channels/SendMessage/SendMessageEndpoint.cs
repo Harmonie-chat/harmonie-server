@@ -47,7 +47,7 @@ public static class SendMessageEndpoint
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(new SendChannelMessageInput(channelId, request.Content, request.AttachmentFileIds), currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(new SendChannelMessageInput(channelId, request.Content, request.AttachmentFileIds, request.ReplyToMessageId), currentUserId, cancellationToken);
         return response.ToCreatedHttpResult(data => $"/api/channels/{data.ChannelId}/messages/{data.MessageId}", httpContext);
     }
 }

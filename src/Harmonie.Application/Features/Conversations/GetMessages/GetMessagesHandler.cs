@@ -78,6 +78,11 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
                 IReadOnlyList<LinkPreviewDto>? previews = null;
                 page.LinkPreviewsByMessageId?.TryGetValue(x.Id.Value, out previews);
                 var isPinned = page.PinnedMessageIds?.Contains(x.Id.Value) == true;
+                ReplyPreviewDto? replyTo = null;
+                if (x.ReplyToMessageId is not null)
+                {
+                    page.ReplyPreviewsByTargetMessageId?.TryGetValue(x.ReplyToMessageId.Value, out replyTo);
+                }
                 return new GetMessagesItemResponse(
                     MessageId: x.Id.Value,
                     AuthorUserId: x.AuthorUserId.Value,
@@ -88,6 +93,7 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetConversationMe
                               ?? Array.Empty<MessageReactionDto>(),
                     LinkPreviews: previews?.ToArray(),
                     IsPinned: isPinned,
+                    ReplyTo: replyTo,
                     CreatedAtUtc: x.CreatedAtUtc,
                     UpdatedAtUtc: x.UpdatedAtUtc);
             })
