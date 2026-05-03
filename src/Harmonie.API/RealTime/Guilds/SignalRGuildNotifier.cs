@@ -246,7 +246,7 @@ public sealed class SignalRGuildNotifier : IGuildNotifier
 
         var payload = new GuildUpdatedEvent(
             GuildId: notification.GuildId.Value,
-            GuildName: notification.Name,
+            Name: notification.Name,
             IconFileId: notification.IconFileId?.Value);
 
         await _hubContext.Clients
@@ -344,5 +344,5 @@ public sealed record MemberRoleUpdatedEvent(
 
 public sealed record GuildUpdatedEvent(
     Guid GuildId,
-    string GuildName,
+    string Name,
     Guid? IconFileId);
