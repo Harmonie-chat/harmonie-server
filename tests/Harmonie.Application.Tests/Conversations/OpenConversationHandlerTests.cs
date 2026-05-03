@@ -115,6 +115,17 @@ public sealed class OpenConversationHandlerTests
         response.Data.Created.Should().BeTrue();
         response.Data.Type.Should().Be("direct");
         response.Data.Participants.Should().HaveCount(2);
+
+        // Verify notification was sent
+        await Task.Delay(50, TestContext.Current.CancellationToken); // let best-effort notify complete
+        _conversationNotifierMock.Verify(
+            x => x.NotifyConversationCreatedAsync(
+                It.Is<ConversationCreatedNotification>(n =>
+                    n.ConversationId == conversation.Id &&
+                    n.Name == null &&
+                    n.Participants.Count == 2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
