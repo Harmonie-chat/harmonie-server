@@ -9,10 +9,12 @@ using Harmonie.Application.Features.Conversations.EditMessage;
 using Harmonie.Application.Features.Conversations.GetMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
+using Harmonie.Application.Features.Conversations.PinMessage;
 using Harmonie.Application.Features.Conversations.GetReactionUsers;
 using Harmonie.Application.Features.Conversations.RemoveReaction;
 using Harmonie.Application.Features.Conversations.SearchConversationMessages;
 using Harmonie.Application.Features.Conversations.SendMessage;
+using Harmonie.Application.Features.Conversations.UnpinMessage;
 using Harmonie.Application.Features.Conversations.UpdateGroupConversation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,6 +43,10 @@ public static class ConversationRegistration
         services.AddAuthenticatedHandler<ConversationAddReactionInput, bool, AddReactionHandler>();
         services.AddAuthenticatedHandler<ConversationRemoveReactionInput, bool, RemoveReactionHandler>();
         services.AddAuthenticatedHandler<GetConversationReactionUsersInput, GetReactionUsersResponse, GetReactionUsersHandler>();
+
+        // Pins
+        services.AddAuthenticatedHandler<ConversationPinMessageInput, bool, PinMessageHandler>();
+        services.AddAuthenticatedHandler<ConversationUnpinMessageInput, bool, UnpinMessageHandler>();
 
         return services;
     }

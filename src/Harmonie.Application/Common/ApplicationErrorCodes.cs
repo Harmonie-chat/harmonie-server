@@ -80,6 +80,13 @@ public static class ApplicationErrorCodes
         public const string MessageNotFound = "REACTION_MESSAGE_NOT_FOUND";
     }
 
+    public static class Pin
+    {
+        public const string MessageNotFound = "PIN_MESSAGE_NOT_FOUND";
+        public const string AlreadyPinned = "PIN_ALREADY_PINNED";
+        public const string NotPinned = "PIN_NOT_PINNED";
+    }
+
     public static class User
     {
         public const string NotFound = "USER_NOT_FOUND";

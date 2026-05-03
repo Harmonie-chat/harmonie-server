@@ -8,8 +8,10 @@ using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.GetReactionUsers;
+using Harmonie.Application.Features.Channels.PinMessage;
 using Harmonie.Application.Features.Channels.RemoveReaction;
 using Harmonie.Application.Features.Channels.SendMessage;
+using Harmonie.Application.Features.Channels.UnpinMessage;
 using Harmonie.Application.Features.Channels.UpdateChannel;
 using Harmonie.Domain.ValueObjects.Channels;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +38,10 @@ public static class ChannelRegistration
         services.AddAuthenticatedHandler<ChannelAddReactionInput, bool, AddReactionHandler>();
         services.AddAuthenticatedHandler<ChannelRemoveReactionInput, bool, RemoveReactionHandler>();
         services.AddAuthenticatedHandler<GetChannelReactionUsersInput, GetReactionUsersResponse, GetReactionUsersHandler>();
+
+        // Pins
+        services.AddAuthenticatedHandler<ChannelPinMessageInput, bool, PinMessageHandler>();
+        services.AddAuthenticatedHandler<ChannelUnpinMessageInput, bool, UnpinMessageHandler>();
 
         return services;
     }

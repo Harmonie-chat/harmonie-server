@@ -31,6 +31,7 @@ public static class RealTimeConfiguration
         services.AddScoped<IUserPresenceNotifier, SignalRUserPresenceNotifier>();
         services.AddScoped<IUserProfileNotifier, SignalRUserProfileNotifier>();
         services.AddScoped<IReactionNotifier, SignalRReactionNotifier>();
+        services.AddScoped<IPinNotifier, SignalRPinNotifier>();
         services.AddSingleton<IConnectionTracker, ConnectionTracker>();
         services.AddScoped<IRealtimeGroupManager, SignalRRealtimeGroupManager>();
 
