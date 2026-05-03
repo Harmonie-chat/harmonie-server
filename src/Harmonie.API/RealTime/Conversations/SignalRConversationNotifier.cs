@@ -24,6 +24,7 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
         var payload = new ConversationCreatedEvent(
             ConversationId: notification.ConversationId.Value,
             Name: notification.Name,
+            ConversationType: notification.ConversationType,
             Participants: notification.Participants
                 .Select(p => new ConversationParticipantEventDto(
                     UserId: p.UserId,
@@ -48,6 +49,8 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 
         var payload = new ConversationParticipantLeftEvent(
             ConversationId: notification.ConversationId.Value,
+            ConversationName: notification.ConversationName,
+            ConversationType: notification.ConversationType,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName);
@@ -65,7 +68,8 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 
         var payload = new ConversationUpdatedEvent(
             ConversationId: notification.ConversationId.Value,
-            Name: notification.Name);
+            Name: notification.Name,
+            ConversationType: notification.ConversationType);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
@@ -76,6 +80,7 @@ public sealed class SignalRConversationNotifier : IConversationNotifier
 public sealed record ConversationCreatedEvent(
     Guid ConversationId,
     string? Name,
+    string ConversationType,
     IReadOnlyList<ConversationParticipantEventDto> Participants);
 
 public sealed record ConversationParticipantEventDto(
@@ -87,10 +92,13 @@ public sealed record ConversationParticipantEventDto(
 
 public sealed record ConversationParticipantLeftEvent(
     Guid ConversationId,
+    string? ConversationName,
+    string ConversationType,
     Guid UserId,
     string Username,
     string? DisplayName);
 
 public sealed record ConversationUpdatedEvent(
     Guid ConversationId,
-    string? Name);
+    string? Name,
+    string ConversationType);

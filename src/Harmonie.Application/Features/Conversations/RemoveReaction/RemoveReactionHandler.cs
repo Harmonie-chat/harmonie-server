@@ -74,6 +74,8 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ConversationRe
             new ConversationReactionRemovedNotification(
                 request.MessageId,
                 request.ConversationId,
+                access.Conversation.Name,
+                access.Conversation.Type.ToString(),
                 currentUserId,
                 access.CallerUsername ?? string.Empty,
                 access.CallerDisplayName,

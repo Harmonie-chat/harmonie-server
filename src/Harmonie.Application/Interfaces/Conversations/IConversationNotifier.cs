@@ -22,14 +22,18 @@ public interface IConversationNotifier
 public sealed record ConversationCreatedNotification(
     ConversationId ConversationId,
     string? Name,
+    string ConversationType,
     IReadOnlyList<ConversationParticipantDto> Participants);
 
 public sealed record ConversationParticipantLeftNotification(
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId UserId,
     string Username,
     string? DisplayName);
 
 public sealed record ConversationUpdatedNotification(
     ConversationId ConversationId,
-    string? Name);
+    string? Name,
+    string ConversationType);

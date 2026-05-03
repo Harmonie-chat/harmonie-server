@@ -50,6 +50,8 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
             ChannelId: notification.ChannelId.Value,
             ChannelName: notification.ChannelName,
             ConversationId: null,
+            ConversationName: null,
+            ConversationType: null,
             GuildId: notification.GuildId.Value,
             GuildName: notification.GuildName,
             Previews: notification.Previews);
@@ -133,6 +135,8 @@ public sealed record MessagePreviewUpdatedEvent(
     Guid? ChannelId,
     string? ChannelName,
     Guid? ConversationId,
+    string? ConversationName,
+    string? ConversationType,
     Guid? GuildId,
     string? GuildName,
     IReadOnlyList<LinkPreviewDto> Previews);

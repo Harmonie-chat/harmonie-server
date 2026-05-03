@@ -24,6 +24,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         var payload = new ConversationMessageCreatedEvent(
             MessageId: notification.MessageId.Value,
             ConversationId: notification.ConversationId.Value,
+            ConversationName: notification.ConversationName,
+            ConversationType: notification.ConversationType,
             AuthorUserId: notification.AuthorUserId.Value,
             AuthorUsername: notification.AuthorUsername,
             AuthorDisplayName: notification.AuthorDisplayName,
@@ -48,6 +50,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
             ChannelId: null,
             ChannelName: null,
             ConversationId: notification.ConversationId.Value,
+            ConversationName: notification.ConversationName,
+            ConversationType: notification.ConversationType,
             GuildId: null,
             GuildName: null,
             Previews: notification.Previews);
@@ -66,6 +70,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         var payload = new ConversationMessageUpdatedEvent(
             MessageId: notification.MessageId.Value,
             ConversationId: notification.ConversationId.Value,
+            ConversationName: notification.ConversationName,
+            ConversationType: notification.ConversationType,
             Content: notification.Content,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
@@ -82,7 +88,9 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 
         var payload = new ConversationMessageDeletedEvent(
             MessageId: notification.MessageId.Value,
-            ConversationId: notification.ConversationId.Value);
+            ConversationId: notification.ConversationId.Value,
+            ConversationName: notification.ConversationName,
+            ConversationType: notification.ConversationType);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetConversationGroupName(notification.ConversationId))
@@ -93,6 +101,8 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
 public sealed record ConversationMessageCreatedEvent(
     Guid MessageId,
     Guid ConversationId,
+    string? ConversationName,
+    string ConversationType,
     Guid AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
@@ -104,9 +114,13 @@ public sealed record ConversationMessageCreatedEvent(
 public sealed record ConversationMessageUpdatedEvent(
     Guid MessageId,
     Guid ConversationId,
+    string? ConversationName,
+    string ConversationType,
     string? Content,
     DateTime UpdatedAtUtc);
 
 public sealed record ConversationMessageDeletedEvent(
     Guid MessageId,
-    Guid ConversationId);
+    Guid ConversationId,
+    string? ConversationName,
+    string ConversationType);

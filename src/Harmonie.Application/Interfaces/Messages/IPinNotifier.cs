@@ -39,6 +39,8 @@ public sealed record ChannelPinAddedNotification(
 public sealed record ConversationPinAddedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId PinnedByUserId,
     string PinnedByUsername,
     string? PinnedByDisplayName,
@@ -58,6 +60,8 @@ public sealed record ChannelPinRemovedNotification(
 public sealed record ConversationPinRemovedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId UnpinnedByUserId,
     string UnpinnedByUsername,
     string? UnpinnedByDisplayName,

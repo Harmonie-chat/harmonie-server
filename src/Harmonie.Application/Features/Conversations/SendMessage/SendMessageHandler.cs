@@ -157,6 +157,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             new ConversationMessageCreatedNotification(
                 messageResult.Value.Id,
                 messageConversationId,
+                access.Conversation.Name,
+                access.Conversation.Type.ToString(),
                 messageResult.Value.AuthorUserId,
                 access.CallerUsername ?? string.Empty,
                 access.CallerDisplayName,
@@ -174,6 +176,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             _ = _linkPreviewService.ResolveAndNotifyForConversationAsync(
                 messageResult.Value.Id,
                 messageConversationId,
+                access.Conversation.Name,
+                access.Conversation.Type.ToString(),
                 urls,
                 cancellationToken);
         }

@@ -39,6 +39,8 @@ public sealed record ChannelReactionAddedNotification(
 public sealed record ConversationReactionAddedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId UserId,
     string Username,
     string? DisplayName,
@@ -58,6 +60,8 @@ public sealed record ChannelReactionRemovedNotification(
 public sealed record ConversationReactionRemovedNotification(
     MessageId MessageId,
     ConversationId ConversationId,
+    string? ConversationName,
+    string ConversationType,
     UserId UserId,
     string Username,
     string? DisplayName,

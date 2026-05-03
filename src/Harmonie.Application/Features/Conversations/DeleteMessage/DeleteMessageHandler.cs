@@ -83,7 +83,7 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteConversat
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyMessageDeletedSafelyAsync(
-            new ConversationMessageDeletedNotification(request.MessageId, request.ConversationId));
+            new ConversationMessageDeletedNotification(request.MessageId, request.ConversationId, access.Conversation.Name, access.Conversation.Type.ToString()));
 
         return ApplicationResponse<bool>.Ok(true);
     }
