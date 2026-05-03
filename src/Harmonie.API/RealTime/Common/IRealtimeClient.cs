@@ -61,6 +61,10 @@ public interface IRealtimeClient
     Task ReactionAdded(ReactionAddedEvent payload, CancellationToken cancellationToken = default);
     Task ReactionRemoved(ReactionRemovedEvent payload, CancellationToken cancellationToken = default);
 
+    // Pins
+    Task MessagePinned(MessagePinnedEvent payload, CancellationToken cancellationToken = default);
+    Task MessageUnpinned(MessageUnpinnedEvent payload, CancellationToken cancellationToken = default);
+
     // Link previews
     Task MessagePreviewUpdated(MessagePreviewUpdatedEvent payload, CancellationToken cancellationToken = default);
 }

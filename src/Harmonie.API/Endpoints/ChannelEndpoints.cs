@@ -8,8 +8,10 @@ using ChannelDeleteMessage = Harmonie.Application.Features.Channels.DeleteMessag
 using ChannelEditMessage = Harmonie.Application.Features.Channels.EditMessage.EditMessageEndpoint;
 using ChannelGetMessages = Harmonie.Application.Features.Channels.GetMessages.GetMessagesEndpoint;
 using ChannelGetReactionUsers = Harmonie.Application.Features.Channels.GetReactionUsers.GetReactionUsersEndpoint;
+using ChannelPinMessage = Harmonie.Application.Features.Channels.PinMessage.PinMessageEndpoint;
 using ChannelRemoveReaction = Harmonie.Application.Features.Channels.RemoveReaction.RemoveReactionEndpoint;
 using ChannelSendMessage = Harmonie.Application.Features.Channels.SendMessage.SendMessageEndpoint;
+using ChannelUnpinMessage = Harmonie.Application.Features.Channels.UnpinMessage.UnpinMessageEndpoint;
 
 namespace Harmonie.API.Endpoints;
 
@@ -33,5 +35,9 @@ public static class ChannelEndpoints
         ChannelAddReaction.Map(app);
         ChannelRemoveReaction.Map(app);
         ChannelGetReactionUsers.Map(app);
+
+        // Pins
+        ChannelPinMessage.Map(app);
+        ChannelUnpinMessage.Map(app);
     }
 }
