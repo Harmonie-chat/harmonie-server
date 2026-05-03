@@ -265,7 +265,8 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                                   gc.created_at_utc AS "CreatedAtUtc",
                                   gm.role           AS "Role",
                                   u.username        AS "Username",
-                                  u.display_name    AS "DisplayName"
+                                  u.display_name    AS "DisplayName",
+                                  g.name            AS "GuildName"
                            FROM guild_channels gc
                            LEFT JOIN guild_members gm
                                   ON gm.guild_id = gc.guild_id
@@ -273,6 +274,8 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                            LEFT JOIN users u
                                   ON u.id = @CallerId
                                  AND u.deleted_at IS NULL
+                           LEFT JOIN guilds g
+                                  ON g.id = gc.guild_id
                            WHERE gc.id = @ChannelId
                            LIMIT 1
                            """;
@@ -291,7 +294,8 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                 MapToGuildChannel(row),
                 row.Role.HasValue ? (GuildRole)row.Role.Value : null,
                 row.Username,
-                row.DisplayName);
+                row.DisplayName,
+                row.GuildName);
     }
 
     private static GuildChannel MapToGuildChannel(GuildChannelRow row)
@@ -351,6 +355,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         public short? Role { get; init; }
         public string? Username { get; init; }
         public string? DisplayName { get; init; }
+        public string? GuildName { get; init; }
     }
 
     private sealed class ChannelWithParticipantDto

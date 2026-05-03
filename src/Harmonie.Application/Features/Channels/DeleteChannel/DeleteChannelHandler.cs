@@ -72,7 +72,9 @@ public sealed class DeleteChannelHandler : IAuthenticatedHandler<GuildChannelId,
             ct => _guildNotifier.NotifyChannelDeletedAsync(
                 new ChannelDeletedNotification(
                     GuildId: guildId,
-                    ChannelId: request),
+                    GuildName: ctx.GuildName ?? string.Empty,
+                    ChannelId: request,
+                    ChannelName: ctx.Channel.Name),
                 ct),
             TimeSpan.FromSeconds(5),
             _logger,

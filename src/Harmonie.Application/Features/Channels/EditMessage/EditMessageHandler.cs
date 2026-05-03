@@ -113,7 +113,9 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessag
             new TextChannelMessageUpdatedNotification(
                 message.Id,
                 messageChannelId,
+                ctx.Channel.Name,
                 ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty,
                 message.Content?.Value,
                 updatedAtUtc.Value));
 

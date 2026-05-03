@@ -83,7 +83,9 @@ public sealed class RemoveReactionHandler : IAuthenticatedHandler<ChannelRemoveR
             new ChannelReactionRemovedNotification(
                 request.MessageId,
                 request.ChannelId,
+                ctx.Channel.Name,
                 ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty,
                 currentUserId,
                 ctx.CallerUsername ?? string.Empty,
                 ctx.CallerDisplayName,

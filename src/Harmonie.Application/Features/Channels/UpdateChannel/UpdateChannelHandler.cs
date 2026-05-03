@@ -104,6 +104,7 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
                 ct => _guildNotifier.NotifyChannelUpdatedAsync(
                     new ChannelUpdatedNotification(
                         GuildId: channel.GuildId,
+                        GuildName: ctx.GuildName ?? string.Empty,
                         ChannelId: channel.Id,
                         Name: channel.Name,
                         Position: channel.Position),

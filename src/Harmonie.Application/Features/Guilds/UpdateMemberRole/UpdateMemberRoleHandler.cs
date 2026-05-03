@@ -65,6 +65,7 @@ public sealed class UpdateMemberRoleHandler
         await _guildNotifier.NotifyMemberRoleUpdatedAsync(
             new MemberRoleUpdatedNotification(
                 request.GuildId,
+                ctx.Guild.Name.Value,
                 request.TargetId,
                 targetInfo!.Username,
                 targetInfo.DisplayName,

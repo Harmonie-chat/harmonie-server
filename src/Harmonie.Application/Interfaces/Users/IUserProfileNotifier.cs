@@ -14,7 +14,11 @@ public interface IUserProfileNotifier
 
 public sealed record UserProfileUpdatedNotification(
     UserId UserId,
+    string Username,
     string? DisplayName,
     UploadedFileId? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg,
     IReadOnlyList<GuildId> GuildIds,
     IReadOnlyList<ConversationId> ConversationIds);

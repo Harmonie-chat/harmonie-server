@@ -23,7 +23,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         var payload = new MessageCreatedEvent(
             MessageId: notification.MessageId.Value,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             AuthorUserId: notification.AuthorUserId.Value,
             AuthorUsername: notification.AuthorUsername,
             AuthorDisplayName: notification.AuthorDisplayName,
@@ -45,8 +47,10 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         var payload = new MessagePreviewUpdatedEvent(
             MessageId: notification.MessageId.Value,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             ConversationId: null,
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             Previews: notification.Previews);
 
         await _hubContext.Clients
@@ -63,7 +67,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         var payload = new MessageUpdatedEvent(
             MessageId: notification.MessageId.Value,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             Content: notification.Content,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
@@ -81,7 +87,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
         var payload = new MessageDeletedEvent(
             MessageId: notification.MessageId.Value,
             ChannelId: notification.ChannelId.Value,
-            GuildId: notification.GuildId.Value);
+            ChannelName: notification.ChannelName,
+            GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName);
 
         await _hubContext.Clients
             .Group(RealtimeHub.GetChannelGroupName(notification.ChannelId))
@@ -92,7 +100,9 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
 public sealed record MessageCreatedEvent(
     Guid MessageId,
     Guid ChannelId,
+    string ChannelName,
     Guid GuildId,
+    string GuildName,
     Guid AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
@@ -103,18 +113,24 @@ public sealed record MessageCreatedEvent(
 public sealed record MessageUpdatedEvent(
     Guid MessageId,
     Guid ChannelId,
+    string ChannelName,
     Guid GuildId,
+    string GuildName,
     string? Content,
     DateTime UpdatedAtUtc);
 
 public sealed record MessageDeletedEvent(
     Guid MessageId,
     Guid ChannelId,
-    Guid GuildId);
+    string ChannelName,
+    Guid GuildId,
+    string GuildName);
 
 public sealed record MessagePreviewUpdatedEvent(
     Guid MessageId,
     Guid? ChannelId,
+    string? ChannelName,
     Guid? ConversationId,
     Guid? GuildId,
+    string? GuildName,
     IReadOnlyList<LinkPreviewDto> Previews);

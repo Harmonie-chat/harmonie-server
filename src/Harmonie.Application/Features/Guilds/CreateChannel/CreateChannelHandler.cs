@@ -98,6 +98,7 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
             ct => _guildNotifier.NotifyChannelCreatedAsync(
                 new ChannelCreatedNotification(
                     GuildId: request.GuildId,
+                    GuildName: ctx.Guild.Name.Value,
                     ChannelId: channel.Id,
                     Name: channel.Name,
                     Type: channel.Type,

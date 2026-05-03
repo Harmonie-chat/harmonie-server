@@ -62,7 +62,7 @@ public sealed class DeleteGuildHandler : IAuthenticatedHandler<DeleteGuildInput,
             await transaction.CommitAsync(cancellationToken);
         }
 
-        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(request.GuildId));
+        await NotifyGuildDeletedSafelyAsync(new GuildDeletedNotification(request.GuildId, ctx.Guild.Name.Value));
         await _uploadedFileCleanupService.DeleteIfExistsAsync(guildIconFileId, cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);

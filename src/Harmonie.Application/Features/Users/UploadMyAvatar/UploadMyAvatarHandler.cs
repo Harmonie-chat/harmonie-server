@@ -126,8 +126,12 @@ public sealed class UploadMyAvatarHandler
             ct => _userProfileNotifier.NotifyProfileUpdatedAsync(
                 new UserProfileUpdatedNotification(
                     UserId: user.Id,
+                    Username: user.Username.Value,
                     DisplayName: user.DisplayName,
                     AvatarFileId: user.AvatarFileId,
+                    AvatarColor: user.AvatarColor,
+                    AvatarIcon: user.AvatarIcon,
+                    AvatarBg: user.AvatarBg,
                     GuildIds: notificationContext.GuildIds,
                     ConversationIds: notificationContext.ConversationIds),
                 ct),

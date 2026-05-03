@@ -28,7 +28,9 @@ public interface IPinNotifier
 public sealed record ChannelPinAddedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     UserId PinnedByUserId,
     string PinnedByUsername,
     string? PinnedByDisplayName,
@@ -45,7 +47,9 @@ public sealed record ConversationPinAddedNotification(
 public sealed record ChannelPinRemovedNotification(
     MessageId MessageId,
     GuildChannelId ChannelId,
+    string ChannelName,
     GuildId GuildId,
+    string GuildName,
     UserId UnpinnedByUserId,
     string UnpinnedByUsername,
     string? UnpinnedByDisplayName,

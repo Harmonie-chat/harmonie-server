@@ -20,6 +20,7 @@ public sealed class OpenConversationHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
+    private readonly Mock<IConversationNotifier> _conversationNotifierMock;
     private readonly OpenConversationHandler _handler;
 
     public OpenConversationHandlerTests()
@@ -27,16 +28,22 @@ public sealed class OpenConversationHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
+        _conversationNotifierMock = new Mock<IConversationNotifier>();
 
         _participantRepositoryMock
             .Setup(x => x.GetByConversationIdAsync(It.IsAny<ConversationId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _conversationNotifierMock
+            .Setup(x => x.NotifyConversationCreatedAsync(It.IsAny<ConversationCreatedNotification>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _handler = new OpenConversationHandler(
             _userRepositoryMock.Object,
             _conversationRepositoryMock.Object,
             _participantRepositoryMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
+            _conversationNotifierMock.Object,
             NullLogger<OpenConversationHandler>.Instance);
     }
 
@@ -108,6 +115,17 @@ public sealed class OpenConversationHandlerTests
         response.Data.Created.Should().BeTrue();
         response.Data.Type.Should().Be("direct");
         response.Data.Participants.Should().HaveCount(2);
+
+        // Verify notification was sent
+        await Task.Delay(50, TestContext.Current.CancellationToken); // let best-effort notify complete
+        _conversationNotifierMock.Verify(
+            x => x.NotifyConversationCreatedAsync(
+                It.Is<ConversationCreatedNotification>(n =>
+                    n.ConversationId == conversation.Id &&
+                    n.Name == null &&
+                    n.Participants.Count == 2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

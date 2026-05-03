@@ -96,14 +96,14 @@ public sealed class AsyncApiGenerator
         SchemaGenerator schemaGenerator,
         IReadOnlyDictionary<string, string[]> methodTags)
     {
-        var operationKey = $"{channelKey}.{JsonNamingPolicy.CamelCase.ConvertName(method.Name)}";
+        var operationKey = $"{channelKey}.{method.Name}";
         var messageKey = $"{operationKey}.Message";
 
         var payload = BuildPayloadSchema(hub.HubType, method, channelKey, componentSchemas, schemaGenerator);
 
         componentMessages[messageKey] = new AsyncApiMessage
         {
-            Name = JsonNamingPolicy.CamelCase.ConvertName(method.Name),
+            Name = method.Name,
             Payload = payload,
         };
 
@@ -137,7 +137,7 @@ public sealed class AsyncApiGenerator
             return schemaGenerator.GetSchema(parameters[0].Type, schemas);
 
         // Multiple parameters: create an inline object schema stored in components/schemas
-        var schemaKey = $"{channelKey}.{JsonNamingPolicy.CamelCase.ConvertName(method.Name)}.Parameters";
+        var schemaKey = $"{channelKey}.{method.Name}.Parameters";
         var props = new Dictionary<string, AsyncApiSchema>();
         foreach (var param in parameters)
         {

@@ -91,7 +91,12 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMe
         await transaction.CommitAsync(cancellationToken);
 
         await NotifyMessageDeletedSafelyAsync(
-            new TextChannelMessageDeletedNotification(request.MessageId, request.ChannelId, ctx.Channel.GuildId));
+            new TextChannelMessageDeletedNotification(
+                request.MessageId,
+                request.ChannelId,
+                ctx.Channel.Name,
+                ctx.Channel.GuildId,
+                ctx.GuildName ?? string.Empty));
 
         return ApplicationResponse<bool>.Ok(true);
     }

@@ -45,8 +45,10 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
         var payload = new MessagePreviewUpdatedEvent(
             MessageId: notification.MessageId.Value,
             ChannelId: null,
+            ChannelName: null,
             ConversationId: notification.ConversationId.Value,
             GuildId: null,
+            GuildName: null,
             Previews: notification.Previews);
 
         await _hubContext.Clients
