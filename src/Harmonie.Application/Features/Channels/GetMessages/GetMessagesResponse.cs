@@ -17,5 +17,6 @@ public sealed record GetMessagesItemResponse(
     IReadOnlyList<MessageAttachmentDto> Attachments,
     IReadOnlyList<MessageReactionDto> Reactions,
     IReadOnlyList<LinkPreviewDto>? LinkPreviews,
+    bool IsPinned,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

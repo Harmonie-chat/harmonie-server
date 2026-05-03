@@ -16,7 +16,7 @@ public static class GetPinnedMessagesEndpoint
             .WithTags("Channels")
             .RequireAuthorization()
             .WithSummary("List pinned messages in a channel")
-            .WithDescription("Returns all pinned messages for a channel ordered by pinned date descending. Single-page response (no cursor).")
+            .WithDescription("Returns pinned messages ordered by pinned date descending. Cursor pagination on pinned_at_utc.")
             .Produces<GetPinnedMessagesResponse>()
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -28,6 +28,7 @@ public static class GetPinnedMessagesEndpoint
 
     private static async Task<IResult> HandleAsync(
         GuildChannelId channelId,
+        [FromQuery] string? before,
         [FromServices] IAuthenticatedHandler<GetChannelPinnedMessagesInput, GetPinnedMessagesResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -35,7 +36,7 @@ public static class GetPinnedMessagesEndpoint
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            new GetChannelPinnedMessagesInput(channelId),
+            new GetChannelPinnedMessagesInput(channelId, before),
             callerId,
             cancellationToken);
 

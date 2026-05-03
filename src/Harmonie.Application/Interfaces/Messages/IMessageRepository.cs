@@ -56,6 +56,7 @@ public sealed record MessagePage(
     MessageCursor? NextCursor,
     IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> ReactionsByMessageId,
     IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>>? LinkPreviewsByMessageId = null,
+    IReadOnlySet<Guid>? PinnedMessageIds = null,
     MessageReadState? LastReadState = null);
 
 public sealed record SearchGuildMessagesQuery(

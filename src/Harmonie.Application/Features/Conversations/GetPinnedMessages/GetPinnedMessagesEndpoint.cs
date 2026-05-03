@@ -16,7 +16,7 @@ public static class GetPinnedMessagesEndpoint
             .WithTags("Conversations")
             .RequireAuthorization()
             .WithSummary("List pinned messages in a conversation")
-            .WithDescription("Returns all pinned messages for a conversation ordered by pinned date descending. Single-page response (no cursor).")
+            .WithDescription("Returns pinned messages ordered by pinned date descending. Cursor pagination on pinned_at_utc.")
             .Produces<GetConversationPinnedMessagesResponse>()
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -27,6 +27,7 @@ public static class GetPinnedMessagesEndpoint
 
     private static async Task<IResult> HandleAsync(
         ConversationId conversationId,
+        [FromQuery] string? before,
         [FromServices] IAuthenticatedHandler<GetConversationPinnedMessagesInput, GetConversationPinnedMessagesResponse> handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -34,7 +35,7 @@ public static class GetPinnedMessagesEndpoint
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
         var response = await handler.HandleAsync(
-            new GetConversationPinnedMessagesInput(conversationId),
+            new GetConversationPinnedMessagesInput(conversationId, before),
             callerId,
             cancellationToken);
 

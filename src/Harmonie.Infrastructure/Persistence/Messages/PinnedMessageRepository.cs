@@ -65,34 +65,60 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         await connection.ExecuteAsync(command);
     }
 
-    public async Task<IReadOnlyList<PinnedMessageSummary>> GetPinnedMessagesAsync(
+    public async Task<PinnedMessagesPage> GetPinnedMessagesAsync(
         GuildChannelId channelId,
         UserId callerId,
+        PinnedMessagesCursor? cursor,
+        int limit,
         CancellationToken cancellationToken = default)
     {
         return await GetPinnedMessagesAsync(
             ("channel_id = @ContextId", new { ContextId = channelId.Value }),
             callerId,
+            cursor,
+            limit,
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PinnedMessageSummary>> GetPinnedMessagesAsync(
+    public async Task<PinnedMessagesPage> GetPinnedMessagesAsync(
         ConversationId conversationId,
         UserId callerId,
+        PinnedMessagesCursor? cursor,
+        int limit,
         CancellationToken cancellationToken = default)
     {
         return await GetPinnedMessagesAsync(
             ("conversation_id = @ContextId", new { ContextId = conversationId.Value }),
             callerId,
+            cursor,
+            limit,
             cancellationToken);
     }
 
-    private async Task<IReadOnlyList<PinnedMessageSummary>> GetPinnedMessagesAsync(
+    private async Task<PinnedMessagesPage> GetPinnedMessagesAsync(
         (string Filter, object Parameters) context,
         UserId callerId,
+        PinnedMessagesCursor? cursor,
+        int limit,
         CancellationToken cancellationToken)
     {
+        if (limit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be positive.");
+
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var take = limit + 1;
+
+        var cursorCondition = cursor is not null
+            ? "AND (pm.pinned_at_utc, pm.message_id) < (@CursorPinnedAtUtc, @CursorMessageId)"
+            : "1=1";
+
+        var parameters = new DynamicParameters(context.Parameters);
+        parameters.Add("Take", take);
+        if (cursor is not null)
+        {
+            parameters.Add("CursorPinnedAtUtc", cursor.PinnedAtUtc);
+            parameters.Add("CursorMessageId", cursor.MessageId);
+        }
 
         var sql = $@"
                    SELECT m.id AS ""Id"",
@@ -106,10 +132,10 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
                    FROM pinned_messages pm
                    INNER JOIN messages m ON m.id = pm.message_id
                    WHERE m.{context.Filter}
-                   ORDER BY pm.pinned_at_utc DESC, pm.message_id DESC;
+                     AND {cursorCondition}
+                   ORDER BY pm.pinned_at_utc DESC, pm.message_id DESC
+                   LIMIT @Take;
                    ";
-
-        var parameters = new DynamicParameters(context.Parameters);
 
         var command = new CommandDefinition(
             sql,
@@ -120,18 +146,20 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
         var rows = (await connection.QueryAsync<PinnedMessageWithContentRow>(command)).ToArray();
 
         if (rows.Length == 0)
-            return Array.Empty<PinnedMessageSummary>();
+            return new PinnedMessagesPage(Array.Empty<PinnedMessageSummary>(), null);
 
-        var messageIds = rows.Select(r => r.Id).ToArray();
+        var hasMore = rows.Length > limit;
+        var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
 
-        // Gather related data
+        var messageIds = pageRows.Select(r => r.Id).ToArray();
+
         var attachmentsByMessageId = await MessageRepositoryHelpers.GetAttachmentsByMessageIdsAsync(
             _dbSession, messageIds, cancellationToken);
 
         var (reactionsByMessageId, linkPreviewsByMessageId) = await GetReactionsAndLinkPreviewsAsync(
             messageIds, callerId, cancellationToken);
 
-        return rows
+        var items = pageRows
             .Select(row =>
             {
                 attachmentsByMessageId.TryGetValue(row.Id, out var attachments);
@@ -156,6 +184,15 @@ public sealed class PinnedMessageRepository : IPinnedMessageRepository
                     PinnedAtUtc: row.PinnedAtUtc);
             })
             .ToArray();
+
+        PinnedMessagesCursor? nextCursor = null;
+        if (hasMore && pageRows.Length > 0)
+        {
+            var lastRow = pageRows[^1];
+            nextCursor = new PinnedMessagesCursor(lastRow.PinnedAtUtc, lastRow.Id);
+        }
+
+        return new PinnedMessagesPage(items, nextCursor);
     }
 
     private async Task<(IReadOnlyDictionary<Guid, IReadOnlyList<MessageReactionSummary>> Reactions,

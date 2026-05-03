@@ -127,6 +127,16 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                        ORDER BY created_at_utc DESC, id DESC
                        LIMIT @Take)
                    ORDER BY message_id;
+
+                   SELECT pm.message_id AS "MessageId"
+                   FROM pinned_messages pm
+                   WHERE pm.message_id IN (
+                       SELECT id FROM messages
+                       WHERE channel_id = @ChannelId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take);
                    """;
 
         var parameters = new DynamicParameters();
@@ -152,6 +162,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
         var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
+        var pinnedRows = (await multi.ReadAsync<PinnedMessageIdRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -164,6 +175,9 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
             reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
         var linkPreviewsByMessageId = MessageRepositoryHelpers.BuildLinkPreviewsDictionary(
             linkPreviewRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+
+        var pinnedMessageIds = new HashSet<Guid>(
+            pinnedRows.Where(r => pageMessageIds.Contains(r.MessageId)).Select(r => r.MessageId));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -189,7 +203,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, lastReadState);
     }
 
     public async Task<MessagePage> GetConversationPageAsync(
@@ -299,6 +313,16 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                        ORDER BY created_at_utc DESC, id DESC
                        LIMIT @Take)
                    ORDER BY message_id;
+
+                   SELECT pm.message_id AS "MessageId"
+                   FROM pinned_messages pm
+                   WHERE pm.message_id IN (
+                       SELECT id FROM messages
+                       WHERE conversation_id = @ConversationId
+                         AND deleted_at_utc IS NULL
+                         {cursorFilter}
+                       ORDER BY created_at_utc DESC, id DESC
+                       LIMIT @Take);
                    """;
 
         var parameters = new DynamicParameters();
@@ -324,6 +348,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         var reactionUserRows = (await multi.ReadAsync<ReactionUserRow>()).ToArray();
         var readStateRow = await multi.ReadFirstOrDefaultAsync<ReadStateRow?>();
         var linkPreviewRows = (await multi.ReadAsync<MessageLinkPreviewRow>()).ToArray();
+        var pinnedRows = (await multi.ReadAsync<PinnedMessageIdRow>()).ToArray();
 
         var hasMore = rows.Length > limit;
         var pageRows = hasMore ? rows.Take(limit).ToArray() : rows;
@@ -336,6 +361,9 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
             reactionUserRows.Where(r => pageMessageIds.Contains(r.MessageId)));
         var linkPreviewsByMessageId = MessageRepositoryHelpers.BuildLinkPreviewsDictionary(
             linkPreviewRows.Where(r => pageMessageIds.Contains(r.MessageId)));
+
+        var pinnedMessageIds = new HashSet<Guid>(
+            pinnedRows.Where(r => pageMessageIds.Contains(r.MessageId)).Select(r => r.MessageId));
 
         var items = pageRows
             .Select(row => MessageRepositoryHelpers.MapToMessage(row, attachmentsByMessageId))
@@ -361,7 +389,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
                 readStateRow.ReadAtUtc);
         }
 
-        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, lastReadState);
+        return new MessagePage(items, nextCursor, reactionsByMessageId, linkPreviewsByMessageId, pinnedMessageIds, lastReadState);
     }
 
     private sealed class ReadStateRow

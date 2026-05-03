@@ -8,10 +8,12 @@ using Harmonie.Domain.ValueObjects.Users;
 
 namespace Harmonie.Application.Features.Channels.GetPinnedMessages;
 
-public sealed record GetChannelPinnedMessagesInput(GuildChannelId ChannelId);
+public sealed record GetChannelPinnedMessagesInput(GuildChannelId ChannelId, string? Before = null, int? Limit = null);
 
 public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelPinnedMessagesInput, GetPinnedMessagesResponse>
 {
+    private const int DefaultLimit = 50;
+
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IPinnedMessageRepository _pinnedMessageRepository;
 
@@ -28,6 +30,25 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelP
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
+        PinnedMessagesCursor? cursor = null;
+        if (request.Before is not null)
+        {
+            if (!PinnedMessagesCursorCodec.TryParse(request.Before, out var parsed) || parsed is null)
+            {
+                return ApplicationResponse<GetPinnedMessagesResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        nameof(request.Before),
+                        ApplicationErrorCodes.Validation.InvalidFormat,
+                        "Before cursor is invalid"));
+            }
+
+            cursor = parsed;
+        }
+
+        var limit = request.Limit ?? DefaultLimit;
+
         var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
         if (ctx is null)
         {
@@ -50,12 +71,14 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelP
                 "You do not have access to this channel");
         }
 
-        var pinnedMessages = await _pinnedMessageRepository.GetPinnedMessagesAsync(
+        var page = await _pinnedMessageRepository.GetPinnedMessagesAsync(
             request.ChannelId,
             currentUserId,
+            cursor,
+            limit,
             cancellationToken);
 
-        var items = pinnedMessages
+        var items = page.Items
             .Select(x => new GetPinnedMessagesItemResponse(
                 MessageId: x.MessageId,
                 AuthorUserId: x.AuthorUserId,
@@ -72,6 +95,9 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelP
         return ApplicationResponse<GetPinnedMessagesResponse>.Ok(
             new GetPinnedMessagesResponse(
                 ChannelId: request.ChannelId.Value,
-                Items: items));
+                Items: items,
+                NextCursor: page.NextCursor is null
+                    ? null
+                    : PinnedMessagesCursorCodec.Encode(page.NextCursor)));
     }
 }

@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -6,10 +7,12 @@ using Harmonie.Domain.ValueObjects.Users;
 
 namespace Harmonie.Application.Features.Conversations.GetPinnedMessages;
 
-public sealed record GetConversationPinnedMessagesInput(ConversationId ConversationId);
+public sealed record GetConversationPinnedMessagesInput(ConversationId ConversationId, string? Before = null, int? Limit = null);
 
 public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversationPinnedMessagesInput, GetConversationPinnedMessagesResponse>
 {
+    private const int DefaultLimit = 50;
+
     private readonly IConversationRepository _conversationRepository;
     private readonly IPinnedMessageRepository _pinnedMessageRepository;
 
@@ -26,6 +29,25 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversa
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
+        PinnedMessagesCursor? cursor = null;
+        if (request.Before is not null)
+        {
+            if (!PinnedMessagesCursorCodec.TryParse(request.Before, out var parsed) || parsed is null)
+            {
+                return ApplicationResponse<GetConversationPinnedMessagesResponse>.Fail(
+                    ApplicationErrorCodes.Common.ValidationFailed,
+                    "Request validation failed",
+                    EndpointExtensions.SingleValidationError(
+                        nameof(request.Before),
+                        ApplicationErrorCodes.Validation.InvalidFormat,
+                        "Before cursor is invalid"));
+            }
+
+            cursor = parsed;
+        }
+
+        var limit = request.Limit ?? DefaultLimit;
+
         var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(
             request.ConversationId, currentUserId, cancellationToken);
         if (access is null)
@@ -41,12 +63,14 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversa
                 "You do not have access to this conversation");
         }
 
-        var pinnedMessages = await _pinnedMessageRepository.GetPinnedMessagesAsync(
+        var page = await _pinnedMessageRepository.GetPinnedMessagesAsync(
             request.ConversationId,
             currentUserId,
+            cursor,
+            limit,
             cancellationToken);
 
-        var items = pinnedMessages
+        var items = page.Items
             .Select(x => new GetPinnedMessagesItemResponse(
                 MessageId: x.MessageId,
                 AuthorUserId: x.AuthorUserId,
@@ -63,6 +87,9 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversa
         return ApplicationResponse<GetConversationPinnedMessagesResponse>.Ok(
             new GetConversationPinnedMessagesResponse(
                 ConversationId: request.ConversationId.Value,
-                Items: items));
+                Items: items,
+                NextCursor: page.NextCursor is null
+                    ? null
+                    : PinnedMessagesCursorCodec.Encode(page.NextCursor)));
     }
 }

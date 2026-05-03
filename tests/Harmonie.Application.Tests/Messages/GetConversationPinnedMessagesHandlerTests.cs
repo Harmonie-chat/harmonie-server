@@ -8,7 +8,6 @@ using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -73,9 +72,10 @@ public sealed class GetConversationPinnedMessagesHandlerTests
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participant, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationAccess(conversation, participantObj));
 
+        var emptyPage = new PinnedMessagesPage(Array.Empty<PinnedMessageSummary>(), null);
         _pinnedMessageRepositoryMock
-            .Setup(x => x.GetPinnedMessagesAsync(conversation.Id, participant, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<PinnedMessageSummary>());
+            .Setup(x => x.GetPinnedMessagesAsync(conversation.Id, participant, null, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(emptyPage);
 
         var response = await _handler.HandleAsync(new GetConversationPinnedMessagesInput(conversation.Id), participant, TestContext.Current.CancellationToken);
 
@@ -107,9 +107,10 @@ public sealed class GetConversationPinnedMessagesHandlerTests
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participant, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationAccess(conversation, participantObj));
 
+        var page = new PinnedMessagesPage(summaries, null);
         _pinnedMessageRepositoryMock
-            .Setup(x => x.GetPinnedMessagesAsync(conversation.Id, participant, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(summaries);
+            .Setup(x => x.GetPinnedMessagesAsync(conversation.Id, participant, null, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(page);
 
         var response = await _handler.HandleAsync(new GetConversationPinnedMessagesInput(conversation.Id), participant, TestContext.Current.CancellationToken);
 

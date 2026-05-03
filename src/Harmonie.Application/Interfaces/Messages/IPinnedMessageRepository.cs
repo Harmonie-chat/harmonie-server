@@ -17,16 +17,28 @@ public interface IPinnedMessageRepository
         MessageId messageId,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<PinnedMessageSummary>> GetPinnedMessagesAsync(
+    Task<PinnedMessagesPage> GetPinnedMessagesAsync(
         GuildChannelId channelId,
         UserId callerId,
+        PinnedMessagesCursor? cursor,
+        int limit,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<PinnedMessageSummary>> GetPinnedMessagesAsync(
+    Task<PinnedMessagesPage> GetPinnedMessagesAsync(
         ConversationId conversationId,
         UserId callerId,
+        PinnedMessagesCursor? cursor,
+        int limit,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record PinnedMessagesCursor(
+    DateTime PinnedAtUtc,
+    Guid MessageId);
+
+public sealed record PinnedMessagesPage(
+    IReadOnlyList<PinnedMessageSummary> Items,
+    PinnedMessagesCursor? NextCursor);
 
 public sealed record PinnedMessageSummary(
     Guid MessageId,

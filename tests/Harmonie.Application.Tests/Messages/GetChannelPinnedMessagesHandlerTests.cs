@@ -8,9 +8,7 @@ using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
-using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -90,9 +88,10 @@ public sealed class GetChannelPinnedMessagesHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
+        var emptyPage = new PinnedMessagesPage(Array.Empty<PinnedMessageSummary>(), null);
         _pinnedMessageRepositoryMock
-            .Setup(x => x.GetPinnedMessagesAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<PinnedMessageSummary>());
+            .Setup(x => x.GetPinnedMessagesAsync(channel.Id, callerId, null, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(emptyPage);
 
         var response = await _handler.HandleAsync(new GetChannelPinnedMessagesInput(channel.Id), callerId, TestContext.Current.CancellationToken);
 
@@ -130,9 +129,10 @@ public sealed class GetChannelPinnedMessagesHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
+        var page = new PinnedMessagesPage(summaries, null);
         _pinnedMessageRepositoryMock
-            .Setup(x => x.GetPinnedMessagesAsync(channel.Id, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(summaries);
+            .Setup(x => x.GetPinnedMessagesAsync(channel.Id, callerId, null, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(page);
 
         var response = await _handler.HandleAsync(new GetChannelPinnedMessagesInput(channel.Id), callerId, TestContext.Current.CancellationToken);
 
