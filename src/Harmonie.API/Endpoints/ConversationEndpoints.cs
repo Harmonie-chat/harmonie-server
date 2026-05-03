@@ -9,6 +9,7 @@ using ConversationDeleteMessage = Harmonie.Application.Features.Conversations.De
 using ConversationDeleteMessageAttachment = Harmonie.Application.Features.Conversations.DeleteMessageAttachment.DeleteMessageAttachmentEndpoint;
 using ConversationEditMessage = Harmonie.Application.Features.Conversations.EditMessage.EditMessageEndpoint;
 using ConversationGetMessages = Harmonie.Application.Features.Conversations.GetMessages.GetMessagesEndpoint;
+using ConversationGetPinnedMessages = Harmonie.Application.Features.Conversations.GetPinnedMessages.GetPinnedMessagesEndpoint;
 using ConversationGetReactionUsers = Harmonie.Application.Features.Conversations.GetReactionUsers.GetReactionUsersEndpoint;
 using ConversationPinMessage = Harmonie.Application.Features.Conversations.PinMessage.PinMessageEndpoint;
 using ConversationRemoveReaction = Harmonie.Application.Features.Conversations.RemoveReaction.RemoveReactionEndpoint;
@@ -45,5 +46,6 @@ public static class ConversationEndpoints
         // Pins
         ConversationPinMessage.Map(app);
         ConversationUnpinMessage.Map(app);
+        ConversationGetPinnedMessages.Map(app);
     }
 }

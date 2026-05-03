@@ -7,6 +7,7 @@ using Harmonie.Application.Features.Conversations.DeleteMessage;
 using Harmonie.Application.Features.Conversations.DeleteMessageAttachment;
 using Harmonie.Application.Features.Conversations.EditMessage;
 using Harmonie.Application.Features.Conversations.GetMessages;
+using Harmonie.Application.Features.Conversations.GetPinnedMessages;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Harmonie.Application.Features.Conversations.PinMessage;
@@ -47,6 +48,7 @@ public static class ConversationRegistration
         // Pins
         services.AddAuthenticatedHandler<ConversationPinMessageInput, bool, PinMessageHandler>();
         services.AddAuthenticatedHandler<ConversationUnpinMessageInput, bool, UnpinMessageHandler>();
+        services.AddAuthenticatedHandler<GetConversationPinnedMessagesInput, GetConversationPinnedMessagesResponse, GetPinnedMessagesHandler>();
 
         return services;
     }

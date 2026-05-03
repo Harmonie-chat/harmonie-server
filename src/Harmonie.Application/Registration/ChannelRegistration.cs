@@ -6,6 +6,7 @@ using Harmonie.Application.Features.Channels.DeleteMessage;
 using Harmonie.Application.Features.Channels.DeleteMessageAttachment;
 using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.GetMessages;
+using Harmonie.Application.Features.Channels.GetPinnedMessages;
 using Harmonie.Application.Features.Channels.JoinVoiceChannel;
 using Harmonie.Application.Features.Channels.GetReactionUsers;
 using Harmonie.Application.Features.Channels.PinMessage;
@@ -42,6 +43,7 @@ public static class ChannelRegistration
         // Pins
         services.AddAuthenticatedHandler<ChannelPinMessageInput, bool, PinMessageHandler>();
         services.AddAuthenticatedHandler<ChannelUnpinMessageInput, bool, UnpinMessageHandler>();
+        services.AddAuthenticatedHandler<GetChannelPinnedMessagesInput, GetPinnedMessagesResponse, GetPinnedMessagesHandler>();
 
         return services;
     }
