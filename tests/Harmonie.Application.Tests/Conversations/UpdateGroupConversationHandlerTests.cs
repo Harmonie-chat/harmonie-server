@@ -148,7 +148,8 @@ public sealed class UpdateGroupConversationHandlerTests
         _conversationNotifierMock.Verify(
             x => x.NotifyConversationUpdatedAsync(
                 It.Is<ConversationUpdatedNotification>(n =>
-                    n.ConversationId == conversation.Id && n.Name == "New Name"),
+                    n.ConversationId == conversation.Id && n.Name == "New Name"
+                    && n.ConversationType == "Group"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -179,7 +180,8 @@ public sealed class UpdateGroupConversationHandlerTests
         _conversationNotifierMock.Verify(
             x => x.NotifyConversationUpdatedAsync(
                 It.Is<ConversationUpdatedNotification>(n =>
-                    n.ConversationId == conversation.Id && n.Name == null),
+                    n.ConversationId == conversation.Id && n.Name == null
+                    && n.ConversationType == "Group"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

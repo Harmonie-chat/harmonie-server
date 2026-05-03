@@ -180,6 +180,8 @@ public sealed class SendConversationMessageHandlerTests
             x => x.NotifyMessageCreatedAsync(
                 It.Is<ConversationMessageCreatedNotification>(n =>
                     n.ConversationId == conversation.Id
+                    && n.ConversationName == null
+                    && n.ConversationType == "Direct"
                     && n.AuthorUserId == currentUserId
                     && n.Content == "hello dm"
                     && n.AuthorUsername == "sender"
@@ -360,7 +362,9 @@ public sealed class SendConversationMessageHandlerTests
                 It.Is<ConversationMessageCreatedNotification>(n =>
                     n.ReplyTo != null
                     && n.ReplyTo.MessageId == targetMessageId.Value
-                    && n.ReplyTo.AuthorUsername == "targetuser"),
+                    && n.ReplyTo.AuthorUsername == "targetuser"
+                    && n.ConversationName == null
+                    && n.ConversationType == "Direct"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

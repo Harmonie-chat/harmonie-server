@@ -123,6 +123,7 @@ public sealed class CreateGroupConversationHandlerTests
                 It.Is<ConversationCreatedNotification>(n =>
                     n.ConversationId == conversation.Id
                     && n.Name == "Team Chat"
+                    && n.ConversationType == "Group"
                     && n.Participants.Count == 2),
                 It.IsAny<CancellationToken>()),
             Times.Once);

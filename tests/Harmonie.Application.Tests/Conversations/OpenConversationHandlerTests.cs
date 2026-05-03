@@ -123,6 +123,7 @@ public sealed class OpenConversationHandlerTests
                 It.Is<ConversationCreatedNotification>(n =>
                     n.ConversationId == conversation.Id &&
                     n.Name == null &&
+                    n.ConversationType == "Direct" &&
                     n.Participants.Count == 2),
                 It.IsAny<CancellationToken>()),
             Times.Once);

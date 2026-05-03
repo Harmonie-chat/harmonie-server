@@ -195,6 +195,8 @@ public sealed class RemoveConversationReactionHandlerTests
             x => x.NotifyReactionRemovedFromConversationAsync(
                 It.Is<ConversationReactionRemovedNotification>(n =>
                     n.ConversationId == conversation.Id &&
+                    n.ConversationName == null &&
+                    n.ConversationType == "Direct" &&
                     n.MessageId == messageId &&
                     n.UserId == participantOne &&
                     n.Username == TestUsername &&
