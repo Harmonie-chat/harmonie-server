@@ -169,8 +169,104 @@ public sealed class GetConversationMessagesHandlerTests
         response.Data!.Items.Should().HaveCount(1);
         response.Data.Items[0].LinkPreviews.Should().NotBeNull();
         response.Data.Items[0].LinkPreviews.Should().HaveCount(1);
-        response.Data.Items[0].LinkPreviews![0].Url.Should().Be("https://example.com");
-        response.Data.Items[0].LinkPreviews[0].Title.Should().Be("Title");
+        var firstPreview = response.Data.Items[0].LinkPreviews![0];
+        firstPreview.Url.Should().Be("https://example.com");
+        firstPreview.Title.Should().Be("Title");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMessageHasNoReply_ShouldHaveNullReplyTo()
+    {
+        var participantOne = UserId.New();
+        var participantTwo = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
+
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "no reply", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetConversationPageAsync(
+                conversation.Id,
+                It.IsAny<MessageCursor?>(),
+                50,
+                participantOne,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MessagePage(
+                [message],
+                null,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>()));
+
+        var response = await _handler.HandleAsync(
+            new GetConversationMessagesInput(conversation.Id, Limit: 50),
+            participantOne,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Items.Should().HaveCount(1);
+        response.Data.Items[0].ReplyTo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMessageHasReplyTo_ShouldIncludeReplyToFromPageData()
+    {
+        var participantOne = UserId.New();
+        var participantTwo = UserId.New();
+        var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
+        var targetMessageId = MessageId.New();
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
+
+        var message = ApplicationTestBuilders.CreateConversationMessage(
+            conversation.Id, participantOne, content: "replying",
+            createdAtUtc: DateTime.UtcNow.AddMinutes(-1),
+            replyToMessageId: targetMessageId);
+
+        var replyPreviews = new Dictionary<Guid, ReplyPreviewDto>
+        {
+            [targetMessageId.Value] = new ReplyPreviewDto(
+                targetMessageId.Value,
+                Guid.NewGuid(),
+                "Target Display",
+                "targetuser",
+                "target content",
+                true,
+                false,
+                null)
+        };
+
+        _directMessageRepositoryMock
+            .Setup(x => x.GetConversationPageAsync(
+                conversation.Id,
+                It.IsAny<MessageCursor?>(),
+                50,
+                participantOne,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MessagePage(
+                [message],
+                null,
+                new Dictionary<Guid, IReadOnlyList<MessageReactionSummary>>(),
+                ReplyPreviewsByTargetMessageId: replyPreviews));
+
+        var response = await _handler.HandleAsync(
+            new GetConversationMessagesInput(conversation.Id, Limit: 50),
+            participantOne,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Items.Should().HaveCount(1);
+        var replyTo = response.Data.Items[0].ReplyTo!;
+        replyTo.MessageId.Should().Be(targetMessageId.Value);
+        replyTo.AuthorUsername.Should().Be("targetuser");
+        replyTo.AuthorDisplayName.Should().Be("Target Display");
+        replyTo.Content.Should().Be("target content");
+        replyTo.HasAttachments.Should().BeTrue();
     }
 
 }

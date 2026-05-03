@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SendMessage;
 
-public sealed record SendConversationMessageInput(ConversationId ConversationId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null);
+public sealed record SendConversationMessageInput(ConversationId ConversationId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null);
 
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse>
 {
@@ -24,6 +24,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
     private readonly LinkPreviewResolutionService _linkPreviewService;
+    private readonly IMessageRepository _messageRepository;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -33,6 +34,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
         LinkPreviewResolutionService linkPreviewService,
+        IMessageRepository messageRepository,
         ILogger<SendMessageHandler> logger)
     {
         _conversationRepository = conversationRepository;
@@ -41,6 +43,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
         _linkPreviewService = linkPreviewService;
+        _messageRepository = messageRepository;
         _logger = logger;
     }
 
@@ -77,6 +80,22 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 "You do not have access to this conversation");
         }
 
+        // Resolve and validate reply target
+        MessageId? replyToMessageId = null;
+        ReplyTargetSummary? replyTargetSummary = null;
+        if (request.ReplyToMessageId.HasValue)
+        {
+            var targetMessageId = MessageId.From(request.ReplyToMessageId.Value);
+            replyTargetSummary = await _messageRepository.GetReplyTargetSummaryAsync(targetMessageId, cancellationToken);
+            if (replyTargetSummary is null || replyTargetSummary.ConversationId != request.ConversationId)
+            {
+                return ApplicationResponse<SendMessageResponse>.Fail(
+                    ApplicationErrorCodes.Message.NotFound,
+                    "Reply target message was not found");
+            }
+            replyToMessageId = replyTargetSummary.MessageId;
+        }
+
         var attachmentResolution = await _messageAttachmentResolver.ResolveAsync(
             request.AttachmentFileIds,
             currentUserId,
@@ -96,7 +115,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             request.ConversationId,
             currentUserId,
             content,
-            attachmentResolution.Attachments);
+            attachmentResolution.Attachments,
+            replyToMessageId);
         if (messageResult.IsFailure || messageResult.Value is null)
         {
             var errorCode = content is null && attachmentResolution.Attachments.Count == 0
@@ -119,6 +139,20 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 "Conversation message creation succeeded but conversation ID is missing");
         }
 
+        ReplyPreviewDto? replyTo = null;
+        if (replyTargetSummary is not null)
+        {
+            replyTo = new ReplyPreviewDto(
+                replyTargetSummary.MessageId.Value,
+                replyTargetSummary.AuthorUserId.Value,
+                replyTargetSummary.AuthorDisplayName,
+                replyTargetSummary.AuthorUsername,
+                replyTargetSummary.Content,
+                replyTargetSummary.HasAttachments,
+                replyTargetSummary.IsDeleted,
+                replyTargetSummary.DeletedAtUtc);
+        }
+
         await NotifyMessageCreatedSafelyAsync(
             new ConversationMessageCreatedNotification(
                 messageResult.Value.Id,
@@ -128,6 +162,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 access.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+                replyTo,
                 messageResult.Value.CreatedAtUtc));
 
         var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
@@ -149,6 +184,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             AuthorUserId: messageResult.Value.AuthorUserId.Value,
             Content: messageResult.Value.Content?.Value,
             Attachments: messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+            ReplyTo: replyTo,
             CreatedAtUtc: messageResult.Value.CreatedAtUtc));
     }
 

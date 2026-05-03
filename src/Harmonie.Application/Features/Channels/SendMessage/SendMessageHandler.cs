@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
 
-public sealed record SendChannelMessageInput(GuildChannelId ChannelId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null);
+public sealed record SendChannelMessageInput(GuildChannelId ChannelId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null);
 
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessageInput, SendMessageResponse>
 {
@@ -26,6 +26,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly LinkPreviewResolutionService _linkPreviewService;
+    private readonly IMessageRepository _messageRepository;
     private readonly ILogger<SendMessageHandler> _logger;
 
     public SendMessageHandler(
@@ -35,6 +36,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
         LinkPreviewResolutionService linkPreviewService,
+        IMessageRepository messageRepository,
         ILogger<SendMessageHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
@@ -43,6 +45,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
         _linkPreviewService = linkPreviewService;
+        _messageRepository = messageRepository;
         _logger = logger;
     }
 
@@ -87,6 +90,22 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 "You do not have access to this channel");
         }
 
+        // Resolve and validate reply target
+        MessageId? replyToMessageId = null;
+        ReplyTargetSummary? replyTargetSummary = null;
+        if (request.ReplyToMessageId.HasValue)
+        {
+            var targetMessageId = MessageId.From(request.ReplyToMessageId.Value);
+            replyTargetSummary = await _messageRepository.GetReplyTargetSummaryAsync(targetMessageId, cancellationToken);
+            if (replyTargetSummary is null || replyTargetSummary.ChannelId != request.ChannelId)
+            {
+                return ApplicationResponse<SendMessageResponse>.Fail(
+                    ApplicationErrorCodes.Message.NotFound,
+                    "Reply target message was not found");
+            }
+            replyToMessageId = replyTargetSummary.MessageId;
+        }
+
         var attachmentResolution = await _messageAttachmentResolver.ResolveAsync(
             request.AttachmentFileIds,
             currentUserId,
@@ -106,7 +125,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             request.ChannelId,
             currentUserId,
             content,
-            attachmentResolution.Attachments);
+            attachmentResolution.Attachments,
+            replyToMessageId);
         if (messageResult.IsFailure || messageResult.Value is null)
         {
             var errorCode = content is null && attachmentResolution.Attachments.Count == 0
@@ -129,6 +149,20 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 "Channel message creation succeeded but channel ID is missing");
         }
 
+        ReplyPreviewDto? replyTo = null;
+        if (replyTargetSummary is not null)
+        {
+            replyTo = new ReplyPreviewDto(
+                replyTargetSummary.MessageId.Value,
+                replyTargetSummary.AuthorUserId.Value,
+                replyTargetSummary.AuthorDisplayName,
+                replyTargetSummary.AuthorUsername,
+                replyTargetSummary.Content,
+                replyTargetSummary.HasAttachments,
+                replyTargetSummary.IsDeleted,
+                replyTargetSummary.DeletedAtUtc);
+        }
+
         await NotifyMessageCreatedSafelyAsync(
             new TextChannelMessageCreatedNotification(
                 messageResult.Value.Id,
@@ -141,6 +175,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 ctx.CallerDisplayName,
                 messageResult.Value.Content?.Value,
                 messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+                replyTo,
                 messageResult.Value.CreatedAtUtc));
 
         var urls = _linkPreviewService.ParseUrls(messageResult.Value.Content?.Value);
@@ -165,6 +200,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             AuthorUserId: messageResult.Value.AuthorUserId.Value,
             Content: messageResult.Value.Content?.Value,
             Attachments: messageResult.Value.Attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+            ReplyTo: replyTo,
             CreatedAtUtc: messageResult.Value.CreatedAtUtc);
 
         return ApplicationResponse<SendMessageResponse>.Ok(payload);

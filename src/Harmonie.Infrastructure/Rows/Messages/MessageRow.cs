@@ -16,5 +16,7 @@ public sealed class MessageRow
 
     public DateTime? UpdatedAtUtc { get; init; }
 
+    public Guid? ReplyToMessageId { get; init; }
+
     public DateTime? DeletedAtUtc { get; init; }
 }

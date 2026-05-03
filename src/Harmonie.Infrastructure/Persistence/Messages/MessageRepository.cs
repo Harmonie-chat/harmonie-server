@@ -12,6 +12,20 @@ using Harmonie.Infrastructure.Rows.Messages;
 
 namespace Harmonie.Infrastructure.Persistence.Messages;
 
+internal sealed class ReplyTargetSummaryRow
+{
+    public Guid MessageId { get; init; }
+    public Guid? ChannelId { get; init; }
+    public Guid? ConversationId { get; init; }
+    public Guid AuthorUserId { get; init; }
+    public string AuthorUsername { get; init; } = string.Empty;
+    public string? AuthorDisplayName { get; init; }
+    public string? Content { get; init; }
+    public bool HasAttachments { get; init; }
+    public bool IsDeleted { get; init; }
+    public DateTime? DeletedAtUtc { get; init; }
+}
+
 internal sealed class MessageRepository : IMessageRepository
 {
     private readonly DbSession _dbSession;
@@ -37,6 +51,7 @@ internal sealed class MessageRepository : IMessageRepository
                                channel_id,
                                conversation_id,
                                author_user_id,
+                               reply_to_message_id,
                                content,
                                created_at_utc)
                            VALUES (
@@ -44,6 +59,7 @@ internal sealed class MessageRepository : IMessageRepository
                                @ChannelId,
                                @ConversationId,
                                @AuthorUserId,
+                               @ReplyToMessageId,
                                @Content,
                                @CreatedAtUtc)
                            """;
@@ -57,6 +73,7 @@ internal sealed class MessageRepository : IMessageRepository
                 ChannelId = channelId?.Value,
                 ConversationId = conversationId?.Value,
                 AuthorUserId = message.AuthorUserId.Value,
+                ReplyToMessageId = message.ReplyToMessageId?.Value,
                 Content = message.Content?.Value,
                 message.CreatedAtUtc
             },
@@ -102,6 +119,7 @@ internal sealed class MessageRepository : IMessageRepository
                                   channel_id AS "ChannelId",
                                   conversation_id AS "ConversationId",
                                   author_user_id AS "AuthorUserId",
+                                  reply_to_message_id AS "ReplyToMessageId",
                                   content AS "Content",
                                   created_at_utc AS "CreatedAtUtc",
                                   updated_at_utc AS "UpdatedAtUtc",
@@ -225,6 +243,50 @@ internal sealed class MessageRepository : IMessageRepository
 
         var result = await connection.QuerySingleOrDefaultAsync<Guid?>(command);
         return result.HasValue ? MessageId.From(result.Value) : null;
+    }
+
+    public async Task<ReplyTargetSummary?> GetReplyTargetSummaryAsync(
+        MessageId messageId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT m.id AS "MessageId",
+                                  m.channel_id AS "ChannelId",
+                                  m.conversation_id AS "ConversationId",
+                                  m.author_user_id AS "AuthorUserId",
+                                  u.username AS "AuthorUsername",
+                                  u.display_name AS "AuthorDisplayName",
+                                  LEFT(COALESCE(m.content, ''), 200) AS "Content",
+                                  m.deleted_at_utc IS NOT NULL AS "IsDeleted",
+                                  m.deleted_at_utc AS "DeletedAtUtc",
+                                  EXISTS(SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id) AS "HasAttachments"
+                           FROM messages m
+                           JOIN users u ON u.id = m.author_user_id
+                           WHERE m.id = @MessageId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { MessageId = messageId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var row = await connection.QuerySingleOrDefaultAsync<ReplyTargetSummaryRow>(command);
+        if (row is null)
+            return null;
+
+        return new ReplyTargetSummary(
+            MessageId.From(row.MessageId),
+            row.ChannelId.HasValue ? GuildChannelId.From(row.ChannelId.Value) : null,
+            row.ConversationId.HasValue ? ConversationId.From(row.ConversationId.Value) : null,
+            UserId.From(row.AuthorUserId),
+            row.AuthorUsername,
+            row.AuthorDisplayName,
+            row.IsDeleted ? null : row.Content,
+            row.HasAttachments,
+            row.IsDeleted,
+            row.DeletedAtUtc);
     }
 
     public async Task<int> SoftDeleteByAuthorInGuildAsync(

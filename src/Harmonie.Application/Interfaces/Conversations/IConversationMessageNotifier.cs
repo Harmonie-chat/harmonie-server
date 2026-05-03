@@ -32,6 +32,7 @@ public sealed record ConversationMessageCreatedNotification(
     string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
+    ReplyPreviewDto? ReplyTo,
     DateTime CreatedAtUtc);
 
 public sealed record ConversationMessageUpdatedNotification(

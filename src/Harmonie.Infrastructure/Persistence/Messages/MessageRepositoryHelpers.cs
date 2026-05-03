@@ -126,6 +126,9 @@ internal static class MessageRepositoryHelpers
         ConversationId? conversationId = row.ConversationId.HasValue
             ? ConversationId.From(row.ConversationId.Value)
             : null;
+        MessageId? replyToMessageId = row.ReplyToMessageId.HasValue
+            ? MessageId.From(row.ReplyToMessageId.Value)
+            : null;
         attachmentsByMessageId.TryGetValue(row.Id, out var attachments);
 
         return Message.Rehydrate(
@@ -133,6 +136,7 @@ internal static class MessageRepositoryHelpers
             channelId,
             conversationId,
             UserId.From(row.AuthorUserId),
+            replyToMessageId,
             messageContent,
             row.CreatedAtUtc,
             row.UpdatedAtUtc,

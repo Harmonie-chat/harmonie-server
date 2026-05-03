@@ -33,7 +33,7 @@ public sealed class GetPinnedMessagesEndpointTests : IClassFixture<HarmonieWebAp
             owner.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<GetPinnedMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<GetPinnedMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.ChannelId.Should().Be(channelId);
         payload.Items.Should().HaveCount(1);
@@ -53,7 +53,7 @@ public sealed class GetPinnedMessagesEndpointTests : IClassFixture<HarmonieWebAp
             owner.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<GetPinnedMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<GetPinnedMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().BeEmpty();
     }
@@ -111,7 +111,7 @@ public sealed class GetPinnedMessagesEndpointTests : IClassFixture<HarmonieWebAp
             caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<Harmonie.Application.Features.Conversations.GetPinnedMessages.GetConversationPinnedMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<Harmonie.Application.Features.Conversations.GetPinnedMessages.GetConversationPinnedMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.ConversationId.Should().Be(conversationId);
         payload.Items.Should().HaveCount(1);
@@ -132,7 +132,7 @@ public sealed class GetPinnedMessagesEndpointTests : IClassFixture<HarmonieWebAp
             caller.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<Harmonie.Application.Features.Conversations.GetPinnedMessages.GetConversationPinnedMessagesResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<Harmonie.Application.Features.Conversations.GetPinnedMessages.GetConversationPinnedMessagesResponse>(TestContext.Current.CancellationToken);
         payload.Should().NotBeNull();
         payload!.Items.Should().BeEmpty();
     }

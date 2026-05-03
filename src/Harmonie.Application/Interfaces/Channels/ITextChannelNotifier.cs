@@ -36,6 +36,7 @@ public sealed record TextChannelMessageCreatedNotification(
     string? AuthorDisplayName,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
+    ReplyPreviewDto? ReplyTo,
     DateTime CreatedAtUtc);
 
 public sealed record TextChannelMessageUpdatedNotification(
