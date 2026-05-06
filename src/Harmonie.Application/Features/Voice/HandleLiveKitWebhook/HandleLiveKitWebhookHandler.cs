@@ -45,13 +45,14 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
                 "LiveKit webhook signature is invalid.");
         }
 
-        if (receiveResult.Event is not { } webhookEvent)
+        if (receiveResult.Event is null)
         {
             return ApplicationResponse<HandleLiveKitWebhookResponse>.Fail(
                 ApplicationErrorCodes.Common.InvalidState,
                 "LiveKit webhook receiver returned success without an event.");
         }
 
+        var webhookEvent = receiveResult.Event;
         var eventType = string.IsNullOrWhiteSpace(webhookEvent.EventType)
             ? "unknown"
             : webhookEvent.EventType;
@@ -184,8 +185,10 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
         LiveKitWebhookEvent webhookEvent,
         CancellationToken ct)
     {
-        if (webhookEvent.Track is not { } track)
+        if (webhookEvent.Track is null)
             return;
+
+        var track = webhookEvent.Track;
 
         // Only process ScreenShare tracks. Ignore SCREEN_SHARE_AUDIO, CAMERA, MICROPHONE.
         if (track.Source != ScreenShareSource)

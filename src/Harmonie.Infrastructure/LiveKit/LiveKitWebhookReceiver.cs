@@ -63,15 +63,15 @@ public sealed class LiveKitWebhookReceiver : ILiveKitWebhookReceiver
                 : DateTime.UnixEpoch;
 
             LiveKitTrackInfo? track = null;
-            if (webhookEvent.Track is { } webhookTrack)
+            if (webhookEvent.Track is not null)
             {
                 track = new LiveKitTrackInfo(
-                    Sid: webhookTrack.Sid,
-                    Source: MapTrackSourceToString(webhookTrack.Source),
-                    Type: MapTrackTypeToString(webhookTrack.Type),
-                    Muted: webhookTrack.Muted,
-                    Width: webhookTrack.Width,
-                    Height: webhookTrack.Height);
+                    Sid: webhookEvent.Track.Sid,
+                    Source: MapTrackSourceToString(webhookEvent.Track.Source),
+                    Type: MapTrackTypeToString(webhookEvent.Track.Type),
+                    Muted: webhookEvent.Track.Muted,
+                    Width: webhookEvent.Track.Width,
+                    Height: webhookEvent.Track.Height);
             }
 
             return LiveKitWebhookReceiveResult.Ok(
