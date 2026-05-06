@@ -143,7 +143,9 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
         await _voicePresenceNotifier.NotifyParticipantJoinedAsync(
             new VoiceParticipantJoinedNotification(
                 GuildId: result.Channel.GuildId,
+                GuildName: result.GuildName,
                 ChannelId: result.Channel.Id,
+                ChannelName: result.Channel.Name,
                 UserId: participantUserId,
                 Username: result.Participant?.Username.Value,
                 DisplayName: result.Participant?.DisplayName,
@@ -170,11 +172,13 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
 
         await _voicePresenceNotifier.NotifyParticipantLeftAsync(
             new VoiceParticipantLeftNotification(
-                result.Channel.GuildId,
-                result.Channel.Id,
-                participantUserId,
-                result.Participant?.Username.Value,
-                occurredAtUtc),
+                GuildId: result.Channel.GuildId,
+                GuildName: result.GuildName,
+                ChannelId: result.Channel.Id,
+                ChannelName: result.Channel.Name,
+                UserId: participantUserId,
+                Username: result.Participant?.Username.Value,
+                LeftAtUtc: occurredAtUtc),
             ct);
     }
 
@@ -195,7 +199,9 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             return;
 
         var guildId = result.Channel.GuildId;
+        var guildName = result.GuildName;
         var channelId = result.Channel.Id;
+        var channelName = result.Channel.Name;
         var username = result.Participant?.Username.Value;
 
         if (eventType == TrackPublishedEvent)
@@ -207,7 +213,7 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             {
                 await _voicePresenceNotifier.NotifyScreenShareStartedAsync(
                     new VoiceScreenShareNotification(
-                        guildId, channelId, participantUserId, username, webhookEvent.OccurredAtUtc),
+                        guildId, guildName, channelId, channelName, participantUserId, username, webhookEvent.OccurredAtUtc),
                     ct);
             }
         }
@@ -220,7 +226,7 @@ public sealed class HandleLiveKitWebhookHandler : IHandler<HandleLiveKitWebhookR
             {
                 await _voicePresenceNotifier.NotifyScreenShareStoppedAsync(
                     new VoiceScreenShareNotification(
-                        guildId, channelId, participantUserId, username, webhookEvent.OccurredAtUtc),
+                        guildId, guildName, channelId, channelName, participantUserId, username, webhookEvent.OccurredAtUtc),
                     ct);
             }
         }

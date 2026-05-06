@@ -131,7 +131,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, profile));
+            .ReturnsAsync(new ChannelWithParticipant(channel, profile, "test-guild"));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -143,7 +143,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyParticipantJoinedAsync(
                 It.Is<VoiceParticipantJoinedNotification>(notification =>
                     notification.GuildId == channel.GuildId
+                    && notification.GuildName == "test-guild"
                     && notification.ChannelId == channel.Id
+                    && notification.ChannelName == channel.Name
                     && notification.UserId == participantUserId
                     && notification.Username == profile.Username.Value
                     && notification.DisplayName == profile.DisplayName
@@ -176,7 +178,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -186,7 +188,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
         _voicePresenceNotifierMock.Verify(
             x => x.NotifyParticipantJoinedAsync(
                 It.Is<VoiceParticipantJoinedNotification>(notification =>
-                    notification.UserId == participantUserId
+                    notification.GuildName == "test-guild"
+                    && notification.ChannelName == channel.Name
+                    && notification.UserId == participantUserId
                     && notification.Username == null
                     && notification.DisplayName == null
                     && notification.AvatarFileId == null
@@ -217,7 +221,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -229,7 +233,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyParticipantLeftAsync(
                 It.Is<VoiceParticipantLeftNotification>(notification =>
                     notification.GuildId == channel.GuildId
+                    && notification.GuildName == "test-guild"
                     && notification.ChannelId == channel.Id
+                    && notification.ChannelName == channel.Name
                     && notification.UserId == participantUserId
                     && notification.Username == null
                     && notification.LeftAtUtc == occurredAtUtc),
@@ -264,7 +270,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, profile));
+            .ReturnsAsync(new ChannelWithParticipant(channel, profile, "test-guild"));
 
         await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -305,7 +311,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         _voiceParticipantCacheMock
             .Setup(x => x.TryAddScreenShareTrackAsync(
@@ -326,7 +332,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyScreenShareStartedAsync(
                 It.Is<VoiceScreenShareNotification>(n =>
                     n.GuildId == channel.GuildId
+                    && n.GuildName == "test-guild"
                     && n.ChannelId == channel.Id
+                    && n.ChannelName == channel.Name
                     && n.UserId == participantUserId
                     && n.TimestampUtc == occurredAtUtc),
                 It.IsAny<CancellationToken>()),
@@ -354,7 +362,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         _voiceParticipantCacheMock
             .Setup(x => x.TryAddScreenShareTrackAsync(
@@ -388,7 +396,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -424,7 +432,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         _voiceParticipantCacheMock
             .Setup(x => x.TryRemoveScreenShareTrackAsync(
@@ -441,7 +449,9 @@ public sealed class HandleLiveKitWebhookHandlerTests
             x => x.NotifyScreenShareStoppedAsync(
                 It.Is<VoiceScreenShareNotification>(n =>
                     n.GuildId == channel.GuildId
+                    && n.GuildName == "test-guild"
                     && n.ChannelId == channel.Id
+                    && n.ChannelName == channel.Name
                     && n.UserId == participantUserId
                     && n.TimestampUtc == occurredAtUtc),
                 It.IsAny<CancellationToken>()),
@@ -469,7 +479,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         _voiceParticipantCacheMock
             .Setup(x => x.TryRemoveScreenShareTrackAsync(
@@ -507,7 +517,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -535,7 +545,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -566,7 +576,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChannelWithParticipant(channel, null));
+            .ReturnsAsync(new ChannelWithParticipant(channel, null, "test-guild"));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 

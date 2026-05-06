@@ -24,7 +24,8 @@ public sealed record ChannelParticipantProfile(
 
 public sealed record ChannelWithParticipant(
     GuildChannel Channel,
-    ChannelParticipantProfile? Participant);
+    ChannelParticipantProfile? Participant,
+    string GuildName);
 
 public interface IGuildChannelRepository
 {

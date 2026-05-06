@@ -203,6 +203,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                                   gc.is_default     AS "IsDefault",
                                   gc.position       AS "Position",
                                   gc.created_at_utc AS "CreatedAtUtc",
+                                  g.name            AS "GuildName",
                                   u.username        AS "Username",
                                   u.display_name    AS "DisplayName",
                                   u.avatar_file_id  AS "AvatarFileId",
@@ -210,6 +211,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                                   u.avatar_icon     AS "AvatarIcon",
                                   u.avatar_bg       AS "AvatarBg"
                            FROM guild_channels gc
+                           INNER JOIN guilds g ON g.id = gc.guild_id
                            LEFT JOIN guild_members gm
                                   ON gm.guild_id = gc.guild_id
                                  AND gm.user_id = @ParticipantId
@@ -247,7 +249,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
                 row.AvatarBg);
         }
 
-        return new ChannelWithParticipant(MapToGuildChannel(row), profile);
+        return new ChannelWithParticipant(MapToGuildChannel(row), profile, row.GuildName);
     }
 
     public async Task<ChannelAccessContext?> GetWithCallerRoleAsync(
@@ -367,6 +369,7 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         public bool IsDefault { get; init; }
         public int Position { get; init; }
         public DateTime CreatedAtUtc { get; init; }
+        public string? GuildName { get; init; }
         public string? Username { get; init; }
         public string? DisplayName { get; init; }
         public Guid? AvatarFileId { get; init; }

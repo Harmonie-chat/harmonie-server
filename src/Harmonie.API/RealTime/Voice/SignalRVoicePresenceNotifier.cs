@@ -21,7 +21,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         var payload = new VoiceParticipantJoinedEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             DisplayName: notification.DisplayName,
@@ -44,7 +46,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         var payload = new VoiceParticipantLeftEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             LeftAtUtc: notification.LeftAtUtc);
@@ -62,7 +66,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         var payload = new VoiceScreenShareEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             TimestampUtc: notification.TimestampUtc);
@@ -80,7 +86,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
         var payload = new VoiceScreenShareEvent(
             GuildId: notification.GuildId.Value,
+            GuildName: notification.GuildName,
             ChannelId: notification.ChannelId.Value,
+            ChannelName: notification.ChannelName,
             UserId: notification.UserId.Value,
             Username: notification.Username,
             TimestampUtc: notification.TimestampUtc);
@@ -93,7 +101,9 @@ public sealed class SignalRVoicePresenceNotifier : IVoicePresenceNotifier
 
 public sealed record VoiceParticipantJoinedEvent(
     Guid GuildId,
+    string GuildName,
     Guid ChannelId,
+    string ChannelName,
     Guid UserId,
     string? Username,
     string? DisplayName,
@@ -105,14 +115,18 @@ public sealed record VoiceParticipantJoinedEvent(
 
 public sealed record VoiceParticipantLeftEvent(
     Guid GuildId,
+    string GuildName,
     Guid ChannelId,
+    string ChannelName,
     Guid UserId,
     string? Username,
     DateTime LeftAtUtc);
 
 public sealed record VoiceScreenShareEvent(
     Guid GuildId,
+    string GuildName,
     Guid ChannelId,
+    string ChannelName,
     Guid UserId,
     string? Username,
     DateTime TimestampUtc);

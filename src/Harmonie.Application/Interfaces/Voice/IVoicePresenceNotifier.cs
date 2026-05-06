@@ -26,7 +26,9 @@ public interface IVoicePresenceNotifier
 
 public sealed record VoiceParticipantJoinedNotification(
     GuildId GuildId,
+    string GuildName,
     GuildChannelId ChannelId,
+    string ChannelName,
     UserId UserId,
     string? Username,
     string? DisplayName,
@@ -38,14 +40,18 @@ public sealed record VoiceParticipantJoinedNotification(
 
 public sealed record VoiceParticipantLeftNotification(
     GuildId GuildId,
+    string GuildName,
     GuildChannelId ChannelId,
+    string ChannelName,
     UserId UserId,
     string? Username,
     DateTime LeftAtUtc);
 
 public sealed record VoiceScreenShareNotification(
     GuildId GuildId,
+    string GuildName,
     GuildChannelId ChannelId,
+    string ChannelName,
     UserId UserId,
     string? Username,
     DateTime TimestampUtc);

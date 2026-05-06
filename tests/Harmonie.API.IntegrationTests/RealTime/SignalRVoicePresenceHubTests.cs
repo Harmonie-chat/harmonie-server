@@ -265,7 +265,9 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
 
         var eventPayload = await eventReceived.Task;
         eventPayload.GuildId.Should().Be(guildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
+        eventPayload.ChannelName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().Be(member.UserId.ToString());
         eventPayload.Username.Should().Be(member.Username);
         eventPayload.TimestampUtc.Should().NotBe(default);
@@ -333,7 +335,9 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
 
         var eventPayload = await stoppedEvent.Task;
         eventPayload.GuildId.Should().Be(guildId.ToString());
+        eventPayload.GuildName.Should().NotBeNullOrEmpty();
         eventPayload.ChannelId.Should().Be(voiceChannelId.ToString());
+        eventPayload.ChannelName.Should().NotBeNullOrEmpty();
         eventPayload.UserId.Should().Be(member.UserId.ToString());
         eventPayload.Username.Should().Be(member.Username);
         eventPayload.TimestampUtc.Should().NotBe(default);
@@ -349,7 +353,9 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
 
     private sealed record SignalRVoiceParticipantJoinedEvent(
         string GuildId,
+        string GuildName,
         string ChannelId,
+        string ChannelName,
         string UserId,
         string? Username,
         string? DisplayName,
@@ -361,14 +367,18 @@ public sealed class SignalRVoicePresenceHubTests : IClassFixture<HarmonieWebAppl
 
     private sealed record SignalRVoiceParticipantLeftEvent(
         string GuildId,
+        string GuildName,
         string ChannelId,
+        string ChannelName,
         string UserId,
         string? Username,
         DateTime LeftAtUtc);
 
     private sealed record SignalRVoiceScreenShareEvent(
         string GuildId,
+        string GuildName,
         string ChannelId,
+        string ChannelName,
         string UserId,
         string? Username,
         DateTime TimestampUtc);
