@@ -21,6 +21,7 @@ public sealed class UpdateMyProfileHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
     private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
+    private readonly Mock<IUserProfileNotifier> _userProfileNotifierMock;
     private readonly UpdateMyProfileHandler _handler;
 
     public UpdateMyProfileHandlerTests()
@@ -28,6 +29,7 @@ public sealed class UpdateMyProfileHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
         _objectStorageServiceMock = new Mock<IObjectStorageService>();
+        _userProfileNotifierMock = new Mock<IUserProfileNotifier>();
 
         _userRepositoryMock
             .Setup(x => x.GetUserNotificationContextAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
@@ -39,7 +41,7 @@ public sealed class UpdateMyProfileHandlerTests
                 _uploadedFileRepositoryMock.Object,
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
-            Mock.Of<IUserProfileNotifier>(),
+            _userProfileNotifierMock.Object,
             NullLogger<UpdateMyProfileHandler>.Instance);
     }
 
@@ -277,6 +279,69 @@ public sealed class UpdateMyProfileHandlerTests
         _userRepositoryMock.Verify(
             x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Theory]
+    [InlineData(nameof(UpdateMyProfileRequest.DisplayNameIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.BioIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.AvatarFileIdIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.AvatarColorIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.AvatarIconIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.AvatarBgIsSet))]
+    [InlineData(nameof(UpdateMyProfileRequest.LanguageIsSet))]
+    public async Task HandleAsync_WhenAnyFieldIsSet_ShouldNotifyProfileUpdate(string fieldName)
+    {
+        var user = ApplicationTestBuilders.CreateUser();
+        var request = new UpdateMyProfileRequest();
+        typeof(UpdateMyProfileRequest).GetProperty(fieldName)!.SetValue(request, true);
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _handler.HandleAsync(request, user.Id, TestContext.Current.CancellationToken);
+
+        _userProfileNotifierMock.Verify(
+            x => x.NotifyProfileUpdatedAsync(
+                It.Is<UserProfileUpdatedNotification>(n => n.UserId == user.Id),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenThemeIsSet_ShouldNotifyProfileUpdate()
+    {
+        var user = ApplicationTestBuilders.CreateUser();
+        var request = new UpdateMyProfileRequest { Theme = "dark", ThemeIsSet = true };
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _handler.HandleAsync(request, user.Id, TestContext.Current.CancellationToken);
+
+        _userProfileNotifierMock.Verify(
+            x => x.NotifyProfileUpdatedAsync(
+                It.Is<UserProfileUpdatedNotification>(n => n.UserId == user.Id),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNoFieldIsSet_ShouldNotNotify()
+    {
+        var user = ApplicationTestBuilders.CreateUser();
+        var request = new UpdateMyProfileRequest();
+
+        _userRepositoryMock
+            .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _handler.HandleAsync(request, user.Id, TestContext.Current.CancellationToken);
+
+        _userProfileNotifierMock.Verify(
+            x => x.NotifyProfileUpdatedAsync(It.IsAny<UserProfileUpdatedNotification>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
