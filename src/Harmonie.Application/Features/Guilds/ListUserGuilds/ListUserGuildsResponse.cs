@@ -12,4 +12,5 @@ public sealed record ListUserGuildsItemResponse(
     Guid? IconFileId,
     GuildIconDto? Icon,
     string Role,
-    DateTime JoinedAtUtc);
+    DateTime JoinedAtUtc,
+    bool HasUnread);

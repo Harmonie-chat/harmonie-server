@@ -50,11 +50,12 @@ public sealed class ListUserGuildsHandlerTests
             "Guild Alpha",
             GuildRole.Admin,
             DateTime.UtcNow.AddDays(-2),
+            hasUnread: true,
             iconFileId: UploadedFileId.From(Guid.Parse("0be76be9-ae27-4961-a4a5-835e1f77387b")),
             iconColor: "#7C3AED",
             iconName: "sword",
             iconBg: "#1F2937");
-        var guildTwo = CreateMembership("Guild Beta", GuildRole.Member, DateTime.UtcNow.AddDays(-1));
+        var guildTwo = CreateMembership("Guild Beta", GuildRole.Member, DateTime.UtcNow.AddDays(-1), hasUnread: false);
 
         _guildMemberRepositoryMock
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
@@ -71,15 +72,18 @@ public sealed class ListUserGuildsHandlerTests
         response.Data.Guilds[0].Icon.Should().NotBeNull();
         response.Data.Guilds[0].Icon!.Name.Should().Be("sword");
         response.Data.Guilds[0].Role.Should().Be("Admin");
+        response.Data.Guilds[0].HasUnread.Should().BeTrue();
         response.Data.Guilds[1].Name.Should().Be("Guild Beta");
         response.Data.Guilds[1].Icon.Should().BeNull();
         response.Data.Guilds[1].Role.Should().Be("Member");
+        response.Data.Guilds[1].HasUnread.Should().BeFalse();
     }
 
     private static UserGuildMembership CreateMembership(
         string guildName,
         GuildRole role,
         DateTime joinedAtUtc,
+        bool hasUnread = false,
         UploadedFileId? iconFileId = null,
         string? iconColor = null,
         string? iconName = null,
@@ -100,6 +104,6 @@ public sealed class ListUserGuildsHandlerTests
             iconName: iconName,
             iconBg: iconBg);
 
-        return new UserGuildMembership(guild, role, joinedAtUtc);
+        return new UserGuildMembership(guild, role, joinedAtUtc, hasUnread);
     }
 }

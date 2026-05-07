@@ -39,7 +39,8 @@ public sealed class ListUserGuildsHandler : IAuthenticatedHandler<Unit, ListUser
                             membership.Guild.IconBg)
                         : null,
                     Role: membership.Role.ToString(),
-                    JoinedAtUtc: membership.JoinedAtUtc))
+                    JoinedAtUtc: membership.JoinedAtUtc,
+                    HasUnread: membership.HasUnread))
                 .ToArray());
 
         return ApplicationResponse<ListUserGuildsResponse>.Ok(payload);
