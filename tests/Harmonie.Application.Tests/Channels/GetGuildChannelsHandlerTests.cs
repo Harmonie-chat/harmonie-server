@@ -86,8 +86,8 @@ public sealed class GetGuildChannelsHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByGuildIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([textChannel, voiceChannel]);
+            .Setup(x => x.GetByGuildIdWithUnreadAsync(guild.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildChannelsWithUnread([textChannel, voiceChannel], []));
 
         var response = await _handler.HandleAsync(guild.Id, userId, TestContext.Current.CancellationToken);
 
@@ -97,8 +97,10 @@ public sealed class GetGuildChannelsHandlerTests
         response.Data!.GuildId.Should().Be(guild.Id.Value);
         response.Data.Channels.Should().HaveCount(2);
         response.Data.Channels[0].Type.Should().Be("Text");
+        response.Data.Channels[0].HasUnread.Should().BeFalse();
         response.Data.Channels[0].CurrentParticipants.Should().BeNull();
         response.Data.Channels[1].Type.Should().Be("Voice");
+        response.Data.Channels[1].HasUnread.Should().BeFalse();
         response.Data.Channels[1].CurrentParticipants.Should().NotBeNull().And.BeEmpty();
     }
 
@@ -124,8 +126,8 @@ public sealed class GetGuildChannelsHandlerTests
             .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
 
         _guildChannelRepositoryMock
-            .Setup(x => x.GetByGuildIdAsync(guild.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([voiceChannel]);
+            .Setup(x => x.GetByGuildIdWithUnreadAsync(guild.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildChannelsWithUnread([voiceChannel], []));
 
         _voiceParticipantCacheMock
             .Setup(x => x.GetAsync(voiceChannel.Id, It.IsAny<CancellationToken>()))
@@ -149,6 +151,33 @@ public sealed class GetGuildChannelsHandlerTests
         p.AvatarColor.Should().Be("#ff0000");
         p.AvatarIcon.Should().Be("star");
         p.AvatarBg.Should().Be("#000000");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithUnreadTextChannel_ShouldSetHasUnreadTrue()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var userId = UserId.New();
+        var textChannel = CreateChannel(guild.Id, "general", GuildChannelType.Text, true, 0);
+        var voiceChannel = CreateChannel(guild.Id, "General Voice", GuildChannelType.Voice, true, 1);
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Member));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetByGuildIdWithUnreadAsync(guild.Id, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildChannelsWithUnread(
+                [textChannel, voiceChannel],
+                [textChannel.Id.Value]));
+
+        var response = await _handler.HandleAsync(guild.Id, userId, TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Channels[0].Type.Should().Be("Text");
+        response.Data.Channels[0].HasUnread.Should().BeTrue();
+        response.Data.Channels[1].Type.Should().Be("Voice");
+        response.Data.Channels[1].HasUnread.Should().BeFalse();
     }
 
     private static GuildChannel CreateChannel(

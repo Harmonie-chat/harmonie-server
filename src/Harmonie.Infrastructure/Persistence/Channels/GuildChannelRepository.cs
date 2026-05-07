@@ -118,6 +118,55 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
         return rows.Select(MapToGuildChannel).ToArray();
     }
 
+    public async Task<GuildChannelsWithUnread> GetByGuildIdWithUnreadAsync(
+        GuildId guildId,
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT id AS "Id",
+                                  guild_id AS "GuildId",
+                                  name AS "Name",
+                                  type AS "Type",
+                                  is_default AS "IsDefault",
+                                  position AS "Position",
+                                  created_at_utc AS "CreatedAtUtc"
+                           FROM guild_channels
+                           WHERE guild_id = @GuildId
+                           ORDER BY position ASC, created_at_utc ASC, id ASC;
+
+                           SELECT DISTINCT m.channel_id AS "ChannelId"
+                           FROM messages m
+                           JOIN guild_channels gc ON gc.id = m.channel_id
+                                                  AND gc.guild_id = @GuildId
+                                                  AND gc.type = 1
+                           LEFT JOIN channel_read_states crs
+                                  ON crs.channel_id = m.channel_id AND crs.user_id = @UserId
+                           LEFT JOIN messages lrm ON lrm.id = crs.last_read_message_id
+                           WHERE m.deleted_at_utc IS NULL
+                             AND m.author_user_id != @UserId
+                             AND (
+                                 crs.last_read_message_id IS NULL
+                                 OR (m.created_at_utc, m.id) > (lrm.created_at_utc, lrm.id)
+                             )
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { GuildId = guildId.Value, UserId = userId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        using var multi = await connection.QueryMultipleAsync(command);
+        var rows = await multi.ReadAsync<GuildChannelRow>();
+        var unreadChannelIds = (await multi.ReadAsync<Guid>()).ToHashSet();
+
+        return new GuildChannelsWithUnread(
+            rows.Select(MapToGuildChannel).ToArray(),
+            unreadChannelIds);
+    }
+
     public async Task UpdateAsync(
         GuildChannel channel,
         CancellationToken cancellationToken = default)

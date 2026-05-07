@@ -10,7 +10,8 @@ public sealed record GetGuildChannelsItemResponse(
     string Type,
     bool IsDefault,
     int Position,
-    IReadOnlyList<GetGuildChannelsVoiceParticipantResponse>? CurrentParticipants);
+    IReadOnlyList<GetGuildChannelsVoiceParticipantResponse>? CurrentParticipants,
+    bool HasUnread);
 
 public sealed record GetGuildChannelsVoiceParticipantResponse(
     Guid UserId,

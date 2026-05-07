@@ -6,6 +6,7 @@ using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Guilds.CreateChannel;
 using Harmonie.Application.Features.Guilds.CreateGuild;
+using Harmonie.Application.Features.Guilds.GetGuildChannels;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -209,6 +210,76 @@ public sealed class GuildChannelsTests : IClassFixture<HarmonieWebApplicationFac
         var error = await createChannelResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.DomainRuleViolation);
+    }
+
+    [Fact]
+    public async Task GetGuildChannels_HasUnread_ShouldBeTrueWhenOtherUserSentMessage()
+    {
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"{prefix}-guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, sender.AccessToken);
+
+        var channelsResponse = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        var channels = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        var textChannel = channels!.Channels.First(c => c.Type == "Text");
+
+        await ChannelTestHelper.SendChannelMessageAsync(_client, textChannel.ChannelId, "hello", sender.AccessToken);
+
+        var response = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        payload!.Channels.First(c => c.Type == "Text").HasUnread.Should().BeTrue();
+        payload.Channels.First(c => c.Type == "Voice").HasUnread.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetGuildChannels_HasUnread_ShouldBeFalseAfterAcknowledge()
+    {
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"{prefix}-guild");
+        await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, sender.AccessToken);
+
+        var channelsResponse = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        var channels = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        var textChannel = channels!.Channels.First(c => c.Type == "Text");
+
+        var message = await ChannelTestHelper.SendChannelMessageAsync(_client, textChannel.ChannelId, "hi", sender.AccessToken);
+
+        var ackResponse = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{textChannel.ChannelId}/ack",
+            new { lastReadMessageId = message.MessageId },
+            owner.AccessToken);
+        ackResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var response = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        payload!.Channels.First(c => c.Type == "Text").HasUnread.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetGuildChannels_HasUnread_ShouldBeFalseForOwnMessages()
+    {
+        var prefix = Guid.NewGuid().ToString("N")[..8];
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"{prefix}-guild");
+
+        var channelsResponse = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        var channels = await channelsResponse.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        var textChannel = channels!.Channels.First(c => c.Type == "Text");
+
+        await ChannelTestHelper.SendChannelMessageAsync(_client, textChannel.ChannelId, "my own message", owner.AccessToken);
+
+        var response = await _client.SendAuthorizedGetAsync($"/api/guilds/{guildId}/channels", owner.AccessToken);
+        var payload = await response.Content.ReadFromJsonAsync<GetGuildChannelsResponse>(TestContext.Current.CancellationToken);
+        payload!.Channels.First(c => c.Type == "Text").HasUnread.Should().BeFalse();
     }
 
     private async Task<HttpResponseMessage> SendAuthorizedPostRawAsync(

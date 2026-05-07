@@ -44,15 +44,15 @@ public sealed class GetGuildChannelsHandler : IAuthenticatedHandler<GuildId, Get
                 "You do not have access to this guild");
         }
 
-        var channels = await _guildChannelRepository.GetByGuildIdAsync(guildId, cancellationToken);
+        var result = await _guildChannelRepository.GetByGuildIdWithUnreadAsync(guildId, currentUserId, cancellationToken);
 
         var participantsByChannelId = new Dictionary<Guid, IReadOnlyList<CachedVoiceParticipant>>();
-        foreach (var c in channels.Where(c => c.Type == GuildChannelType.Voice))
+        foreach (var c in result.Channels.Where(c => c.Type == GuildChannelType.Voice))
             participantsByChannelId[c.Id.Value] = await _voiceParticipantCache.GetAsync(c.Id, cancellationToken);
 
         var payload = new GetGuildChannelsResponse(
             GuildId: guildId.Value,
-            Channels: channels.Select(channel =>
+            Channels: result.Channels.Select(channel =>
             {
                 IReadOnlyList<GetGuildChannelsVoiceParticipantResponse>? currentParticipants = null;
                 if (channel.Type == GuildChannelType.Voice && participantsByChannelId.TryGetValue(channel.Id.Value, out var cached))
@@ -75,7 +75,8 @@ public sealed class GetGuildChannelsHandler : IAuthenticatedHandler<GuildId, Get
                     Type: channel.Type.ToString(),
                     IsDefault: channel.IsDefault,
                     Position: channel.Position,
-                    CurrentParticipants: currentParticipants);
+                    CurrentParticipants: currentParticipants,
+                    HasUnread: channel.Type == GuildChannelType.Text && result.UnreadChannelIds.Contains(channel.Id.Value));
             }).ToArray());
 
         return ApplicationResponse<GetGuildChannelsResponse>.Ok(payload);

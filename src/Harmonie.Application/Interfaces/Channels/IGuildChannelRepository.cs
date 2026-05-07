@@ -27,6 +27,10 @@ public sealed record ChannelWithParticipant(
     ChannelParticipantProfile? Participant,
     string GuildName);
 
+public sealed record GuildChannelsWithUnread(
+    IReadOnlyList<GuildChannel> Channels,
+    HashSet<Guid> UnreadChannelIds);
+
 public interface IGuildChannelRepository
 {
     Task<GuildChannel?> GetByIdAsync(
@@ -44,6 +48,11 @@ public interface IGuildChannelRepository
 
     Task<IReadOnlyList<GuildChannel>> GetByGuildIdAsync(
         GuildId guildId,
+        CancellationToken cancellationToken = default);
+
+    Task<GuildChannelsWithUnread> GetByGuildIdWithUnreadAsync(
+        GuildId guildId,
+        UserId userId,
         CancellationToken cancellationToken = default);
 
     Task UpdateAsync(
