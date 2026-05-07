@@ -39,7 +39,8 @@ public sealed record UserConversationSummary(
     ConversationType Type,
     string? Name,
     IReadOnlyList<ConversationParticipantSummary> Participants,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    bool HasUnread);
 
 public interface IConversationRepository
 {

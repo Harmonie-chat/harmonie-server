@@ -10,7 +10,8 @@ public sealed record ListConversationsItemResponse(
     string Type,
     string? Name,
     IReadOnlyList<ListConversationsParticipantDto> Participants,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    bool HasUnread);
 
 public sealed record ListConversationsParticipantDto(
     Guid UserId,

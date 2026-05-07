@@ -63,13 +63,15 @@ public sealed class ListConversationsHandlerTests
                     ConversationType.Direct,
                     null,
                     [new ConversationParticipantSummary(bobId, usernameBob.Value!, null, null, null, null, null)],
-                    secondCreatedAt),
+                    secondCreatedAt,
+                    HasUnread: true),
                 new UserConversationSummary(
                     ConversationId.New(),
                     ConversationType.Direct,
                     null,
                     [new ConversationParticipantSummary(aliceId, usernameAlice.Value!, null, null, null, null, null)],
-                    firstCreatedAt)
+                    firstCreatedAt,
+                    HasUnread: false)
             ]);
 
         var response = await _handler.HandleAsync(Unit.Value, userId, TestContext.Current.CancellationToken);
@@ -80,7 +82,9 @@ public sealed class ListConversationsHandlerTests
         response.Data!.Conversations.Should().HaveCount(2);
         response.Data.Conversations[0].Participants.Should().ContainSingle(p => p.Username == "bob");
         response.Data.Conversations[0].CreatedAtUtc.Should().Be(secondCreatedAt);
+        response.Data.Conversations[0].HasUnread.Should().BeTrue();
         response.Data.Conversations[1].Participants.Should().ContainSingle(p => p.Username == "alice");
         response.Data.Conversations[1].CreatedAtUtc.Should().Be(firstCreatedAt);
+        response.Data.Conversations[1].HasUnread.Should().BeFalse();
     }
 }

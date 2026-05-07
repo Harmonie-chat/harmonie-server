@@ -44,7 +44,8 @@ public sealed class ListConversationsHandler : IAuthenticatedHandler<Unit, ListC
                                 Avatar: avatar);
                         })
                         .ToArray(),
-                    CreatedAtUtc: conversation.CreatedAtUtc))
+                    CreatedAtUtc: conversation.CreatedAtUtc,
+                    HasUnread: conversation.HasUnread))
                 .ToArray());
 
         return ApplicationResponse<ListConversationsResponse>.Ok(payload);

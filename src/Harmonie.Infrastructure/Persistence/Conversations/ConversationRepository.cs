@@ -183,7 +183,23 @@ public sealed class ConversationRepository : IConversationRepository
                            WHERE cp1.user_id = @UserId
                              AND cp1.hidden_at_utc IS NULL
                              AND u.deleted_at IS NULL
-                           ORDER BY c.created_at_utc DESC, c.id ASC, cp2.user_id ASC
+                           ORDER BY c.created_at_utc DESC, c.id ASC, cp2.user_id ASC;
+
+                           SELECT DISTINCT m.conversation_id AS "ConversationId"
+                           FROM messages m
+                           LEFT JOIN conversation_read_states crs
+                                  ON crs.conversation_id = m.conversation_id AND crs.user_id = @UserId
+                           LEFT JOIN messages lrm ON lrm.id = crs.last_read_message_id
+                           WHERE m.conversation_id IN (
+                               SELECT conversation_id FROM conversation_participants
+                               WHERE user_id = @UserId AND hidden_at_utc IS NULL
+                           )
+                             AND m.deleted_at_utc IS NULL
+                             AND m.author_user_id != @UserId
+                             AND (
+                                 crs.last_read_message_id IS NULL
+                                 OR (m.created_at_utc, m.id) > (lrm.created_at_utc, lrm.id)
+                             )
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -193,7 +209,9 @@ public sealed class ConversationRepository : IConversationRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<UserConversationSummaryRow>(command);
+        using var multi = await connection.QueryMultipleAsync(command);
+        var rows = await multi.ReadAsync<UserConversationSummaryRow>();
+        var unreadConversationIds = (await multi.ReadAsync<Guid>()).ToHashSet();
 
         return rows
             .GroupBy(r => r.ConversationId)
@@ -221,7 +239,8 @@ public sealed class ConversationRepository : IConversationRepository
                     type,
                     first.Name,
                     participants,
-                    first.CreatedAtUtc);
+                    first.CreatedAtUtc,
+                    HasUnread: unreadConversationIds.Contains(first.ConversationId));
             })
             .ToArray();
     }

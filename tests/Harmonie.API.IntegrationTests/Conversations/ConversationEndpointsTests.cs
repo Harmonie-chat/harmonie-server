@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
+using Harmonie.Application.Features.Conversations.AcknowledgeRead;
 using Harmonie.Application.Features.Conversations.ListConversations;
 using Harmonie.Application.Features.Conversations.OpenConversation;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -168,5 +169,55 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
         var response = await _client.GetAsync("/api/conversations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ListConversations_HasUnread_ShouldBeTrueWhenOtherUserSentMessage()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
+
+        await ConversationTestHelper.SendConversationMessageAsync(_client, conversationId, "hey", target.AccessToken);
+
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var list = await listResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(TestContext.Current.CancellationToken);
+        list!.Conversations.First(c => c.ConversationId == conversationId).HasUnread.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ListConversations_HasUnread_ShouldBeFalseAfterAcknowledge()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
+
+        var message = await ConversationTestHelper.SendConversationMessageAsync(_client, conversationId, "hey", target.AccessToken);
+
+        var ackResponse = await _client.SendAuthorizedPostAsync(
+            $"/api/conversations/{conversationId}/ack",
+            new AcknowledgeReadRequest(message.MessageId),
+            caller.AccessToken);
+        ackResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var list = await listResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(TestContext.Current.CancellationToken);
+        list!.Conversations.First(c => c.ConversationId == conversationId).HasUnread.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ListConversations_HasUnread_ShouldBeFalseForOwnMessages()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+        var conversationId = await ConversationTestHelper.OpenConversationAsync(_client, caller.AccessToken, target.UserId);
+
+        await ConversationTestHelper.SendConversationMessageAsync(_client, conversationId, "my own message", caller.AccessToken);
+
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var list = await listResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(TestContext.Current.CancellationToken);
+        list!.Conversations.First(c => c.ConversationId == conversationId).HasUnread.Should().BeFalse();
     }
 }
