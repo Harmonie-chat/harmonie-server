@@ -84,7 +84,7 @@ public sealed class ConnectionTrackerTests : IDisposable
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         await _tracker.HandleConnectedAsync(userId, "conn-1", TestContext.Current.CancellationToken);
@@ -161,7 +161,7 @@ public sealed class ConnectionTrackerTests : IDisposable
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         await _tracker.HandleConnectedAsync(userId, "conn-1", TestContext.Current.CancellationToken);
@@ -204,7 +204,7 @@ public sealed class ConnectionTrackerTests : IDisposable
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         await _tracker.HandleConnectedAsync(userId, "conn-1", TestContext.Current.CancellationToken);
@@ -251,7 +251,7 @@ public sealed class ConnectionTrackerTests : IDisposable
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         await _tracker.HandleConnectedAsync(userId, "conn-1", TestContext.Current.CancellationToken);

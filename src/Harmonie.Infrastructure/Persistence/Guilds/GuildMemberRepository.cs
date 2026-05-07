@@ -138,17 +138,43 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-                           SELECT g.id AS "GuildId",
-                                  g.name AS "GuildName",
-                                  g.owner_user_id AS "OwnerUserId",
-                                  g.icon_file_id AS "IconFileId",
-                                  g.icon_color AS "IconColor",
-                                  g.icon_name AS "IconName",
-                                  g.icon_bg AS "IconBg",
+                           WITH last_read AS (
+                               SELECT crs.channel_id,
+                                      m.created_at_utc AS boundary_at,
+                                      m.id             AS boundary_id
+                               FROM channel_read_states crs
+                               JOIN messages m ON m.id = crs.last_read_message_id
+                               WHERE crs.user_id = @UserId
+                           )
+                           SELECT g.id             AS "GuildId",
+                                  g.name           AS "GuildName",
+                                  g.owner_user_id  AS "OwnerUserId",
+                                  g.icon_file_id   AS "IconFileId",
+                                  g.icon_color     AS "IconColor",
+                                  g.icon_name      AS "IconName",
+                                  g.icon_bg        AS "IconBg",
                                   g.created_at_utc AS "GuildCreatedAtUtc",
                                   g.updated_at_utc AS "GuildUpdatedAtUtc",
-                                  gm.role AS "Role",
-                                  gm.joined_at_utc AS "JoinedAtUtc"
+                                  gm.role          AS "Role",
+                                  gm.joined_at_utc AS "JoinedAtUtc",
+                                  EXISTS (
+                                      SELECT 1
+                                      FROM guild_channels gc
+                                      LEFT JOIN last_read lr ON lr.channel_id = gc.id
+                                      WHERE gc.guild_id = g.id
+                                        AND gc.type = 1
+                                        AND EXISTS (
+                                            SELECT 1
+                                            FROM messages m
+                                            WHERE m.channel_id = gc.id
+                                              AND m.deleted_at_utc IS NULL
+                                              AND m.author_user_id != @UserId
+                                              AND (
+                                                  lr.boundary_id IS NULL
+                                                  OR (m.created_at_utc, m.id) > (lr.boundary_at, lr.boundary_id)
+                                              )
+                                        )
+                                  ) AS "HasUnread"
                            FROM guild_members gm
                            INNER JOIN guilds g ON g.id = gm.guild_id
                            WHERE gm.user_id = @UserId
@@ -276,7 +302,8 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         return new UserGuildMembership(
             guild,
             (GuildRole)row.Role,
-            row.JoinedAtUtc);
+            row.JoinedAtUtc,
+            row.HasUnread);
     }
 
     private static GuildMemberUser MapToGuildMemberUser(GuildMemberUserRow row)

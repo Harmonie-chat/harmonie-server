@@ -45,7 +45,8 @@ public interface IGuildMemberRepository
 public sealed record UserGuildMembership(
     Guild Guild,
     GuildRole Role,
-    DateTime JoinedAtUtc);
+    DateTime JoinedAtUtc,
+    bool HasUnread);
 
 public sealed record GuildMemberUserRole(
     GuildRole Role,

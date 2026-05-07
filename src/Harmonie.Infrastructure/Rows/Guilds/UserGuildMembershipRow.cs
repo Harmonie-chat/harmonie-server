@@ -23,4 +23,6 @@ public sealed class UserGuildMembershipRow
     public short Role { get; init; }
 
     public DateTime JoinedAtUtc { get; init; }
+
+    public bool HasUnread { get; init; }
 }

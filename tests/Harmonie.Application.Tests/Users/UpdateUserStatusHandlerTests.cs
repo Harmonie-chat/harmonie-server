@@ -118,7 +118,7 @@ public sealed class UpdateUserStatusHandlerTests
             .Setup(x => x.GetUserGuildMembershipsAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         var response = await _handler.HandleAsync(request, user.Id, TestContext.Current.CancellationToken);
@@ -153,7 +153,7 @@ public sealed class UpdateUserStatusHandlerTests
             .Setup(x => x.GetUserGuildMembershipsAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow)
+                new UserGuildMembership(guild, Domain.Enums.GuildRole.Member, DateTime.UtcNow, HasUnread: false)
             });
 
         var response = await _handler.HandleAsync(request, user.Id, TestContext.Current.CancellationToken);
