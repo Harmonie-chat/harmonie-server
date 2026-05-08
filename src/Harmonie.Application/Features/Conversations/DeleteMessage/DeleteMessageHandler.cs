@@ -55,8 +55,7 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteConversat
         }
 
         var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
+        if (message is null || !message.Scope.Matches(request.ConversationId))
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Message.NotFound,

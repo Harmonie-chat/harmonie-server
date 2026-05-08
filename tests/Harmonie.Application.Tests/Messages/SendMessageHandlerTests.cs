@@ -438,8 +438,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                channel.Id,
-                null,
+                new MessageScope.Channel(channel.Id),
                 UserId.New(),
                 "targetuser",
                 "Target Display",
@@ -498,8 +497,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                otherChannel.Id,
-                null,
+                new MessageScope.Channel(otherChannel.Id),
                 UserId.New(),
                 "targetuser",
                 null,
@@ -563,8 +561,7 @@ public sealed class SendMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                channel.Id,
-                null,
+                new MessageScope.Channel(channel.Id),
                 UserId.New(),
                 "deleteduser",
                 "Deleted User",

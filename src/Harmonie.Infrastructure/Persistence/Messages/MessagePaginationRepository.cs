@@ -234,8 +234,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         {
             lastReadState = MessageReadState.Rehydrate(
                 UserId.From(callerId.Value),
-                GuildChannelId.From(channelId.Value),
-                conversationId: null,
+                new MessageScope.Channel(GuildChannelId.From(channelId.Value)),
                 MessageId.From(readStateRow.LastReadMessageId),
                 readStateRow.ReadAtUtc);
         }
@@ -456,8 +455,7 @@ internal sealed class MessagePaginationRepository : IMessagePaginationRepository
         {
             lastReadState = MessageReadState.Rehydrate(
                 UserId.From(callerId.Value),
-                channelId: null,
-                ConversationId.From(conversationId.Value),
+                new MessageScope.Conversation(ConversationId.From(conversationId.Value)),
                 MessageId.From(readStateRow.LastReadMessageId),
                 readStateRow.ReadAtUtc);
         }

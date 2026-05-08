@@ -68,8 +68,7 @@ public sealed class PinMessageHandler : IAuthenticatedHandler<ChannelPinMessageI
         }
 
         var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
+        if (message is null || !message.Scope.Matches(request.ChannelId))
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Pin.MessageNotFound,

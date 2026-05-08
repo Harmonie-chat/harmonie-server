@@ -339,8 +339,7 @@ public sealed class SendConversationMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                null,
-                conversation.Id,
+                new MessageScope.Conversation(conversation.Id),
                 UserId.New(),
                 "targetuser",
                 "Target Display",
@@ -400,8 +399,7 @@ public sealed class SendConversationMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                null,
-                otherConversation.Id,
+                new MessageScope.Conversation(otherConversation.Id),
                 UserId.New(),
                 "targetuser",
                 null,
@@ -463,8 +461,7 @@ public sealed class SendConversationMessageHandlerTests
             .Setup(x => x.GetReplyTargetSummaryAsync(targetMessageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplyTargetSummary(
                 targetMessageId,
-                null,
-                conversation.Id,
+                new MessageScope.Conversation(conversation.Id),
                 UserId.New(),
                 "deleteduser",
                 "Deleted User",

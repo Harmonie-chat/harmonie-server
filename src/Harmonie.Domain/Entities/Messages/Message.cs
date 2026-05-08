@@ -8,9 +8,7 @@ namespace Harmonie.Domain.Entities.Messages;
 
 public sealed class Message : Entity<MessageId>
 {
-    public GuildChannelId? ChannelId { get; private set; }
-
-    public ConversationId? ConversationId { get; private set; }
+    public MessageScope Scope { get; private set; }
 
     public UserId AuthorUserId { get; private set; }
 
@@ -22,8 +20,7 @@ public sealed class Message : Entity<MessageId>
 
     private Message(
         MessageId id,
-        GuildChannelId? channelId,
-        ConversationId? conversationId,
+        MessageScope scope,
         UserId authorUserId,
         MessageId? replyToMessageId,
         MessageContent? content,
@@ -32,8 +29,7 @@ public sealed class Message : Entity<MessageId>
         DateTime? deletedAtUtc)
     {
         Id = id;
-        ChannelId = channelId;
-        ConversationId = conversationId;
+        Scope = scope;
         AuthorUserId = authorUserId;
         ReplyToMessageId = replyToMessageId;
         Content = content;
@@ -42,44 +38,20 @@ public sealed class Message : Entity<MessageId>
         DeletedAtUtc = deletedAtUtc;
     }
 
-    public static Result<Message> CreateForChannel(
-        GuildChannelId channelId,
+    public static Result<Message> Create(
+        MessageScope scope,
         UserId authorUserId,
         MessageContent? content,
         MessageId? replyToMessageId = null)
     {
-        if (channelId is null)
-            return Result.Failure<Message>("Channel ID is required");
+        if (scope is null)
+            return Result.Failure<Message>("Message scope is required");
         if (authorUserId is null)
             return Result.Failure<Message>("Author user ID is required");
 
         return Result.Success(new Message(
             MessageId.New(),
-            channelId,
-            conversationId: null,
-            authorUserId,
-            replyToMessageId,
-            content,
-            DateTime.UtcNow,
-            updatedAtUtc: null,
-            deletedAtUtc: null));
-    }
-
-    public static Result<Message> CreateForConversation(
-        ConversationId conversationId,
-        UserId authorUserId,
-        MessageContent? content,
-        MessageId? replyToMessageId = null)
-    {
-        if (conversationId is null)
-            return Result.Failure<Message>("Conversation ID is required");
-        if (authorUserId is null)
-            return Result.Failure<Message>("Author user ID is required");
-
-        return Result.Success(new Message(
-            MessageId.New(),
-            channelId: null,
-            conversationId,
+            scope,
             authorUserId,
             replyToMessageId,
             content,
@@ -107,8 +79,7 @@ public sealed class Message : Entity<MessageId>
 
     public static Message Rehydrate(
         MessageId id,
-        GuildChannelId? channelId,
-        ConversationId? conversationId,
+        MessageScope scope,
         UserId authorUserId,
         MessageId? replyToMessageId,
         MessageContent? content,
@@ -117,15 +88,12 @@ public sealed class Message : Entity<MessageId>
         DateTime? deletedAtUtc)
     {
         ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(authorUserId);
-
-        if ((channelId is null) == (conversationId is null))
-            throw new ArgumentException("Exactly one parent reference is required.", nameof(channelId));
 
         return new Message(
             id,
-            channelId,
-            conversationId,
+            scope,
             authorUserId,
             replyToMessageId,
             content,

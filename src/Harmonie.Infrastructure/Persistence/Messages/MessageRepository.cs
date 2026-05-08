@@ -38,11 +38,7 @@ internal sealed class MessageRepository : IMessageRepository
         Message message,
         CancellationToken cancellationToken = default)
     {
-        var channelId = message.ChannelId;
-        var conversationId = message.ConversationId;
-
-        if ((channelId is null) == (conversationId is null))
-            throw new InvalidOperationException("Message must have exactly one parent before persistence.");
+        var (channelId, conversationId) = MessageRepositoryHelpers.SplitScope(message.Scope);
 
         const string sql = """
                            INSERT INTO messages (
@@ -69,8 +65,8 @@ internal sealed class MessageRepository : IMessageRepository
             new
             {
                 Id = message.Id.Value,
-                ChannelId = channelId?.Value,
-                ConversationId = conversationId?.Value,
+                ChannelId = channelId,
+                ConversationId = conversationId,
                 AuthorUserId = message.AuthorUserId.Value,
                 ReplyToMessageId = message.ReplyToMessageId?.Value,
                 Content = message.Content?.Value,
@@ -248,8 +244,7 @@ internal sealed class MessageRepository : IMessageRepository
 
         return new ReplyTargetSummary(
             MessageId.From(row.MessageId),
-            row.ChannelId.HasValue ? GuildChannelId.From(row.ChannelId.Value) : null,
-            row.ConversationId.HasValue ? ConversationId.From(row.ConversationId.Value) : null,
+            MessageRepositoryHelpers.MapToScope(row.ChannelId, row.ConversationId),
             UserId.From(row.AuthorUserId),
             row.AuthorUsername,
             row.AuthorDisplayName,

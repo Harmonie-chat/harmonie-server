@@ -36,7 +36,9 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
             new
             {
                 UserId = state.UserId.Value,
-                ChannelId = state.ChannelId!.Value,
+                ChannelId = state.Scope is MessageScope.Channel c
+                    ? c.ChannelId.Value
+                    : throw new InvalidOperationException($"Expected Channel scope but got {state.Scope.GetType().Name}."),
                 LastReadMessageId = state.LastReadMessageId.Value,
                 ReadAtUtc = state.ReadAtUtc
             },
@@ -71,8 +73,7 @@ public sealed class ChannelReadStateRepository : IChannelReadStateRepository
         var row = await connection.QueryFirstOrDefaultAsync<Row>(command);
         return row is null ? null : MessageReadState.Rehydrate(
             UserId.From(row.UserId),
-            GuildChannelId.From(row.ChannelId),
-            conversationId: null,
+            new MessageScope.Channel(GuildChannelId.From(row.ChannelId)),
             MessageId.From(row.LastReadMessageId),
             row.ReadAtUtc);
     }

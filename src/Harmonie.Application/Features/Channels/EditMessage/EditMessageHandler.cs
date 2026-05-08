@@ -77,8 +77,7 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessag
         }
 
         var message = await _channelMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        var messageChannelId = message?.ChannelId;
-        if (message is null || messageChannelId is null || messageChannelId != request.ChannelId)
+        if (message is null || !message.Scope.Matches(request.ChannelId))
         {
             return ApplicationResponse<EditMessageResponse>.Fail(
                 ApplicationErrorCodes.Message.NotFound,
@@ -91,6 +90,8 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessag
                 ApplicationErrorCodes.Message.EditForbidden,
                 "You can only edit your own messages");
         }
+
+        var messageChannelId = ((MessageScope.Channel)message.Scope).ChannelId;
 
         var updateResult = message.UpdateContent(contentResult.Value);
         if (updateResult.IsFailure)

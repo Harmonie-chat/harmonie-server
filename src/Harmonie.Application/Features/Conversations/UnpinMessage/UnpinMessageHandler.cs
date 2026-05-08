@@ -59,8 +59,7 @@ public sealed class UnpinMessageHandler : IAuthenticatedHandler<ConversationUnpi
         }
 
         var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        var messageConversationId = message?.ConversationId;
-        if (message is null || messageConversationId is null || messageConversationId != request.ConversationId)
+        if (message is null || !message.Scope.Matches(request.ConversationId))
         {
             return ApplicationResponse<bool>.Fail(
                 ApplicationErrorCodes.Pin.MessageNotFound,

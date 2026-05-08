@@ -102,8 +102,7 @@ internal static class ApplicationTestBuilders
 
         return Message.Rehydrate(
             id: MessageId.New(),
-            channelId: channelId,
-            conversationId: null,
+            scope: new MessageScope.Channel(channelId),
             authorUserId: authorId,
             replyToMessageId: replyToMessageId,
             content: contentResult.Value,
@@ -126,8 +125,7 @@ internal static class ApplicationTestBuilders
 
         return Message.Rehydrate(
             id: MessageId.New(),
-            channelId: null,
-            conversationId: conversationId,
+            scope: new MessageScope.Conversation(conversationId),
             authorUserId: authorUserId,
             replyToMessageId: replyToMessageId,
             content: contentResult.Value,

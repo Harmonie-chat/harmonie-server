@@ -54,26 +54,41 @@ internal static class MessageRepositoryHelpers
             messageContent = contentResult.Value;
         }
 
-        GuildChannelId? channelId = row.ChannelId.HasValue
-            ? GuildChannelId.From(row.ChannelId.Value)
-            : null;
-        ConversationId? conversationId = row.ConversationId.HasValue
-            ? ConversationId.From(row.ConversationId.Value)
-            : null;
+        var scope = MapToScope(row.ChannelId, row.ConversationId);
+
         MessageId? replyToMessageId = row.ReplyToMessageId.HasValue
             ? MessageId.From(row.ReplyToMessageId.Value)
             : null;
 
         return Message.Rehydrate(
             MessageId.From(row.Id),
-            channelId,
-            conversationId,
+            scope,
             UserId.From(row.AuthorUserId),
             replyToMessageId,
             messageContent,
             row.CreatedAtUtc,
             row.UpdatedAtUtc,
             row.DeletedAtUtc);
+    }
+
+    internal static MessageScope MapToScope(Guid? channelId, Guid? conversationId)
+    {
+        if (channelId.HasValue && conversationId.HasValue)
+            throw new InvalidOperationException("Message row has both channel_id and conversation_id set.");
+        if (channelId.HasValue)
+            return new MessageScope.Channel(GuildChannelId.From(channelId.Value));
+        if (conversationId.HasValue)
+            return new MessageScope.Conversation(ConversationId.From(conversationId.Value));
+        throw new InvalidOperationException("Message row has neither channel_id nor conversation_id set.");
+    }
+
+    internal static (Guid? ChannelId, Guid? ConversationId) SplitScope(MessageScope scope)
+    {
+        if (scope is MessageScope.Channel c)
+            return (c.ChannelId.Value, null);
+        if (scope is MessageScope.Conversation conv)
+            return (null, conv.ConversationId.Value);
+        throw new InvalidOperationException($"Unknown message scope type: {scope.GetType().Name}.");
     }
 
     internal static IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>> BuildLinkPreviewsDictionary(

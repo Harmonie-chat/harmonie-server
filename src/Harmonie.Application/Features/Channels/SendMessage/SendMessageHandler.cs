@@ -100,7 +100,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         {
             var targetMessageId = MessageId.From(request.ReplyToMessageId.Value);
             replyTargetSummary = await _messageRepository.GetReplyTargetSummaryAsync(targetMessageId, cancellationToken);
-            if (replyTargetSummary is null || replyTargetSummary.ChannelId != request.ChannelId)
+            if (replyTargetSummary is null || !replyTargetSummary.Scope.Matches(request.ChannelId))
             {
                 return ApplicationResponse<SendMessageResponse>.Fail(
                     ApplicationErrorCodes.Message.NotFound,
@@ -131,8 +131,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
                 "Message must have content or at least one attachment");
         }
 
-        var messageResult = Message.CreateForChannel(
-            request.ChannelId,
+        var messageResult = Message.Create(
+            new MessageScope.Channel(request.ChannelId),
             currentUserId,
             content,
             replyToMessageId);
@@ -169,13 +169,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             await _messageAttachmentRepository.AddRangeAsync(attachments, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        var messageChannelId = messageResult.Value.ChannelId;
-        if (messageChannelId is null)
-        {
-            return ApplicationResponse<SendMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Channel message creation succeeded but channel ID is missing");
-        }
+        var messageChannelId = request.ChannelId;
 
         ReplyPreviewDto? replyTo = null;
         if (replyTargetSummary is not null)

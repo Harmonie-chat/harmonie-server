@@ -12,8 +12,7 @@ namespace Harmonie.Application.Interfaces.Messages;
 
 public sealed record ReplyTargetSummary(
     MessageId MessageId,
-    GuildChannelId? ChannelId,
-    ConversationId? ConversationId,
+    MessageScope Scope,
     UserId AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,

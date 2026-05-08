@@ -54,7 +54,7 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCo
         if (request.MessageId is not null)
         {
             var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-            if (message is null || message.ConversationId != request.ConversationId)
+            if (message is null || !message.Scope.Matches(request.ConversationId))
             {
                 return ApplicationResponse<bool>.Fail(
                     ApplicationErrorCodes.Message.NotFound,
@@ -74,7 +74,7 @@ public sealed class AcknowledgeReadHandler : IAuthenticatedHandler<AcknowledgeCo
             resolvedMessageId = latestMessageId;
         }
 
-        var state = MessageReadState.CreateForConversation(currentUserId, request.ConversationId, resolvedMessageId);
+        var state = MessageReadState.Create(currentUserId, new MessageScope.Conversation(request.ConversationId), resolvedMessageId);
         if (state.IsFailure || state.Value is null)
         {
             return ApplicationResponse<bool>.Fail(

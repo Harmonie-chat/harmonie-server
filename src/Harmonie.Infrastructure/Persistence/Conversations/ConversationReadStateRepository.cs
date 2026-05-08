@@ -36,7 +36,9 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
             new
             {
                 UserId = state.UserId.Value,
-                ConversationId = state.ConversationId!.Value,
+                ConversationId = state.Scope is MessageScope.Conversation c
+                    ? c.ConversationId.Value
+                    : throw new InvalidOperationException($"Expected Conversation scope but got {state.Scope.GetType().Name}."),
                 LastReadMessageId = state.LastReadMessageId.Value,
                 ReadAtUtc = state.ReadAtUtc
             },
@@ -71,8 +73,7 @@ public sealed class ConversationReadStateRepository : IConversationReadStateRepo
         var row = await connection.QueryFirstOrDefaultAsync<Row>(command);
         return row is null ? null : MessageReadState.Rehydrate(
             UserId.From(row.UserId),
-            channelId: null,
-            ConversationId.From(row.ConversationId),
+            new MessageScope.Conversation(ConversationId.From(row.ConversationId)),
             MessageId.From(row.LastReadMessageId),
             row.ReadAtUtc);
     }

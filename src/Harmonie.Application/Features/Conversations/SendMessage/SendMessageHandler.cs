@@ -94,7 +94,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
         {
             var targetMessageId = MessageId.From(request.ReplyToMessageId.Value);
             replyTargetSummary = await _messageRepository.GetReplyTargetSummaryAsync(targetMessageId, cancellationToken);
-            if (replyTargetSummary is null || replyTargetSummary.ConversationId != request.ConversationId)
+            if (replyTargetSummary is null || !replyTargetSummary.Scope.Matches(request.ConversationId))
             {
                 return ApplicationResponse<SendMessageResponse>.Fail(
                     ApplicationErrorCodes.Message.NotFound,
@@ -125,8 +125,8 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
                 "Message must have content or at least one attachment");
         }
 
-        var messageResult = Message.CreateForConversation(
-            request.ConversationId,
+        var messageResult = Message.Create(
+            new MessageScope.Conversation(request.ConversationId),
             currentUserId,
             content,
             replyToMessageId);
@@ -175,13 +175,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             await _participantRepository.UpdateRangeAsync(hiddenParticipants, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        var messageConversationId = messageResult.Value.ConversationId;
-        if (messageConversationId is null)
-        {
-            return ApplicationResponse<SendMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Conversation message creation succeeded but conversation ID is missing");
-        }
+        var messageConversationId = request.ConversationId;
 
         ReplyPreviewDto? replyTo = null;
         if (replyTargetSummary is not null)

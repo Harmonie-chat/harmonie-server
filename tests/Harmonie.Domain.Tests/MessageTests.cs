@@ -12,40 +12,38 @@ namespace Harmonie.Domain.Tests;
 public sealed class MessageTests
 {
     [Fact]
-    public void CreateForChannel_WithValidInput_ShouldSucceed()
+    public void Create_WithChannelScope_ShouldSucceed()
     {
         var contentResult = MessageContent.Create("hello channel");
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 
-        var result = Message.CreateForChannel(
-            GuildChannelId.New(),
+        var result = Message.Create(
+            new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             contentResult.Value!);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.ChannelId.Should().NotBeNull();
-        result.Value.ConversationId.Should().BeNull();
+        result.Value!.Scope.Should().BeOfType<MessageScope.Channel>();
         result.Value.DeletedAtUtc.Should().BeNull();
     }
 
     [Fact]
-    public void CreateForConversation_WithValidInput_ShouldSucceed()
+    public void Create_WithConversationScope_ShouldSucceed()
     {
         var contentResult = MessageContent.Create("hello there");
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 
-        var result = Message.CreateForConversation(
-            ConversationId.New(),
+        var result = Message.Create(
+            new MessageScope.Conversation(ConversationId.New()),
             UserId.New(),
             contentResult.Value!);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.ChannelId.Should().BeNull();
-        result.Value.ConversationId.Should().NotBeNull();
+        result.Value!.Scope.Should().BeOfType<MessageScope.Conversation>();
         result.Value.DeletedAtUtc.Should().BeNull();
     }
 
@@ -56,8 +54,8 @@ public sealed class MessageTests
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 
-        var createResult = Message.CreateForChannel(
-            GuildChannelId.New(),
+        var createResult = Message.Create(
+            new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             contentResult.Value!);
         createResult.IsSuccess.Should().BeTrue();
@@ -71,16 +69,18 @@ public sealed class MessageTests
     }
 
     [Fact]
-    public void Rehydrate_WhenBothParentsMissing_ShouldThrow()
+    public void Rehydrate_WithChannelScope_ShouldSucceed()
     {
         var contentResult = MessageContent.Create("hello");
         contentResult.IsSuccess.Should().BeTrue();
         contentResult.Value.Should().NotBeNull();
 
-        var act = () => Message.Rehydrate(
+        var channelId = GuildChannelId.New();
+        var scope = new MessageScope.Channel(channelId);
+
+        var message = Message.Rehydrate(
             MessageId.New(),
-            channelId: null,
-            conversationId: null,
+            scope,
             authorUserId: UserId.New(),
             replyToMessageId: null,
             content: contentResult.Value!,
@@ -88,7 +88,32 @@ public sealed class MessageTests
             updatedAtUtc: null,
             deletedAtUtc: null);
 
-        act.Should().Throw<ArgumentException>();
+        message.Scope.Should().BeOfType<MessageScope.Channel>();
+        ((MessageScope.Channel)message.Scope).ChannelId.Should().Be(channelId);
+    }
+
+    [Fact]
+    public void Rehydrate_WithConversationScope_ShouldSucceed()
+    {
+        var contentResult = MessageContent.Create("hello");
+        contentResult.IsSuccess.Should().BeTrue();
+        contentResult.Value.Should().NotBeNull();
+
+        var conversationId = ConversationId.New();
+        var scope = new MessageScope.Conversation(conversationId);
+
+        var message = Message.Rehydrate(
+            MessageId.New(),
+            scope,
+            authorUserId: UserId.New(),
+            replyToMessageId: null,
+            content: contentResult.Value!,
+            createdAtUtc: DateTime.UtcNow,
+            updatedAtUtc: null,
+            deletedAtUtc: null);
+
+        message.Scope.Should().BeOfType<MessageScope.Conversation>();
+        ((MessageScope.Conversation)message.Scope).ConversationId.Should().Be(conversationId);
     }
 
     [Fact]
@@ -97,8 +122,8 @@ public sealed class MessageTests
         var contentResult = MessageContent.Create("original");
         contentResult.IsSuccess.Should().BeTrue();
 
-        var createResult = Message.CreateForChannel(
-            GuildChannelId.New(),
+        var createResult = Message.Create(
+            new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             contentResult.Value!);
         createResult.IsSuccess.Should().BeTrue();
@@ -117,15 +142,14 @@ public sealed class MessageTests
     }
 
     [Fact]
-    public void Rehydrate_WhenBothParentsPresent_ShouldThrow()
+    public void Rehydrate_WithNullScope_ShouldThrow()
     {
         var contentResult = MessageContent.Create("hello");
         contentResult.IsSuccess.Should().BeTrue();
 
         var act = () => Message.Rehydrate(
             MessageId.New(),
-            channelId: GuildChannelId.New(),
-            conversationId: ConversationId.New(),
+            scope: null!,
             authorUserId: UserId.New(),
             replyToMessageId: null,
             content: contentResult.Value!,
@@ -133,14 +157,14 @@ public sealed class MessageTests
             updatedAtUtc: null,
             deletedAtUtc: null);
 
-        act.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void CreateForChannel_WithNullContent_ShouldSucceed()
+    public void Create_WithNullContent_ShouldSucceed()
     {
-        var result = Message.CreateForChannel(
-            GuildChannelId.New(),
+        var result = Message.Create(
+            new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             content: null);
 
@@ -155,8 +179,8 @@ public sealed class MessageTests
         var contentResult = MessageContent.Create("hello");
         contentResult.IsSuccess.Should().BeTrue();
 
-        var createResult = Message.CreateForChannel(
-            GuildChannelId.New(),
+        var createResult = Message.Create(
+            new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             contentResult.Value!);
         createResult.IsSuccess.Should().BeTrue();
