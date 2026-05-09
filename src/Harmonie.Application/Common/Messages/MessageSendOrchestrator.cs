@@ -124,10 +124,10 @@ public sealed class MessageSendOrchestrator
                 context,
                 ct);
 
-            if (!validated.Success)
-                return ApplicationResponse<MessageSendResult>.Fail(validated.Error!);
+            if (!validated.IsSuccess)
+                return ApplicationResponse<MessageSendResult>.Fail(validated.ErrorCode!, validated.ErrorMessage!);
 
-            mentionUserIds = validated.Data!;
+            mentionUserIds = validated.Value!;
         }
 
         // ── Domain message creation ─────────────────────────────────────

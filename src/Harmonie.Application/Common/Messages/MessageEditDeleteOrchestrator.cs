@@ -114,10 +114,10 @@ public sealed class MessageEditDeleteOrchestrator
                     context,
                     ct);
 
-                if (!validated.Success)
-                    return ApplicationResponse<MessageEditResult>.Fail(validated.Error!);
+                if (!validated.IsSuccess)
+                    return ApplicationResponse<MessageEditResult>.Fail(validated.ErrorCode!, validated.ErrorMessage!);
 
-                resolvedMentionIds = validated.Data!.Select(id => id.Value).ToArray();
+                resolvedMentionIds = validated.Value!.Select(id => id.Value).ToArray();
             }
             // else: empty list → shouldUpdateMentions=true clears the table
         }

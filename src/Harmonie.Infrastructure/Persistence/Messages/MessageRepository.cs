@@ -328,24 +328,28 @@ internal sealed class MessageRepository : IMessageRepository
         IReadOnlyCollection<UserId> mentionedUserIds,
         CancellationToken cancellationToken = default)
     {
-        const string deleteSql = """
-                                 DELETE FROM message_mentions
-                                 WHERE message_id = @MessageId
-                                 """;
+        const string sql = """
+                           WITH deleted AS (
+                               DELETE FROM message_mentions
+                               WHERE message_id = @MessageId
+                           )
+                           INSERT INTO message_mentions (message_id, mentioned_user_id)
+                           SELECT @MessageId, unnest(@UserIds::uuid[])
+                           WHERE array_length(@UserIds::uuid[], 1) > 0
+                           """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        var deleteCommand = new CommandDefinition(
-            deleteSql,
-            new { MessageId = messageId.Value },
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                MessageId = messageId.Value,
+                UserIds = mentionedUserIds.Select(id => id.Value).ToArray()
+            },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        await connection.ExecuteAsync(deleteCommand);
-
-        if (mentionedUserIds.Count > 0)
-        {
-            await AddMentionsAsync(messageId, mentionedUserIds, cancellationToken);
-        }
+        await connection.ExecuteAsync(command);
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetMentionedUserIdsByMessageIdAsync(

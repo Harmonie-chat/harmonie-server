@@ -78,7 +78,7 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
         if (userIds.Count == 0)
             return Result.Success();
 
-        var memberSet = await _guildMemberRepository.GetMembersInAsync(context.GuildId, userIds.ToArray(), ct);
+        var memberSet = await _guildMemberRepository.GetMembersInAsync(context.GuildId, userIds, ct);
         var nonMembers = userIds.Where(id => !memberSet.Contains(id)).ToArray();
         if (nonMembers.Length > 0)
         {

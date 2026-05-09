@@ -14,9 +14,9 @@ public static class MentionValidationHelper
     /// <summary>
     /// Validates mentioned user IDs: resolves GUIDs to UserIds, checks existence,
     /// verifies membership via the scope, and returns the validated distinct UserId array.
-    /// Returns a failure ApplicationResponse with the appropriate error code on rejection.
+    /// On failure, the error code and message are set.
     /// </summary>
-    public static async Task<ApplicationResponse<UserId[]>> ValidateAsync<TContext>(
+    public static async Task<MentionValidationResult> ValidateAsync<TContext>(
         IReadOnlyList<Guid> rawMentionedUserIds,
         IUserRepository userRepository,
         Func<IReadOnlyCollection<UserId>, TContext, CancellationToken, Task<Result>> validateMembershipAsync,
@@ -37,7 +37,7 @@ public static class MentionValidationHelper
 
         if (missingIds.Count > 0)
         {
-            return ApplicationResponse<UserId[]>.Fail(
+            return MentionValidationResult.Failure(
                 ApplicationErrorCodes.Message.MentionedUserNotFound,
                 $"One or more mentioned users were not found: {string.Join(", ", missingIds)}");
         }
@@ -45,11 +45,37 @@ public static class MentionValidationHelper
         var validateResult = await validateMembershipAsync(userIds, context, ct);
         if (validateResult.IsFailure)
         {
-            return ApplicationResponse<UserId[]>.Fail(
+            return MentionValidationResult.Failure(
                 ApplicationErrorCodes.Message.MentionedUserNotMember,
                 validateResult.Error ?? "One or more mentioned users are not members of this scope");
         }
 
-        return ApplicationResponse<UserId[]>.Ok(userIds);
+        return MentionValidationResult.Success(userIds);
     }
+}
+
+/// <summary>
+/// Internal result for mention validation. Avoids coupling to the HTTP-flavored
+/// <see cref="ApplicationResponse{T}"/> for a pure domain-logic helper.
+/// </summary>
+public sealed record MentionValidationResult
+{
+    public bool IsSuccess { get; }
+    public UserId[]? Value { get; }
+    public string? ErrorCode { get; }
+    public string? ErrorMessage { get; }
+
+    private MentionValidationResult(bool isSuccess, UserId[]? value, string? errorCode, string? errorMessage)
+    {
+        IsSuccess = isSuccess;
+        Value = value;
+        ErrorCode = errorCode;
+        ErrorMessage = errorMessage;
+    }
+
+    public static MentionValidationResult Success(UserId[] value)
+        => new(true, value, null, null);
+
+    public static MentionValidationResult Failure(string errorCode, string errorMessage)
+        => new(false, null, errorCode, errorMessage);
 }
