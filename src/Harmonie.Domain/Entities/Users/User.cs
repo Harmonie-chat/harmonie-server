@@ -13,17 +13,17 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Email address (unique identifier for authentication)
     /// </summary>
-    public Email Email { get; private set; } = null!;
+    public Email Email { get; private set; }
 
     /// <summary>
     /// Display username (unique within instance)
     /// </summary>
-    public Username Username { get; private set; } = null!;
+    public Username Username { get; private set; }
 
     /// <summary>
     /// Hashed password (BCrypt/PBKDF2)
     /// </summary>
-    public string PasswordHash { get; private set; } = null!;
+    public string PasswordHash { get; private set; }
 
     public UploadedFileId? AvatarFileId { get; private set; }
 
@@ -68,9 +68,10 @@ public sealed class User : Entity<UserId>
     public string? AvatarBg { get; private set; }
 
     /// <summary>
-    /// UI theme preference
+    /// UI theme preference. Themes are open-ended (user-supplied strings);
+    /// validated for length only (max 50 chars, non-empty).
     /// </summary>
-    public string Theme { get; private set; } = "default";
+    public string Theme { get; private set; }
 
     /// <summary>
     /// Language preference (ISO 639-1)
@@ -78,17 +79,57 @@ public sealed class User : Entity<UserId>
     public string? Language { get; private set; }
 
     /// <summary>
-    /// User presence status (online, idle, dnd, invisible)
+    /// User presence status (online, idle, dnd, invisible).
+    /// Enforced by <see cref="UserStatus"/> at every entry point.
     /// </summary>
-    public string Status { get; private set; } = "online";
+    public UserStatus Status { get; private set; }
 
     /// <summary>
     /// When the status was last updated (UTC)
     /// </summary>
     public DateTime? StatusUpdatedAtUtc { get; private set; }
 
-    // Private constructor for EF Core / Dapper
-    private User() { }
+    private User(
+        UserId id,
+        Email email,
+        Username username,
+        string passwordHash,
+        UploadedFileId? avatarFileId,
+        bool isEmailVerified,
+        bool isActive,
+        DateTime? lastLoginAtUtc,
+        string? displayName,
+        string? bio,
+        string? avatarColor,
+        string? avatarIcon,
+        string? avatarBg,
+        string theme,
+        string? language,
+        UserStatus status,
+        DateTime? statusUpdatedAtUtc,
+        DateTime createdAtUtc,
+        DateTime? updatedAtUtc)
+    {
+        Id = id;
+        Email = email;
+        Username = username;
+        PasswordHash = passwordHash;
+        AvatarFileId = avatarFileId;
+        IsEmailVerified = isEmailVerified;
+        IsActive = isActive;
+        LastLoginAtUtc = lastLoginAtUtc;
+        DisplayName = displayName;
+        Bio = bio;
+        AvatarColor = avatarColor;
+        AvatarIcon = avatarIcon;
+        AvatarBg = avatarBg;
+        Theme = theme;
+        Language = language;
+        Status = status;
+        StatusUpdatedAtUtc = statusUpdatedAtUtc;
+        CreatedAtUtc = createdAtUtc;
+        UpdatedAtUtc = updatedAtUtc;
+    }
 
     /// <summary>
     /// Create a new user account.
@@ -102,20 +143,31 @@ public sealed class User : Entity<UserId>
         if (string.IsNullOrWhiteSpace(passwordHash))
             return Result.Failure<User>("Password hash cannot be empty");
 
-        var user = new User
-        {
-            Id = UserId.New(),
-            Email = email,
-            Username = username,
-            PasswordHash = passwordHash,
-            IsEmailVerified = false,
-            IsActive = true,
-            CreatedAtUtc = DateTime.UtcNow
-        };
+        var now = DateTime.UtcNow;
+        var user = new User(
+            UserId.New(),
+            email,
+            username,
+            passwordHash,
+            avatarFileId: null,
+            isEmailVerified: false,
+            isActive: true,
+            lastLoginAtUtc: null,
+            displayName: null,
+            bio: null,
+            avatarColor: null,
+            avatarIcon: null,
+            avatarBg: null,
+            theme: "default",
+            language: null,
+            status: UserStatus.Online,
+            statusUpdatedAtUtc: null,
+            createdAtUtc: now,
+            updatedAtUtc: now);
 
         return Result.Success(user);
     }
-    
+
     public static User Rehydrate(
         UserId id,
         Email email,
@@ -132,34 +184,31 @@ public sealed class User : Entity<UserId>
         string? avatarBg,
         string theme,
         string? language,
-        string status,
+        UserStatus status,
         DateTime? statusUpdatedAtUtc,
         DateTime createdAtUtc,
-        DateTime? updatedAtUtc
-    )
+        DateTime? updatedAtUtc)
     {
-        return new User
-        {
-            Id = id,
-            Email = email,
-            Username = username,
-            PasswordHash = passwordHash,
-            AvatarFileId = avatarFileId,
-            IsEmailVerified = isEmailVerified,
-            IsActive = isActive,
-            LastLoginAtUtc = lastLoginAtUtc,
-            DisplayName = displayName,
-            Bio = bio,
-            AvatarColor = avatarColor,
-            AvatarIcon = avatarIcon,
-            AvatarBg = avatarBg,
-            Theme = theme,
-            Language = language,
-            Status = status,
-            StatusUpdatedAtUtc = statusUpdatedAtUtc,
-            CreatedAtUtc = createdAtUtc,
-            UpdatedAtUtc = updatedAtUtc
-        };
+        return new User(
+            id,
+            email,
+            username,
+            passwordHash,
+            avatarFileId,
+            isEmailVerified,
+            isActive,
+            lastLoginAtUtc,
+            displayName,
+            bio,
+            avatarColor,
+            avatarIcon,
+            avatarBg,
+            theme,
+            language,
+            status,
+            statusUpdatedAtUtc,
+            createdAtUtc,
+            updatedAtUtc);
     }
 
     /// <summary>
@@ -299,20 +348,12 @@ public sealed class User : Entity<UserId>
         return Result.Success();
     }
 
-    private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
+    public Result UpdateStatus(UserStatus status)
     {
-        "online", "idle", "dnd", "invisible"
-    };
+        if (Status == status)
+            return Result.Success();
 
-    public Result UpdateStatus(string status)
-    {
-        if (string.IsNullOrWhiteSpace(status))
-            return Result.Failure("Status cannot be empty");
-
-        if (!ValidStatuses.Contains(status))
-            return Result.Failure("Status must be one of: online, idle, dnd, invisible");
-
-        Status = status.ToLowerInvariant();
+        Status = status;
         StatusUpdatedAtUtc = DateTime.UtcNow;
         MarkAsUpdated();
         return Result.Success();

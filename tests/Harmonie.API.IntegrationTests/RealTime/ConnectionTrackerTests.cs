@@ -360,6 +360,7 @@ public sealed class ConnectionTrackerTests : IDisposable
         var id = userId ?? UserId.New();
         var emailResult = Email.Create($"test-{Guid.NewGuid():N}@harmonie.chat");
         var usernameResult = Username.Create($"user{Guid.NewGuid():N}"[..20]);
+        var statusResult = UserStatus.Create(status);
 
         return User.Rehydrate(
             id,
@@ -377,7 +378,7 @@ public sealed class ConnectionTrackerTests : IDisposable
             avatarBg: null,
             theme: "default",
             language: null,
-            status: status,
+            status: statusResult.Value!,
             statusUpdatedAtUtc: DateTime.UtcNow,
             createdAtUtc: DateTime.UtcNow,
             updatedAtUtc: null);

@@ -242,7 +242,7 @@ public sealed class UserRepository : IUserRepository
                 user.AvatarBg,
                 user.Theme,
                 user.Language,
-                user.Status,
+                Status = user.Status.Value,
                 user.StatusUpdatedAtUtc,
                 user.CreatedAtUtc,
                 user.UpdatedAtUtc,
@@ -285,7 +285,7 @@ public sealed class UserRepository : IUserRepository
                 user.AvatarBg,
                 user.Theme,
                 user.Language,
-                user.Status,
+                Status = user.Status.Value,
                 user.StatusUpdatedAtUtc,
                 user.UpdatedAtUtc,
                 user.LastLoginAtUtc
@@ -346,6 +346,10 @@ public sealed class UserRepository : IUserRepository
         if (usernameResult.IsFailure || usernameResult.Value is null)
             throw new InvalidOperationException("Stored username is invalid.");
 
+        var statusResult = UserStatus.Create(userRow.Status);
+        if (statusResult.IsFailure || statusResult.Value is null)
+            throw new InvalidOperationException($"Stored status is invalid: {statusResult.Error}");
+
         return User.Rehydrate(
             UserId.From(userRow.Id),
             emailResult.Value,
@@ -362,7 +366,7 @@ public sealed class UserRepository : IUserRepository
             userRow.AvatarBg,
             userRow.Theme,
             userRow.Language,
-            userRow.Status,
+            statusResult.Value,
             userRow.StatusUpdatedAtUtc,
             userRow.CreatedAtUtc,
             userRow.UpdatedAtUtc);

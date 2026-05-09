@@ -213,52 +213,19 @@ public sealed class UserTests
     }
 
     [Theory]
-    [InlineData("online")]
     [InlineData("idle")]
     [InlineData("dnd")]
     [InlineData("invisible")]
     public void UpdateStatus_WithValidValue_ShouldSucceed(string status)
     {
         var user = CreateUser();
+        var userStatus = UserStatus.Create(status).Value!;
 
-        var result = user.UpdateStatus(status);
+        var result = user.UpdateStatus(userStatus);
 
         result.IsSuccess.Should().BeTrue();
-        user.Status.Should().Be(status);
+        user.Status.Value.Should().Be(status);
         user.StatusUpdatedAtUtc.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void UpdateStatus_WithEmptyValue_ShouldFail()
-    {
-        var user = CreateUser();
-
-        var result = user.UpdateStatus("");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Status cannot be empty");
-    }
-
-    [Fact]
-    public void UpdateStatus_WithInvalidValue_ShouldFail()
-    {
-        var user = CreateUser();
-
-        var result = user.UpdateStatus("away");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Status must be one of: online, idle, dnd, invisible");
-    }
-
-    [Fact]
-    public void UpdateStatus_ShouldNormalizeToLowercase()
-    {
-        var user = CreateUser();
-
-        var result = user.UpdateStatus("DND");
-
-        result.IsSuccess.Should().BeTrue();
-        user.Status.Should().Be("dnd");
     }
 
     [Fact]
@@ -266,8 +233,62 @@ public sealed class UserTests
     {
         var user = CreateUser();
 
-        user.Status.Should().Be("online");
+        user.Status.Should().Be(UserStatus.Online);
         user.StatusUpdatedAtUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateStatus_SameStatus_ShouldBeNoop()
+    {
+        var user = CreateUser();
+        var updatedAtBefore = user.StatusUpdatedAtUtc;
+
+        var result = user.UpdateStatus(UserStatus.Online);
+
+        result.IsSuccess.Should().BeTrue();
+        user.StatusUpdatedAtUtc.Should().Be(updatedAtBefore);
+    }
+
+    [Fact]
+    public void Rehydrate_WithExplicitStatus_ShouldSetStatus()
+    {
+        var user = User.Rehydrate(
+            UserId.New(),
+            Email.Create("rehydrate@harmonie.chat").Value!,
+            Username.Create("rehydrate").Value!,
+            "hash",
+            avatarFileId: null,
+            isEmailVerified: true,
+            isActive: true,
+            lastLoginAtUtc: null,
+            displayName: null,
+            bio: null,
+            avatarColor: null,
+            avatarIcon: null,
+            avatarBg: null,
+            theme: "dark",
+            language: null,
+            status: UserStatus.Idle,
+            statusUpdatedAtUtc: null,
+            createdAtUtc: DateTime.UtcNow,
+            updatedAtUtc: null);
+
+        user.Status.Should().Be(UserStatus.Idle);
+        user.Theme.Should().Be("dark");
+    }
+
+    [Fact]
+    public void UpdateStatus_FromIdleToOnline_ShouldUpdateTimestamp()
+    {
+        var user = CreateUser();
+        user.UpdateStatus(UserStatus.Idle);
+        var idleTimestamp = user.StatusUpdatedAtUtc;
+
+        user.UpdateStatus(UserStatus.Online);
+
+        user.Status.Should().Be(UserStatus.Online);
+        user.StatusUpdatedAtUtc.Should().NotBeNull();
+        user.StatusUpdatedAtUtc.Should().BeAfter(idleTimestamp!.Value);
     }
 
     private static User CreateUser()

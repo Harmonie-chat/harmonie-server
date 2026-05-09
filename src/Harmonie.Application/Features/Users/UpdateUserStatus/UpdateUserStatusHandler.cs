@@ -35,7 +35,19 @@ public sealed class UpdateUserStatusHandler
                 "User was not found");
         }
 
-        var result = user.UpdateStatus(request.Status);
+        var statusResult = UserStatus.Create(request.Status);
+        if (statusResult.IsFailure || statusResult.Value is null)
+        {
+            return ApplicationResponse<UpdateUserStatusResponse>.Fail(
+                ApplicationErrorCodes.Common.ValidationFailed,
+                "Request validation failed",
+                EndpointExtensions.SingleValidationError(
+                    nameof(request.Status),
+                    ApplicationErrorCodes.Validation.Invalid,
+                    statusResult.Error ?? "Status is invalid"));
+        }
+
+        var result = user.UpdateStatus(statusResult.Value);
         if (result.IsFailure)
         {
             return ApplicationResponse<UpdateUserStatusResponse>.Fail(
@@ -50,9 +62,9 @@ public sealed class UpdateUserStatusHandler
         await _userRepository.UpdateAsync(user, cancellationToken);
 
         // Broadcast to guild members: invisible users appear as "offline" to others
-        var broadcastStatus = string.Equals(user.Status, "invisible", StringComparison.OrdinalIgnoreCase)
+        var broadcastStatus = user.Status == UserStatus.Invisible
             ? "offline"
-            : user.Status;
+            : user.Status.Value;
 
         var memberships = await _guildMemberRepository.GetUserGuildMembershipsAsync(
             currentUserId,

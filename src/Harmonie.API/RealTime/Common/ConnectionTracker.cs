@@ -189,9 +189,9 @@ public sealed class ConnectionTracker : IConnectionTracker, IDisposable
             if (user is null)
                 return;
 
-            var broadcastStatus = string.Equals(user.Status, "invisible", StringComparison.OrdinalIgnoreCase)
+            var broadcastStatus = user.Status == UserStatus.Invisible
                 ? "offline"
-                : user.Status;
+                : user.Status.Value;
 
             var memberships = await guildMemberRepository.GetUserGuildMembershipsAsync(userId, cancellationToken);
             var guildIds = memberships.Select(m => m.Guild.Id).ToList();

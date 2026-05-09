@@ -300,7 +300,7 @@ public sealed class OpenConversationHandlerTests
             avatarBg: null,
             theme: "default",
             language: null,
-            status: "online",
+            status: UserStatus.Online,
             statusUpdatedAtUtc: null,
             createdAtUtc: DateTime.UtcNow,
             updatedAtUtc: DateTime.UtcNow);
