@@ -32,6 +32,7 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
             Content: notification.Content,
             Attachments: notification.Attachments,
             ReplyTo: notification.ReplyTo,
+            MentionedUserIds: notification.MentionedUserIds,
             CreatedAtUtc: notification.CreatedAtUtc);
 
         await _hubContext.Clients
@@ -74,6 +75,7 @@ public sealed class SignalRTextChannelNotifier : ITextChannelNotifier
             GuildId: notification.GuildId.Value,
             GuildName: notification.GuildName,
             Content: notification.Content,
+            MentionedUserIds: notification.MentionedUserIds,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
         await _hubContext.Clients
@@ -112,6 +114,7 @@ public sealed record MessageCreatedEvent(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);
 
 public sealed record MessageUpdatedEvent(
@@ -121,6 +124,7 @@ public sealed record MessageUpdatedEvent(
     Guid GuildId,
     string GuildName,
     string? Content,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime UpdatedAtUtc);
 
 public sealed record MessageDeletedEvent(

@@ -32,6 +32,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
             Content: notification.Content,
             Attachments: notification.Attachments,
             ReplyTo: notification.ReplyTo,
+            MentionedUserIds: notification.MentionedUserIds,
             CreatedAtUtc: notification.CreatedAtUtc);
 
         await _hubContext.Clients
@@ -73,6 +74,7 @@ public sealed class SignalRConversationMessageNotifier : IConversationMessageNot
             ConversationName: notification.ConversationName,
             ConversationType: notification.ConversationType,
             Content: notification.Content,
+            MentionedUserIds: notification.MentionedUserIds,
             UpdatedAtUtc: notification.UpdatedAtUtc);
 
         await _hubContext.Clients
@@ -109,6 +111,7 @@ public sealed record ConversationMessageCreatedEvent(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);
 
 public sealed record ConversationMessageUpdatedEvent(
@@ -117,6 +120,7 @@ public sealed record ConversationMessageUpdatedEvent(
     string? ConversationName,
     string ConversationType,
     string? Content,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime UpdatedAtUtc);
 
 public sealed record ConversationMessageDeletedEvent(

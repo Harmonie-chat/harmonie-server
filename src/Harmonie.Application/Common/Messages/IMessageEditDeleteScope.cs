@@ -40,6 +40,7 @@ public interface IMessageEditDeleteScope<TContext> where TContext : ScopeContext
         TContext context,
         MessageId messageId,
         string? content,
+        IReadOnlyList<Guid> mentionedUserIds,
         DateTime updatedAtUtc,
         CancellationToken ct);
 

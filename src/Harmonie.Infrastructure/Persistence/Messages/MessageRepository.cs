@@ -300,24 +300,21 @@ internal sealed class MessageRepository : IMessageRepository
 
         const string sql = """
                            INSERT INTO message_mentions (message_id, mentioned_user_id)
-                           VALUES (@MessageId, @MentionedUserId)
+                           SELECT @MessageId, unnest(@UserIds::uuid[])
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
-        foreach (var userId in mentionedUserIds)
-        {
-            var command = new CommandDefinition(
-                sql,
-                new
-                {
-                    MessageId = messageId.Value,
-                    MentionedUserId = userId.Value
-                },
-                transaction: _dbSession.Transaction,
-                cancellationToken: cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                MessageId = messageId.Value,
+                UserIds = mentionedUserIds.Select(id => id.Value).ToArray()
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
 
-            await connection.ExecuteAsync(command);
-        }
+        await connection.ExecuteAsync(command);
     }
 
     public async Task ReplaceMentionsAsync(

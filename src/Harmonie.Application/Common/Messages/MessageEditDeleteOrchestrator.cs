@@ -97,58 +97,56 @@ public sealed class MessageEditDeleteOrchestrator
         }
 
         // ── Mention validation ──────────────────────────────────────────
-        IReadOnlyList<Guid>? validatedMentionIds = null;
-        if (mentionedUserIds is { Count: > 0 })
+        // null = don't touch mentions (field absent, backward compat)
+        // []   = clear all mentions
+        // ids  = validate and replace
+        IReadOnlyList<Guid>? resolvedMentionIds = null;
+        bool shouldUpdateMentions = false;
+        if (mentionedUserIds is not null)
         {
-            var distinctMentionIds = mentionedUserIds.Distinct().ToArray();
-            var userIds = distinctMentionIds.Select(UserId.From).ToArray();
-
-            // Verify all users exist
-            var existingUsers = await _userRepository.GetManyByIdsAsync(userIds.ToArray(), ct);
-            var existingUserIds = existingUsers.Select(u => u.Id).ToHashSet();
-            var missingIds = userIds.Where(id => !existingUserIds.Contains(id)).ToArray();
-            if (missingIds.Length > 0)
+            shouldUpdateMentions = true;
+            if (mentionedUserIds.Count > 0)
             {
-                return ApplicationResponse<MessageEditResult>.Fail(
-                    ApplicationErrorCodes.Message.MentionedUserNotFound,
-                    $"One or more mentioned users were not found: {string.Join(", ", missingIds.Select(id => id.Value))}");
-            }
+                var distinctMentionIds = mentionedUserIds.Distinct().ToArray();
+                var userIds = distinctMentionIds.Select(UserId.From).ToArray();
 
-            // Verify membership via scope
-            var validateResult = await scope.ValidateMentionedUsersAsync(userIds.ToArray(), context, ct);
-            if (validateResult.IsFailure)
-            {
-                return ApplicationResponse<MessageEditResult>.Fail(
-                    ApplicationErrorCodes.Message.MentionedUserNotMember,
-                    validateResult.Error ?? "One or more mentioned users are not members of this scope");
-            }
+                var existingUsers = await _userRepository.GetManyByIdsAsync(userIds.ToArray(), ct);
+                var existingUserIds = existingUsers.Select(u => u.Id).ToHashSet();
+                var missingIds = userIds.Where(id => !existingUserIds.Contains(id)).ToArray();
+                if (missingIds.Length > 0)
+                {
+                    return ApplicationResponse<MessageEditResult>.Fail(
+                        ApplicationErrorCodes.Message.MentionedUserNotFound,
+                        $"One or more mentioned users were not found: {string.Join(", ", missingIds.Select(id => id.Value))}");
+                }
 
-            validatedMentionIds = distinctMentionIds;
+                var validateResult = await scope.ValidateMentionedUsersAsync(userIds.ToArray(), context, ct);
+                if (validateResult.IsFailure)
+                {
+                    return ApplicationResponse<MessageEditResult>.Fail(
+                        ApplicationErrorCodes.Message.MentionedUserNotMember,
+                        validateResult.Error ?? "One or more mentioned users are not members of this scope");
+                }
+
+                resolvedMentionIds = distinctMentionIds;
+            }
+            // else: empty list → resolvedMentionIds stays null, but shouldUpdateMentions=true clears the table
         }
 
         // ── Persist ─────────────────────────────────────────────────────
         await using var transaction = await _unitOfWork.BeginAsync(ct);
         await _messageRepository.UpdateAsync(message, ct);
-        if (validatedMentionIds is not null)
-            await _messageRepository.ReplaceMentionsAsync(message.Id, validatedMentionIds.Select(UserId.From).ToArray(), ct);
+        if (shouldUpdateMentions)
+            await _messageRepository.ReplaceMentionsAsync(message.Id, resolvedMentionIds?.Select(UserId.From).ToArray() ?? Array.Empty<UserId>(), ct);
         await transaction.CommitAsync(ct);
 
-        // ── Notify ──────────────────────────────────────────────────────
-        await scope.NotifyMessageUpdatedAsync(
-            context,
-            message.Id,
-            message.Content?.Value,
-            updatedAtUtc.Value,
-            ct);
-
-        // ── Attachments for response ────────────────────────────────────
+        // ── Attachments + mentions for response & notification ──────────
         var attachments = await _messageAttachmentRepository.GetByMessageIdAsync(messageId, ct);
 
-        // ── Retrieve mentions for response ──────────────────────────────
         IReadOnlyList<Guid> mentionIdsResponse;
-        if (validatedMentionIds is not null)
+        if (shouldUpdateMentions)
         {
-            mentionIdsResponse = validatedMentionIds;
+            mentionIdsResponse = resolvedMentionIds ?? Array.Empty<Guid>();
         }
         else
         {
@@ -156,6 +154,15 @@ public sealed class MessageEditDeleteOrchestrator
                 [message.Id.Value], ct);
             mentionIdsResponse = mentionsDict.TryGetValue(message.Id.Value, out var ids) ? ids : Array.Empty<Guid>();
         }
+
+        // ── Notify ──────────────────────────────────────────────────────
+        await scope.NotifyMessageUpdatedAsync(
+            context,
+            message.Id,
+            message.Content?.Value,
+            mentionIdsResponse,
+            updatedAtUtc.Value,
+            ct);
 
         // ── Result ──────────────────────────────────────────────────────
         return ApplicationResponse<MessageEditResult>.Ok(new MessageEditResult(

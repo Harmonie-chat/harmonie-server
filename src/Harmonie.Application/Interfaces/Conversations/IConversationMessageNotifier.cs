@@ -35,6 +35,7 @@ public sealed record ConversationMessageCreatedNotification(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);
 
 public sealed record ConversationMessageUpdatedNotification(
@@ -43,6 +44,7 @@ public sealed record ConversationMessageUpdatedNotification(
     string? ConversationName,
     string ConversationType,
     string? Content,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime UpdatedAtUtc);
 
 public sealed record ConversationMessageDeletedNotification(

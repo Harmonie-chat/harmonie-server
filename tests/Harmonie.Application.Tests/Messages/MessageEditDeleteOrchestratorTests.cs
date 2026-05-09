@@ -82,7 +82,7 @@ public sealed class MessageEditDeleteOrchestratorTests
             .ReturnsAsync(new AuthorizationResult<OrchestratorTestContext>.Authorized(Ctx));
         mock.Setup(x => x.CanDeleteOthersMessages(Ctx)).Returns(canDeleteOthers);
         mock.Setup(x => x.NotifyMessageUpdatedAsync(
-            Ctx, It.IsAny<MessageId>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            Ctx, It.IsAny<MessageId>(), It.IsAny<string?>(), It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         mock.Setup(x => x.NotifyMessageDeletedAsync(
             Ctx, It.IsAny<MessageId>(), It.IsAny<CancellationToken>()))
@@ -218,7 +218,7 @@ public sealed class MessageEditDeleteOrchestratorTests
             .Returns(Task.CompletedTask);
         scopeMock
             .Setup(x => x.NotifyMessageUpdatedAsync(
-                Ctx, message.Id, TestContent, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                Ctx, message.Id, TestContent, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Callback(() => callOrder.Add("notify"))
             .Returns(Task.CompletedTask);
 
@@ -231,7 +231,7 @@ public sealed class MessageEditDeleteOrchestratorTests
         _messageRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()), Times.Once);
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         scopeMock.Verify(
-            x => x.NotifyMessageUpdatedAsync(Ctx, message.Id, TestContent, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            x => x.NotifyMessageUpdatedAsync(Ctx, message.Id, TestContent, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Once);
         // UpdatedAtUtc is validated before commit → callOrder is: update, commit, notify
         callOrder.Should().Equal("update", "commit", "notify");

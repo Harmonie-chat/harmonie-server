@@ -48,6 +48,36 @@ public sealed class GuildMemberRepository : IGuildMemberRepository
         return await connection.ExecuteScalarAsync<bool>(command);
     }
 
+    public async Task<IReadOnlySet<UserId>> GetMembersInAsync(
+        GuildId guildId,
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new HashSet<UserId>();
+
+        const string sql = """
+                           SELECT user_id
+                           FROM guild_members
+                           WHERE guild_id = @GuildId
+                             AND user_id = ANY(@UserIds::uuid[])
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                GuildId = guildId.Value,
+                UserIds = userIds.Select(id => id.Value).ToArray()
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.QueryAsync<Guid>(command);
+        return rows.Select(UserId.From).ToHashSet();
+    }
+
     public async Task<GuildMemberUserRole?> GetUserWithRoleAsync(
         GuildId guildId,
         UserId userId,

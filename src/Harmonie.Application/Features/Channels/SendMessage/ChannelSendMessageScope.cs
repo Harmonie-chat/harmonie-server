@@ -75,13 +75,14 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
         Context context,
         CancellationToken ct)
     {
-        foreach (var userId in userIds)
+        if (userIds.Count == 0)
+            return Result.Success();
+
+        var memberSet = await _guildMemberRepository.GetMembersInAsync(context.GuildId, userIds.ToArray(), ct);
+        var nonMembers = userIds.Where(id => !memberSet.Contains(id)).ToArray();
+        if (nonMembers.Length > 0)
         {
-            var isMember = await _guildMemberRepository.IsMemberAsync(context.GuildId, userId, ct);
-            if (!isMember)
-            {
-                return Result.Failure($"User {userId.Value} is not a member of guild {context.GuildId.Value}");
-            }
+            return Result.Failure($"Users not members of guild {context.GuildId.Value}: {string.Join(", ", nonMembers.Select(id => id.Value))}");
         }
 
         return Result.Success();
@@ -106,6 +107,7 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
             message.Content?.Value,
             attachments,
             replyTo,
+            message.MentionedUserIds.Select(id => id.Value).ToArray(),
             message.CreatedAtUtc);
 
         await BestEffortNotificationHelper.TryNotifyAsync(

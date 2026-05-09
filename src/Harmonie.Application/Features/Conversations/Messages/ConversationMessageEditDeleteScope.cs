@@ -81,6 +81,7 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
         Context context,
         MessageId messageId,
         string? content,
+        IReadOnlyList<Guid> mentionedUserIds,
         DateTime updatedAtUtc,
         CancellationToken ct)
     {
@@ -90,6 +91,7 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
             context.ConversationName,
             context.ConversationType.ToString(),
             content,
+            mentionedUserIds,
             updatedAtUtc);
 
         await BestEffortNotificationHelper.TryNotifyAsync(

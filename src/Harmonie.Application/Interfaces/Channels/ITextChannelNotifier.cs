@@ -37,6 +37,7 @@ public sealed record TextChannelMessageCreatedNotification(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);
 
 public sealed record TextChannelMessageUpdatedNotification(
@@ -46,6 +47,7 @@ public sealed record TextChannelMessageUpdatedNotification(
     GuildId GuildId,
     string GuildName,
     string? Content,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime UpdatedAtUtc);
 
 public sealed record TextChannelMessageDeletedNotification(

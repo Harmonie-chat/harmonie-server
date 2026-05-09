@@ -127,6 +127,7 @@ public sealed class ConversationSendMessageScope : ISendMessageScope<Conversatio
             message.Content?.Value,
             attachments,
             replyTo,
+            message.MentionedUserIds.Select(id => id.Value).ToArray(),
             message.CreatedAtUtc);
 
         await BestEffortNotificationHelper.TryNotifyAsync(

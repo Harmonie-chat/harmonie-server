@@ -13,6 +13,14 @@ public interface IGuildMemberRepository
         UserId userId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns the subset of userIds that are members of the guild.
+    /// </summary>
+    Task<IReadOnlySet<UserId>> GetMembersInAsync(
+        GuildId guildId,
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default);
+
     Task<GuildMemberUserRole?> GetUserWithRoleAsync(
         GuildId guildId,
         UserId userId,

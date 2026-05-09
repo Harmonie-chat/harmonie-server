@@ -70,13 +70,14 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
         Context context,
         CancellationToken ct)
     {
-        foreach (var userId in userIds)
+        if (userIds.Count == 0)
+            return Result.Success();
+
+        var memberSet = await _guildMemberRepository.GetMembersInAsync(context.GuildId, userIds.ToArray(), ct);
+        var nonMembers = userIds.Where(id => !memberSet.Contains(id)).ToArray();
+        if (nonMembers.Length > 0)
         {
-            var isMember = await _guildMemberRepository.IsMemberAsync(context.GuildId, userId, ct);
-            if (!isMember)
-            {
-                return Result.Failure($"User {userId.Value} is not a member of guild {context.GuildId.Value}");
-            }
+            return Result.Failure($"Users not members of guild {context.GuildId.Value}: {string.Join(", ", nonMembers.Select(id => id.Value))}");
         }
 
         return Result.Success();
@@ -86,6 +87,7 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
         Context context,
         MessageId messageId,
         string? content,
+        IReadOnlyList<Guid> mentionedUserIds,
         DateTime updatedAtUtc,
         CancellationToken ct)
     {
@@ -96,6 +98,7 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
             context.GuildId,
             context.GuildName,
             content,
+            mentionedUserIds,
             updatedAtUtc);
 
         await BestEffortNotificationHelper.TryNotifyAsync(
