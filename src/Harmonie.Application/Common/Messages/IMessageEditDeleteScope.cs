@@ -54,3 +54,16 @@ public sealed record MessageEditResult(
     IReadOnlyList<MessageAttachmentDto> Attachments,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);
+
+/// <summary>
+/// Discriminated union for the result of <see cref="MessageEditDeleteOrchestrator"/>'s
+/// internal authorization + message fetch step.
+/// </summary>
+public abstract record FetchMessageResult<TContext> where TContext : ScopeContext
+{
+    private FetchMessageResult() { }
+
+    public sealed record Found(TContext Context, Message Message) : FetchMessageResult<TContext>;
+
+    public sealed record Failed(ApplicationError Error) : FetchMessageResult<TContext>;
+}
