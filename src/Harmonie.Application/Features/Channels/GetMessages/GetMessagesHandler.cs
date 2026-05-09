@@ -38,11 +38,11 @@ public sealed class GetMessagesHandler : IAuthenticatedHandler<GetChannelMessage
             scope, request.Before, request.Limit, currentUserId, cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<GetMessagesResponse>.Fail(result.Error!);
+            return ApplicationResponse<GetMessagesResponse>.Fail(result.Error);
 
         return ApplicationResponse<GetMessagesResponse>.Ok(new GetMessagesResponse(
             ChannelId: request.ChannelId.Value,
-            Items: result.Data!.Items,
+            Items: result.Data.Items,
             NextCursor: result.Data.NextCursor,
             LastReadMessageId: result.Data.LastReadMessageId,
             LastReadAtUtc: result.Data.LastReadAtUtc));

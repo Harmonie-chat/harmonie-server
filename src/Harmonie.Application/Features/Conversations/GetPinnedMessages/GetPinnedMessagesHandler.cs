@@ -38,11 +38,11 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetConversa
             scope, request.Before, request.Limit, currentUserId, cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<GetConversationPinnedMessagesResponse>.Fail(result.Error!);
+            return ApplicationResponse<GetConversationPinnedMessagesResponse>.Fail(result.Error);
 
         return ApplicationResponse<GetConversationPinnedMessagesResponse>.Ok(new GetConversationPinnedMessagesResponse(
             ConversationId: request.ConversationId.Value,
-            Items: result.Data!.Items,
+            Items: result.Data.Items,
             NextCursor: result.Data.NextCursor));
     }
 }

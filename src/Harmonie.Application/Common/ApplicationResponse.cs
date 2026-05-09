@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Harmonie.Application.Common;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Harmonie.Application.Common;
 /// </summary>
 public sealed record ApplicationResponse<T>
 {
+    [MemberNotNullWhen(true, nameof(Data))]
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool Success { get; init; }
     public T? Data { get; init; }
     public ApplicationError? Error { get; init; }

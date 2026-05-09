@@ -38,11 +38,11 @@ public sealed class GetPinnedMessagesHandler : IAuthenticatedHandler<GetChannelP
             scope, request.Before, request.Limit, currentUserId, cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<GetPinnedMessagesResponse>.Fail(result.Error!);
+            return ApplicationResponse<GetPinnedMessagesResponse>.Fail(result.Error);
 
         return ApplicationResponse<GetPinnedMessagesResponse>.Ok(new GetPinnedMessagesResponse(
             ChannelId: request.ChannelId.Value,
-            Items: result.Data!.Items,
+            Items: result.Data.Items,
             NextCursor: result.Data.NextCursor));
     }
 }

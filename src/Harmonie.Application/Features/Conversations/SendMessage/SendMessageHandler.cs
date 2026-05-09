@@ -59,10 +59,10 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<SendMessageResponse>.Fail(result.Error!);
+            return ApplicationResponse<SendMessageResponse>.Fail(result.Error);
 
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
-            result.Data!.MessageId,
+            result.Data.MessageId,
             request.ConversationId.Value,
             result.Data.AuthorUserId,
             result.Data.Content,

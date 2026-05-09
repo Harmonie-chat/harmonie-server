@@ -50,10 +50,10 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
             cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<EditMessageResponse>.Fail(result.Error!);
+            return ApplicationResponse<EditMessageResponse>.Fail(result.Error);
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
-            MessageId: result.Data!.MessageId,
+            MessageId: result.Data.MessageId,
             ConversationId: request.ConversationId.Value,
             AuthorUserId: result.Data.AuthorUserId,
             Content: result.Data.Content,

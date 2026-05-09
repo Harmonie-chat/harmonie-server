@@ -55,10 +55,10 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<SendMessageResponse>.Fail(result.Error!);
+            return ApplicationResponse<SendMessageResponse>.Fail(result.Error);
 
         return ApplicationResponse<SendMessageResponse>.Ok(new SendMessageResponse(
-            result.Data!.MessageId,
+            result.Data.MessageId,
             request.ChannelId.Value,
             result.Data.AuthorUserId,
             result.Data.Content,

@@ -55,10 +55,10 @@ public sealed class GetReactionUsersHandler : IAuthenticatedHandler<GetConversat
             cancellationToken);
 
         if (!result.Success)
-            return ApplicationResponse<GetReactionUsersResponse>.Fail(result.Error!);
+            return ApplicationResponse<GetReactionUsersResponse>.Fail(result.Error);
 
         return ApplicationResponse<GetReactionUsersResponse>.Ok(new GetReactionUsersResponse(
-            result.Data!.MessageId,
+            result.Data.MessageId,
             result.Data.Emoji,
             result.Data.TotalCount,
             result.Data.Users,
