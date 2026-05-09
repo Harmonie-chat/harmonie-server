@@ -21,6 +21,7 @@ public static class GetConversationParticipantsEndpoint
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 ApplicationErrorCodes.Auth.InvalidCredentials,
+                ApplicationErrorCodes.Conversation.NotFound,
                 ApplicationErrorCodes.Conversation.AccessDenied);
     }
 

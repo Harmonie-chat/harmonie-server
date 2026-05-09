@@ -9,14 +9,14 @@ namespace Harmonie.Application.Features.Conversations.GetConversationParticipant
 public sealed class GetConversationParticipantsHandler
     : IAuthenticatedHandler<ConversationId, GetConversationParticipantsResponse>
 {
-    private readonly IConversationParticipantRepository _participantRepository;
+    private readonly IConversationRepository _conversationRepository;
     private readonly IUserRepository _userRepository;
 
     public GetConversationParticipantsHandler(
-        IConversationParticipantRepository participantRepository,
+        IConversationRepository conversationRepository,
         IUserRepository userRepository)
     {
-        _participantRepository = participantRepository;
+        _conversationRepository = conversationRepository;
         _userRepository = userRepository;
     }
 
@@ -25,21 +25,28 @@ public sealed class GetConversationParticipantsHandler
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var callerParticipant = await _participantRepository.GetAsync(conversationId, currentUserId, cancellationToken);
-        if (callerParticipant is null)
+        var access = await _conversationRepository.GetByIdWithAllParticipantsAsync(
+            conversationId, currentUserId, cancellationToken);
+
+        if (access is null)
+        {
+            return ApplicationResponse<GetConversationParticipantsResponse>.Fail(
+                ApplicationErrorCodes.Conversation.NotFound,
+                "Conversation was not found");
+        }
+
+        if (access.CallerParticipant is null)
         {
             return ApplicationResponse<GetConversationParticipantsResponse>.Fail(
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 "You do not have access to this conversation");
         }
 
-        var participants = await _participantRepository.GetByConversationIdAsync(conversationId, cancellationToken);
-        var userIds = participants.Select(p => p.UserId).ToArray();
-
+        var userIds = access.AllParticipants.Select(p => p.UserId).ToArray();
         var users = await _userRepository.GetManyByIdsAsync(userIds, cancellationToken);
         var userById = users.ToDictionary(u => u.Id);
 
-        var dtos = participants
+        var dtos = access.AllParticipants
             .Select(p =>
             {
                 userById.TryGetValue(p.UserId, out var user);

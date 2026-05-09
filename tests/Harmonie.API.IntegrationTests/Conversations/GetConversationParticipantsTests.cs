@@ -68,7 +68,7 @@ public sealed class GetConversationParticipantsTests : IClassFixture<HarmonieWeb
     }
 
     [Fact]
-    public async Task GetConversationParticipants_WhenConversationDoesNotExist_ShouldReturn403()
+    public async Task GetConversationParticipants_WhenConversationDoesNotExist_ShouldReturn404()
     {
         var user = await AuthTestHelper.RegisterAsync(_client);
 
@@ -76,11 +76,11 @@ public sealed class GetConversationParticipantsTests : IClassFixture<HarmonieWeb
             $"/api/conversations/{Guid.NewGuid()}/participants",
             user.AccessToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
-        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.AccessDenied);
+        error!.Code.Should().Be(ApplicationErrorCodes.Conversation.NotFound);
     }
 
     [Fact]
