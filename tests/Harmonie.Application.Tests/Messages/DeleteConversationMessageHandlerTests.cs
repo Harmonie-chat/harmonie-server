@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Conversations.DeleteMessage;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -13,22 +17,24 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
-
 namespace Harmonie.Application.Tests.Messages;
 
 public sealed class DeleteConversationMessageHandlerTests
 {
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
+    private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IConversationMessageNotifier> _directMessageNotifierMock;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
     private readonly DeleteMessageHandler _handler;
 
     public DeleteConversationMessageHandlerTests()
     {
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _directMessageRepositoryMock = new Mock<IMessageRepository>();
+        _messageAttachmentRepositoryMock = new Mock<IMessageAttachmentRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _directMessageNotifierMock = new Mock<IConversationMessageNotifier>();
@@ -39,12 +45,22 @@ public sealed class DeleteConversationMessageHandlerTests
             .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<ConversationMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        var uploadedFileCleanupService = new UploadedFileCleanupService(
+            new Mock<IUploadedFileRepository>().Object,
+            new Mock<IObjectStorageService>().Object,
+            NullLogger<UploadedFileCleanupService>.Instance);
+
+        _orchestrator = new MessageEditDeleteOrchestrator(
+            _directMessageRepositoryMock.Object,
+            _messageAttachmentRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            uploadedFileCleanupService);
+
         _handler = new DeleteMessageHandler(
             _conversationRepositoryMock.Object,
-            _directMessageRepositoryMock.Object,
-            _unitOfWorkMock.Object,
             _directMessageNotifierMock.Object,
-            NullLogger<DeleteMessageHandler>.Instance);
+            NullLogger<ConversationMessageEditDeleteScope>.Instance,
+            _orchestrator);
     }
 
     [Fact]
@@ -217,7 +233,7 @@ public sealed class DeleteConversationMessageHandlerTests
         _directMessageNotifierMock.Verify(
             x => x.NotifyMessageDeletedAsync(
                 It.Is<ConversationMessageDeletedNotification>(n =>
-                    n.MessageId == messageId
+                    n.MessageId == message.Id
                     && n.ConversationId == conversation.Id
                     && n.ConversationName == null
                     && n.ConversationType == "Direct"),
@@ -254,5 +270,4 @@ public sealed class DeleteConversationMessageHandlerTests
         response.Error.Should().BeNull();
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
-
 }

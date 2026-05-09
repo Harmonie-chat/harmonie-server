@@ -1,13 +1,12 @@
 using Harmonie.Application.Common;
-using Harmonie.Application.Common.Uploads;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Application.Interfaces.Common;
-using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Uploads;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.DeleteMessageAttachment;
 
@@ -16,23 +15,20 @@ public sealed record DeleteChannelMessageAttachmentInput(GuildChannelId ChannelI
 public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<DeleteChannelMessageAttachmentInput, bool>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IMessageRepository _messageRepository;
-    private readonly IMessageAttachmentRepository _messageAttachmentRepository;
-    private readonly UploadedFileCleanupService _uploadedFileCleanupService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ITextChannelNotifier _textChannelNotifier;
+    private readonly ILogger<ChannelMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageAttachmentHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessageRepository messageRepository,
-        IMessageAttachmentRepository messageAttachmentRepository,
-        UploadedFileCleanupService uploadedFileCleanupService,
-        IUnitOfWork unitOfWork)
+        ITextChannelNotifier textChannelNotifier,
+        ILogger<ChannelMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _guildChannelRepository = guildChannelRepository;
-        _messageRepository = messageRepository;
-        _messageAttachmentRepository = messageAttachmentRepository;
-        _uploadedFileCleanupService = uploadedFileCleanupService;
-        _unitOfWork = unitOfWork;
+        _textChannelNotifier = textChannelNotifier;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -40,59 +36,18 @@ public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<Delet
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
-        if (ctx is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.NotFound,
-                "Channel was not found");
-        }
+        var scope = new ChannelMessageEditDeleteScope(
+            request.ChannelId,
+            _guildChannelRepository,
+            _textChannelNotifier,
+            _scopeLogger);
 
-        if (ctx.Channel.Type != GuildChannelType.Text)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.NotText,
-                "Attachments can only be deleted from messages in text channels");
-        }
-
-        if (ctx.CallerRole is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.AccessDenied,
-                "You do not have access to this channel");
-        }
-
-        var message = await _messageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ChannelId))
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.DeleteForbidden,
-                "You can only delete attachments from your own messages");
-        }
-
-        bool deleted;
-        await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
-        {
-            deleted = await _messageAttachmentRepository.DeleteAsync(message.Id, request.AttachmentId, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-
-        if (!deleted)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.AttachmentNotFound,
-                "Attachment was not found on message");
-        }
-
-        await _uploadedFileCleanupService.DeleteIfExistsAsync(request.AttachmentId, cancellationToken);
-
-        return ApplicationResponse<bool>.Ok(true);
+        return await _orchestrator.DeleteAttachmentAsync(
+            scope,
+            new MessageScope.Channel(request.ChannelId),
+            request.MessageId,
+            request.AttachmentId,
+            currentUserId,
+            cancellationToken);
     }
 }

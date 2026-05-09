@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Channels.DeleteMessage;
+using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
@@ -22,15 +26,18 @@ public sealed class DeleteMessageHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
     private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
+    private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
     private readonly DeleteMessageHandler _handler;
 
     public DeleteMessageHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
         _channelMessageRepositoryMock = new Mock<IMessageRepository>();
+        _messageAttachmentRepositoryMock = new Mock<IMessageAttachmentRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
@@ -40,12 +47,23 @@ public sealed class DeleteMessageHandlerTests
         _textChannelNotifierMock
             .Setup(x => x.NotifyMessageDeletedAsync(It.IsAny<TextChannelMessageDeletedNotification>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+
+        var uploadedFileCleanupService = new UploadedFileCleanupService(
+            new Mock<IUploadedFileRepository>().Object,
+            new Mock<IObjectStorageService>().Object,
+            NullLogger<UploadedFileCleanupService>.Instance);
+
+        _orchestrator = new MessageEditDeleteOrchestrator(
+            _channelMessageRepositoryMock.Object,
+            _messageAttachmentRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            uploadedFileCleanupService);
+
         _handler = new DeleteMessageHandler(
             _guildChannelRepositoryMock.Object,
-            _channelMessageRepositoryMock.Object,
-            _unitOfWorkMock.Object,
             _textChannelNotifierMock.Object,
-            NullLogger<DeleteMessageHandler>.Instance);
+            NullLogger<ChannelMessageEditDeleteScope>.Instance,
+            _orchestrator);
     }
 
     [Fact]
@@ -306,7 +324,7 @@ public sealed class DeleteMessageHandlerTests
         _textChannelNotifierMock.Verify(
             x => x.NotifyMessageDeletedAsync(
                 It.Is<TextChannelMessageDeletedNotification>(n =>
-                    n.MessageId == messageId &&
+                    n.MessageId == message.Id &&
                     n.ChannelId == channel.Id &&
                     n.GuildId == channel.GuildId),
                 It.IsAny<CancellationToken>()),

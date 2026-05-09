@@ -1,8 +1,7 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Application.Interfaces.Common;
-using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -14,25 +13,21 @@ public sealed record DeleteChannelMessageInput(GuildChannelId ChannelId, Message
 
 public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMessageInput, bool>
 {
-    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IMessageRepository _channelMessageRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
-    private readonly ILogger<DeleteMessageHandler> _logger;
+    private readonly ILogger<ChannelMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessageRepository channelMessageRepository,
-        IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
-        ILogger<DeleteMessageHandler> logger)
+        ILogger<ChannelMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _guildChannelRepository = guildChannelRepository;
-        _channelMessageRepository = channelMessageRepository;
-        _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
-        _logger = logger;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -40,75 +35,17 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMe
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
-        if (ctx is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.NotFound,
-                "Channel was not found");
-        }
+        var scope = new ChannelMessageEditDeleteScope(
+            request.ChannelId,
+            _guildChannelRepository,
+            _textChannelNotifier,
+            _scopeLogger);
 
-        if (ctx.Channel.Type != GuildChannelType.Text)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.NotText,
-                "Messages can only be deleted in text channels");
-        }
-
-        if (ctx.CallerRole is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Channel.AccessDenied,
-                "You do not have access to this channel");
-        }
-
-        var message = await _channelMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ChannelId))
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId && ctx.CallerRole != GuildRole.Admin)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.DeleteForbidden,
-                "You can only delete your own messages unless you are a guild admin");
-        }
-
-        var deleteResult = message.Delete();
-        if (deleteResult.IsFailure)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
-                deleteResult.Error ?? "Message deletion failed");
-        }
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _channelMessageRepository.SoftDeleteAsync(message, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        await NotifyMessageDeletedSafelyAsync(
-            new TextChannelMessageDeletedNotification(
-                request.MessageId,
-                request.ChannelId,
-                ctx.Channel.Name,
-                ctx.Channel.GuildId,
-                ctx.GuildName ?? string.Empty));
-
-        return ApplicationResponse<bool>.Ok(true);
-    }
-
-    private async Task NotifyMessageDeletedSafelyAsync(
-        TextChannelMessageDeletedNotification notification)
-    {
-        await BestEffortNotificationHelper.TryNotifyAsync(
-            token => _textChannelNotifier.NotifyMessageDeletedAsync(notification, token),
-            NotificationTimeout,
-            _logger,
-            "DeleteMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-            notification.MessageId,
-            notification.ChannelId);
+        return await _orchestrator.DeleteAsync(
+            scope,
+            new MessageScope.Channel(request.ChannelId),
+            request.MessageId,
+            currentUserId,
+            cancellationToken);
     }
 }

@@ -1,7 +1,7 @@
 using Harmonie.Application.Common;
-using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -13,26 +13,21 @@ public sealed record DeleteConversationMessageInput(ConversationId ConversationI
 
 public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteConversationMessageInput, bool>
 {
-    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-
     private readonly IConversationRepository _conversationRepository;
-    private readonly IMessageRepository _conversationMessageRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
-    private readonly ILogger<DeleteMessageHandler> _logger;
+    private readonly ILogger<ConversationMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageHandler(
         IConversationRepository conversationRepository,
-        IMessageRepository conversationMessageRepository,
-        IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
-        ILogger<DeleteMessageHandler> logger)
+        ILogger<ConversationMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _conversationRepository = conversationRepository;
-        _conversationMessageRepository = conversationMessageRepository;
-        _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
-        _logger = logger;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -40,62 +35,17 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteConversat
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(request.ConversationId, currentUserId, cancellationToken);
-        if (access is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Conversation.NotFound,
-                "Conversation was not found");
-        }
-        if (access.Participant is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Conversation.AccessDenied,
-                "You do not have access to this conversation");
-        }
+        var scope = new ConversationMessageEditDeleteScope(
+            request.ConversationId,
+            _conversationRepository,
+            _conversationMessageNotifier,
+            _scopeLogger);
 
-        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ConversationId))
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.DeleteForbidden,
-                "You can only delete your own messages");
-        }
-
-        var deleteResult = message.Delete();
-        if (deleteResult.IsFailure)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
-                deleteResult.Error ?? "Message deletion failed");
-        }
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _conversationMessageRepository.SoftDeleteAsync(message, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        await NotifyMessageDeletedSafelyAsync(
-            new ConversationMessageDeletedNotification(request.MessageId, request.ConversationId, access.Conversation.Name, access.Conversation.Type.ToString()));
-
-        return ApplicationResponse<bool>.Ok(true);
-    }
-
-    private async Task NotifyMessageDeletedSafelyAsync(
-        ConversationMessageDeletedNotification notification)
-    {
-        await BestEffortNotificationHelper.TryNotifyAsync(
-            token => _conversationMessageNotifier.NotifyMessageDeletedAsync(notification, token),
-            NotificationTimeout,
-            _logger,
-            "DeleteConversationMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-            notification.MessageId,
-            notification.ConversationId);
+        return await _orchestrator.DeleteAsync(
+            scope,
+            new MessageScope.Conversation(request.ConversationId),
+            request.MessageId,
+            currentUserId,
+            cancellationToken);
     }
 }

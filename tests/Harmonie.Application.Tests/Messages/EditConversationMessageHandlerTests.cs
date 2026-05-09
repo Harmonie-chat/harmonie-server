@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Conversations.EditMessage;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -12,7 +16,6 @@ using Harmonie.Domain.ValueObjects.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
-
 
 namespace Harmonie.Application.Tests.Messages;
 
@@ -24,6 +27,7 @@ public sealed class EditConversationMessageHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IConversationMessageNotifier> _directMessageNotifierMock;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
     private readonly EditMessageHandler _handler;
 
     public EditConversationMessageHandlerTests()
@@ -45,13 +49,22 @@ public sealed class EditConversationMessageHandlerTests
             .Setup(x => x.GetByMessageIdAsync(It.IsAny<MessageId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<MessageAttachment>());
 
-        _handler = new EditMessageHandler(
-            _conversationRepositoryMock.Object,
+        var uploadedFileCleanupService = new UploadedFileCleanupService(
+            new Mock<IUploadedFileRepository>().Object,
+            new Mock<IObjectStorageService>().Object,
+            NullLogger<UploadedFileCleanupService>.Instance);
+
+        _orchestrator = new MessageEditDeleteOrchestrator(
             _directMessageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
             _unitOfWorkMock.Object,
+            uploadedFileCleanupService);
+
+        _handler = new EditMessageHandler(
+            _conversationRepositoryMock.Object,
             _directMessageNotifierMock.Object,
-            NullLogger<EditMessageHandler>.Instance);
+            NullLogger<ConversationMessageEditDeleteScope>.Instance,
+            _orchestrator);
     }
 
     [Fact]
@@ -302,5 +315,4 @@ public sealed class EditConversationMessageHandlerTests
         response.Error.Should().BeNull();
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
-
 }

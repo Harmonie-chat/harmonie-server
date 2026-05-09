@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Features.Conversations.DeleteMessageAttachment;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
@@ -15,7 +17,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
-
 namespace Harmonie.Application.Tests.Messages;
 
 public sealed class DeleteConversationMessageAttachmentHandlerTests
@@ -27,6 +28,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
     private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
     private readonly DeleteMessageAttachmentHandler _handler;
 
     public DeleteConversationMessageAttachmentHandlerTests()
@@ -41,16 +43,22 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
-        _handler = new DeleteMessageAttachmentHandler(
-            _conversationRepositoryMock.Object,
+        var uploadedFileCleanupService = new UploadedFileCleanupService(
+            _uploadedFileRepositoryMock.Object,
+            _objectStorageServiceMock.Object,
+            NullLogger<UploadedFileCleanupService>.Instance);
+
+        _orchestrator = new MessageEditDeleteOrchestrator(
             _conversationMessageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
-            new UploadedFileCleanupService(
-                _uploadedFileRepositoryMock.Object,
-                _objectStorageServiceMock.Object,
-                NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
-            NullLogger<DeleteMessageAttachmentHandler>.Instance);
+            uploadedFileCleanupService);
+
+        _handler = new DeleteMessageAttachmentHandler(
+            _conversationRepositoryMock.Object,
+            new Mock<IConversationMessageNotifier>().Object,
+            NullLogger<ConversationMessageEditDeleteScope>.Instance,
+            _orchestrator);
     }
 
     [Fact]

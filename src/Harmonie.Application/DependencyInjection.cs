@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<LinkPreviewResolutionService>();
         services.AddScoped<MessageSendOrchestrator>();
         services.AddScoped<ReactionOrchestrator>();
+        services.AddScoped<MessageEditDeleteOrchestrator>();
 
         services.AddAuthHandlers();
         services.AddGuildHandlers();

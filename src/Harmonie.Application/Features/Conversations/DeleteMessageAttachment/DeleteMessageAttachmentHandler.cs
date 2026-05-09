@@ -1,8 +1,7 @@
 using Harmonie.Application.Common;
-using Harmonie.Application.Common.Uploads;
-using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -16,26 +15,20 @@ public sealed record DeleteConversationMessageAttachmentInput(ConversationId Con
 public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<DeleteConversationMessageAttachmentInput, bool>
 {
     private readonly IConversationRepository _conversationRepository;
-    private readonly IMessageRepository _conversationMessageRepository;
-    private readonly IMessageAttachmentRepository _messageAttachmentRepository;
-    private readonly UploadedFileCleanupService _uploadedFileCleanupService;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<DeleteMessageAttachmentHandler> _logger;
+    private readonly IConversationMessageNotifier _conversationMessageNotifier;
+    private readonly ILogger<ConversationMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageAttachmentHandler(
         IConversationRepository conversationRepository,
-        IMessageRepository conversationMessageRepository,
-        IMessageAttachmentRepository messageAttachmentRepository,
-        UploadedFileCleanupService uploadedFileCleanupService,
-        IUnitOfWork unitOfWork,
-        ILogger<DeleteMessageAttachmentHandler> logger)
+        IConversationMessageNotifier conversationMessageNotifier,
+        ILogger<ConversationMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _conversationRepository = conversationRepository;
-        _conversationMessageRepository = conversationMessageRepository;
-        _messageAttachmentRepository = messageAttachmentRepository;
-        _uploadedFileCleanupService = uploadedFileCleanupService;
-        _unitOfWork = unitOfWork;
-        _logger = logger;
+        _conversationMessageNotifier = conversationMessageNotifier;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -43,51 +36,18 @@ public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<Delet
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(request.ConversationId, currentUserId, cancellationToken);
-        if (access is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Conversation.NotFound,
-                "Conversation was not found");
-        }
-        if (access.Participant is null)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Conversation.AccessDenied,
-                "You do not have access to this conversation");
-        }
+        var scope = new ConversationMessageEditDeleteScope(
+            request.ConversationId,
+            _conversationRepository,
+            _conversationMessageNotifier,
+            _scopeLogger);
 
-        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ConversationId))
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.DeleteForbidden,
-                "You can only delete attachments from your own messages");
-        }
-
-        bool deleted;
-        await using (var transaction = await _unitOfWork.BeginAsync(cancellationToken))
-        {
-            deleted = await _messageAttachmentRepository.DeleteAsync(message.Id, request.AttachmentId, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-
-        if (!deleted)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.AttachmentNotFound,
-                "Attachment was not found on message");
-        }
-
-        await _uploadedFileCleanupService.DeleteIfExistsAsync(request.AttachmentId, cancellationToken);
-
-        return ApplicationResponse<bool>.Ok(true);
+        return await _orchestrator.DeleteAttachmentAsync(
+            scope,
+            new MessageScope.Conversation(request.ConversationId),
+            request.MessageId,
+            request.AttachmentId,
+            currentUserId,
+            cancellationToken);
     }
 }

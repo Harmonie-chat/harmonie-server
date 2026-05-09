@@ -1,8 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
-using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Features.Conversations.Messages;
 using Harmonie.Application.Interfaces.Conversations;
-using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -14,29 +13,21 @@ public sealed record EditConversationMessageInput(ConversationId ConversationId,
 
 public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationMessageInput, EditMessageResponse>
 {
-    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-
     private readonly IConversationRepository _conversationRepository;
-    private readonly IMessageRepository _conversationMessageRepository;
-    private readonly IMessageAttachmentRepository _messageAttachmentRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
-    private readonly ILogger<EditMessageHandler> _logger;
+    private readonly ILogger<ConversationMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public EditMessageHandler(
         IConversationRepository conversationRepository,
-        IMessageRepository conversationMessageRepository,
-        IMessageAttachmentRepository messageAttachmentRepository,
-        IUnitOfWork unitOfWork,
         IConversationMessageNotifier conversationMessageNotifier,
-        ILogger<EditMessageHandler> logger)
+        ILogger<ConversationMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _conversationRepository = conversationRepository;
-        _conversationMessageRepository = conversationMessageRepository;
-        _messageAttachmentRepository = messageAttachmentRepository;
-        _unitOfWork = unitOfWork;
         _conversationMessageNotifier = conversationMessageNotifier;
-        _logger = logger;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<EditMessageResponse>> HandleAsync(
@@ -44,96 +35,30 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditConversationM
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var contentResult = MessageContent.Create(request.Content);
-        if (contentResult.IsFailure || contentResult.Value is null)
-        {
-            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                code,
-                contentResult.Error ?? "Message content is invalid");
-        }
+        var scope = new ConversationMessageEditDeleteScope(
+            request.ConversationId,
+            _conversationRepository,
+            _conversationMessageNotifier,
+            _scopeLogger);
 
-        var access = await _conversationRepository.GetByIdWithParticipantCheckAsync(request.ConversationId, currentUserId, cancellationToken);
-        if (access is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Conversation.NotFound,
-                "Conversation was not found");
-        }
-        if (access.Participant is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Conversation.AccessDenied,
-                "You do not have access to this conversation");
-        }
+        var result = await _orchestrator.EditAsync(
+            scope,
+            new MessageScope.Conversation(request.ConversationId),
+            request.MessageId,
+            request.Content,
+            currentUserId,
+            cancellationToken);
 
-        var message = await _conversationMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ConversationId))
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Message.EditForbidden,
-                "You can only edit your own messages");
-        }
-
-        var messageConversationId = request.ConversationId;
-
-        var updateResult = message.UpdateContent(contentResult.Value);
-        if (updateResult.IsFailure)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
-                updateResult.Error ?? "Message content update failed");
-        }
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _conversationMessageRepository.UpdateAsync(message, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        var updatedAtUtc = message.UpdatedAtUtc;
-        if (updatedAtUtc is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Message edit succeeded but updated timestamp is missing");
-        }
-
-        await NotifyMessageUpdatedSafelyAsync(
-            new ConversationMessageUpdatedNotification(
-                message.Id,
-                messageConversationId,
-                access.Conversation.Name,
-                access.Conversation.Type.ToString(),
-                message.Content?.Value,
-                updatedAtUtc.Value));
-
-        var attachments = await _messageAttachmentRepository.GetByMessageIdAsync(message.Id, cancellationToken);
+        if (!result.Success)
+            return ApplicationResponse<EditMessageResponse>.Fail(result.Error!);
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
-            MessageId: message.Id.Value,
-            ConversationId: messageConversationId.Value,
-            AuthorUserId: message.AuthorUserId.Value,
-            Content: message.Content?.Value,
-            Attachments: attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
-            CreatedAtUtc: message.CreatedAtUtc,
-            UpdatedAtUtc: updatedAtUtc));
-    }
-
-    private async Task NotifyMessageUpdatedSafelyAsync(
-        ConversationMessageUpdatedNotification notification)
-    {
-        await BestEffortNotificationHelper.TryNotifyAsync(
-            token => _conversationMessageNotifier.NotifyMessageUpdatedAsync(notification, token),
-            NotificationTimeout,
-            _logger,
-            "EditConversationMessage notification failed (best-effort). MessageId={MessageId}, ConversationId={ConversationId}",
-            notification.MessageId,
-            notification.ConversationId);
+            MessageId: result.Data!.MessageId,
+            ConversationId: request.ConversationId.Value,
+            AuthorUserId: result.Data.AuthorUserId,
+            Content: result.Data.Content,
+            Attachments: result.Data.Attachments,
+            CreatedAtUtc: result.Data.CreatedAtUtc,
+            UpdatedAtUtc: result.Data.UpdatedAtUtc));
     }
 }

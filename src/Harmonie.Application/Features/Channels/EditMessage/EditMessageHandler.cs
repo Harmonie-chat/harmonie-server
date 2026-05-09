@@ -1,9 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
+using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
-using Harmonie.Application.Interfaces.Common;
-using Harmonie.Application.Interfaces.Messages;
-using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -15,29 +13,21 @@ public sealed record EditChannelMessageInput(GuildChannelId ChannelId, MessageId
 
 public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessageInput, EditMessageResponse>
 {
-    private static readonly TimeSpan NotificationTimeout = TimeSpan.FromSeconds(5);
-
     private readonly IGuildChannelRepository _guildChannelRepository;
-    private readonly IMessageRepository _channelMessageRepository;
-    private readonly IMessageAttachmentRepository _messageAttachmentRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly ITextChannelNotifier _textChannelNotifier;
-    private readonly ILogger<EditMessageHandler> _logger;
+    private readonly ILogger<ChannelMessageEditDeleteScope> _scopeLogger;
+    private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public EditMessageHandler(
         IGuildChannelRepository guildChannelRepository,
-        IMessageRepository channelMessageRepository,
-        IMessageAttachmentRepository messageAttachmentRepository,
-        IUnitOfWork unitOfWork,
         ITextChannelNotifier textChannelNotifier,
-        ILogger<EditMessageHandler> logger)
+        ILogger<ChannelMessageEditDeleteScope> scopeLogger,
+        MessageEditDeleteOrchestrator orchestrator)
     {
         _guildChannelRepository = guildChannelRepository;
-        _channelMessageRepository = channelMessageRepository;
-        _messageAttachmentRepository = messageAttachmentRepository;
-        _unitOfWork = unitOfWork;
         _textChannelNotifier = textChannelNotifier;
-        _logger = logger;
+        _scopeLogger = scopeLogger;
+        _orchestrator = orchestrator;
     }
 
     public async Task<ApplicationResponse<EditMessageResponse>> HandleAsync(
@@ -45,105 +35,30 @@ public sealed class EditMessageHandler : IAuthenticatedHandler<EditChannelMessag
         UserId currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var contentResult = MessageContent.Create(request.Content);
-        if (contentResult.IsFailure || contentResult.Value is null)
-        {
-            var code = MessageContentErrorCodeResolver.Resolve(request.Content);
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                code,
-                contentResult.Error ?? "Message content is invalid");
-        }
+        var scope = new ChannelMessageEditDeleteScope(
+            request.ChannelId,
+            _guildChannelRepository,
+            _textChannelNotifier,
+            _scopeLogger);
 
-        var ctx = await _guildChannelRepository.GetWithCallerRoleAsync(request.ChannelId, currentUserId, cancellationToken);
-        if (ctx is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Channel.NotFound,
-                "Channel was not found");
-        }
+        var result = await _orchestrator.EditAsync(
+            scope,
+            new MessageScope.Channel(request.ChannelId),
+            request.MessageId,
+            request.Content,
+            currentUserId,
+            cancellationToken);
 
-        if (ctx.Channel.Type != GuildChannelType.Text)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Channel.NotText,
-                "Messages can only be edited in text channels");
-        }
-
-        if (ctx.CallerRole is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Channel.AccessDenied,
-                "You do not have access to this channel");
-        }
-
-        var message = await _channelMessageRepository.GetByIdAsync(request.MessageId, cancellationToken);
-        if (message is null || !message.Scope.Matches(request.ChannelId))
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
-
-        if (message.AuthorUserId != currentUserId)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Message.EditForbidden,
-                "You can only edit your own messages");
-        }
-
-        var messageChannelId = request.ChannelId;
-
-        var updateResult = message.UpdateContent(contentResult.Value);
-        if (updateResult.IsFailure)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
-                updateResult.Error ?? "Message content update failed");
-        }
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _channelMessageRepository.UpdateAsync(message, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        var updatedAtUtc = message.UpdatedAtUtc;
-        if (updatedAtUtc is null)
-        {
-            return ApplicationResponse<EditMessageResponse>.Fail(
-                ApplicationErrorCodes.Common.InvalidState,
-                "Message edit succeeded but updated timestamp is missing");
-        }
-
-        await NotifyMessageUpdatedSafelyAsync(
-            new TextChannelMessageUpdatedNotification(
-                message.Id,
-                messageChannelId,
-                ctx.Channel.Name,
-                ctx.Channel.GuildId,
-                ctx.GuildName ?? string.Empty,
-                message.Content?.Value,
-                updatedAtUtc.Value));
-
-        var attachments = await _messageAttachmentRepository.GetByMessageIdAsync(message.Id, cancellationToken);
+        if (!result.Success)
+            return ApplicationResponse<EditMessageResponse>.Fail(result.Error!);
 
         return ApplicationResponse<EditMessageResponse>.Ok(new EditMessageResponse(
-            MessageId: message.Id.Value,
-            ChannelId: messageChannelId.Value,
-            AuthorUserId: message.AuthorUserId.Value,
-            Content: message.Content?.Value,
-            Attachments: attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
-            CreatedAtUtc: message.CreatedAtUtc,
-            UpdatedAtUtc: message.UpdatedAtUtc));
-    }
-
-    private async Task NotifyMessageUpdatedSafelyAsync(
-        TextChannelMessageUpdatedNotification notification)
-    {
-        await BestEffortNotificationHelper.TryNotifyAsync(
-            token => _textChannelNotifier.NotifyMessageUpdatedAsync(notification, token),
-            NotificationTimeout,
-            _logger,
-            "EditMessage notification failed (best-effort). MessageId={MessageId}, ChannelId={ChannelId}",
-            notification.MessageId,
-            notification.ChannelId);
+            MessageId: result.Data!.MessageId,
+            ChannelId: request.ChannelId.Value,
+            AuthorUserId: result.Data.AuthorUserId,
+            Content: result.Data.Content,
+            Attachments: result.Data.Attachments,
+            CreatedAtUtc: result.Data.CreatedAtUtc,
+            UpdatedAtUtc: result.Data.UpdatedAtUtc));
     }
 }
