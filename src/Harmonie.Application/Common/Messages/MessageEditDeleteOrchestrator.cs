@@ -103,7 +103,7 @@ public sealed class MessageEditDeleteOrchestrator
         bool mentionsTouched = false;
         if (mentionedUserIds is not null)
         {
-            UserId[] validatedIds;
+            var validatedIds = Array.Empty<UserId>();
             if (mentionedUserIds.Count > 0)
             {
                 var validated = await MentionValidationHelper.ValidateAsync(
@@ -117,10 +117,6 @@ public sealed class MessageEditDeleteOrchestrator
                     return ApplicationResponse<MessageEditResult>.Fail(editFailure.ErrorCode, editFailure.ErrorMessage);
 
                 validatedIds = ((MentionValidationResult.Success)validated).Value;
-            }
-            else
-            {
-                validatedIds = Array.Empty<UserId>();
             }
 
             var replaceResult = message.ReplaceMentions(validatedIds);
