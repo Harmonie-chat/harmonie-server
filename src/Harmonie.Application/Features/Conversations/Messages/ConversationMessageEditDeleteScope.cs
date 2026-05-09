@@ -53,6 +53,7 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
             access.Conversation.Type));
     }
 
+    // Conversations have no admin role; only the author can delete their own messages.
     public bool CanDeleteOthersMessages(Context context)
         => false;
 

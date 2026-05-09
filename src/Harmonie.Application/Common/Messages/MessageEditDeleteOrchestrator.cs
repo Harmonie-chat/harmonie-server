@@ -53,23 +53,11 @@ public sealed class MessageEditDeleteOrchestrator
                 contentResult.Error ?? "Message content is invalid");
         }
 
-        // ── Authorization ───────────────────────────────────────────────
-        var authResult = await scope.AuthorizeAsync(callerId, ct);
-        if (authResult is AuthorizationResult<TContext>.Denied denied)
-        {
-            return ApplicationResponse<MessageEditResult>.Fail(denied.Error);
-        }
-
-        var context = ((AuthorizationResult<TContext>.Authorized)authResult).Context;
-
-        // ── Message fetch + scope validation ────────────────────────────
-        var message = await _messageRepository.GetByIdAsync(messageId, ct);
-        if (message is null || message.Scope != messageScope)
-        {
-            return ApplicationResponse<MessageEditResult>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
+        // ── Authorization + message fetch ───────────────────────────────
+        var (context, message, authError) = await AuthorizeAndFetchMessageAsync(
+            scope, messageScope, messageId, callerId, ct);
+        if (authError is not null)
+            return ApplicationResponse<MessageEditResult>.Fail(authError);
 
         // ── Author check ────────────────────────────────────────────────
         if (message.AuthorUserId != callerId)
@@ -88,12 +76,8 @@ public sealed class MessageEditDeleteOrchestrator
                 updateResult.Error ?? "Message content update failed");
         }
 
-        // ── Persist ─────────────────────────────────────────────────────
-        await using var transaction = await _unitOfWork.BeginAsync(ct);
-        await _messageRepository.UpdateAsync(message, ct);
-        await transaction.CommitAsync(ct);
-
-        // ── Updated timestamp validation ────────────────────────────────
+        // ── Updated timestamp validation (before commit: UpdateContent always sets it,
+        //     this guard is defensive against future domain changes) ─────
         var updatedAtUtc = message.UpdatedAtUtc;
         if (updatedAtUtc is null)
         {
@@ -101,6 +85,11 @@ public sealed class MessageEditDeleteOrchestrator
                 ApplicationErrorCodes.Common.InvalidState,
                 "Message edit succeeded but updated timestamp is missing");
         }
+
+        // ── Persist ─────────────────────────────────────────────────────
+        await using var transaction = await _unitOfWork.BeginAsync(ct);
+        await _messageRepository.UpdateAsync(message, ct);
+        await transaction.CommitAsync(ct);
 
         // ── Notify ──────────────────────────────────────────────────────
         await scope.NotifyMessageUpdatedAsync(
@@ -131,25 +120,15 @@ public sealed class MessageEditDeleteOrchestrator
         CancellationToken ct)
         where TContext : ScopeContext
     {
-        // ── Authorization ───────────────────────────────────────────────
-        var authResult = await scope.AuthorizeAsync(callerId, ct);
-        if (authResult is AuthorizationResult<TContext>.Denied denied)
-        {
-            return ApplicationResponse<bool>.Fail(denied.Error);
-        }
-
-        var context = ((AuthorizationResult<TContext>.Authorized)authResult).Context;
-
-        // ── Message fetch + scope validation ────────────────────────────
-        var message = await _messageRepository.GetByIdAsync(messageId, ct);
-        if (message is null || message.Scope != messageScope)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
+        // ── Authorization + message fetch ───────────────────────────────
+        var (context, message, authError) = await AuthorizeAndFetchMessageAsync(
+            scope, messageScope, messageId, callerId, ct);
+        if (authError is not null)
+            return ApplicationResponse<bool>.Fail(authError);
 
         // ── Author check (with scope-specific admin override) ───────────
+        // Channel scopes allow admins to delete others' messages (CanDeleteOthersMessages = true).
+        // Conversation scopes never allow non-authors to delete (CanDeleteOthersMessages = false).
         if (message.AuthorUserId != callerId && !scope.CanDeleteOthersMessages(context))
         {
             return ApplicationResponse<bool>.Fail(
@@ -186,21 +165,11 @@ public sealed class MessageEditDeleteOrchestrator
         CancellationToken ct)
         where TContext : ScopeContext
     {
-        // ── Authorization ───────────────────────────────────────────────
-        var authResult = await scope.AuthorizeAsync(callerId, ct);
-        if (authResult is AuthorizationResult<TContext>.Denied denied)
-        {
-            return ApplicationResponse<bool>.Fail(denied.Error);
-        }
-
-        // ── Message fetch + scope validation ────────────────────────────
-        var message = await _messageRepository.GetByIdAsync(messageId, ct);
-        if (message is null || message.Scope != messageScope)
-        {
-            return ApplicationResponse<bool>.Fail(
-                ApplicationErrorCodes.Message.NotFound,
-                "Message was not found");
-        }
+        // ── Authorization + message fetch ───────────────────────────────
+        var (_, message, authError) = await AuthorizeAndFetchMessageAsync(
+            scope, messageScope, messageId, callerId, ct);
+        if (authError is not null)
+            return ApplicationResponse<bool>.Fail(authError);
 
         // ── Author check ────────────────────────────────────────────────
         if (message.AuthorUserId != callerId)
@@ -229,5 +198,35 @@ public sealed class MessageEditDeleteOrchestrator
         await _uploadedFileCleanupService.DeleteIfExistsAsync(attachmentId, ct);
 
         return ApplicationResponse<bool>.Ok(true);
+    }
+
+    /// <summary>
+    /// Authorizes the caller via the scope and fetches the target message,
+    /// validating that it belongs to the expected scope.
+    /// </summary>
+    private async Task<(TContext Context, Message Message, ApplicationError? Error)>
+        AuthorizeAndFetchMessageAsync<TContext>(
+            IMessageEditDeleteScope<TContext> scope,
+            MessageScope messageScope,
+            MessageId messageId,
+            UserId callerId,
+            CancellationToken ct)
+            where TContext : ScopeContext
+    {
+        var authResult = await scope.AuthorizeAsync(callerId, ct);
+        if (authResult is AuthorizationResult<TContext>.Denied denied)
+            return (default!, default!, denied.Error);
+
+        var context = ((AuthorizationResult<TContext>.Authorized)authResult).Context;
+
+        var message = await _messageRepository.GetByIdAsync(messageId, ct);
+        if (message is null || message.Scope != messageScope)
+        {
+            return (default!, default!, new ApplicationError(
+                ApplicationErrorCodes.Message.NotFound,
+                "Message was not found"));
+        }
+
+        return (context, message, null);
     }
 }

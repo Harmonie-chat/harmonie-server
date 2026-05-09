@@ -61,6 +61,7 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
             ctx.CallerRole));
     }
 
+    // In channels, admins can delete any message, not just their own.
     public bool CanDeleteOthersMessages(Context context)
         => context.CallerRole == GuildRole.Admin;
 
