@@ -333,6 +333,12 @@ internal sealed class MessageRepository : IMessageRepository
         await connection.ExecuteAsync(command);
     }
 
+    /// <remarks>
+    /// The CTE <c>WITH deleted AS (DELETE ...)</c> is always executed by PostgreSQL
+    /// even when <c>deleted</c> is not referenced in the main query (CTEs act as
+    /// optimization fences). The DELETE runs unconditionally; the INSERT is guarded
+    /// by <c>array_length</c> to skip when the array is empty.
+    /// </remarks>
     public async Task ReplaceMentionsAsync(
         MessageId messageId,
         IReadOnlyCollection<UserId> mentionedUserIds,

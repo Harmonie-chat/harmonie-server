@@ -33,7 +33,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Mention Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Mention{Guid.NewGuid():N}"[..16]);
         await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
@@ -49,10 +49,27 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
     }
 
     [Fact]
+    public async Task SendChannelMessage_SelfMention_ShouldSucceed()
+    {
+        var owner = await AuthTestHelper.RegisterAsync(_client);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Self{Guid.NewGuid():N}"[..16]);
+        var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
+
+        var request = new { content = "noting myself", mentionedUserIds = new[] { owner.UserId } };
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/messages", request, owner.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var payload = await response.Content.ReadFromJsonAsync<ChannelSend.SendMessageResponse>(TestContext.Current.CancellationToken);
+        payload.Should().NotBeNull();
+        payload!.MentionedUserIds.Should().ContainSingle().Which.Should().Be(owner.UserId);
+    }
+
+    [Fact]
     public async Task SendChannelMessage_WithNonExistentMentionedUser_ShouldReturn404()
     {
         var owner = await AuthTestHelper.RegisterAsync(_client);
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Ghost Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Ghost{Guid.NewGuid():N}"[..16]);
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
 
         var request = new { content = "Hello @ghost", mentionedUserIds = new[] { Guid.NewGuid() } };
@@ -71,7 +88,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var outsider = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Exclusive Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Excl{Guid.NewGuid():N}"[..16]);
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
 
         var request = new { content = "Hello @outsider", mentionedUserIds = new[] { outsider.UserId } };
@@ -88,7 +105,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
     public async Task SendChannelMessage_WithMoreThan50Mentions_ShouldReturn400()
     {
         var owner = await AuthTestHelper.RegisterAsync(_client);
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Mass Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Mass{Guid.NewGuid():N}"[..16]);
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
 
         var ids = Enumerable.Range(0, Message.MaxMentionedUsers + 1).Select(_ => Guid.NewGuid()).ToArray();
@@ -103,7 +120,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
     public async Task SendChannelMessage_WithDuplicateMentions_ShouldReturn400()
     {
         var owner = await AuthTestHelper.RegisterAsync(_client);
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Dup Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Dup{Guid.NewGuid():N}"[..16]);
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
 
         var id = Guid.NewGuid();
@@ -120,7 +137,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Edit Mention Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"EditM{Guid.NewGuid():N}"[..16]);
         await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
@@ -142,7 +159,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Clear Mention Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"Clear{Guid.NewGuid():N}"[..16]);
         await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);
@@ -216,7 +233,7 @@ public sealed class MessageMentionsIntegrationTests : IClassFixture<HarmonieWebA
         var owner = await AuthTestHelper.RegisterAsync(_client);
         var member = await AuthTestHelper.RegisterAsync(_client);
 
-        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, "Get Mention Guild");
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"GetM{Guid.NewGuid():N}"[..16]);
         await GuildTestHelper.InviteMemberAsync(_client, guildId, owner.AccessToken, member.AccessToken);
 
         var (channelId, _) = await GetTextChannelAsync(_client, guildId, owner.AccessToken);

@@ -38,7 +38,10 @@ public sealed class MessageEditDeleteOrchestrator
         _uploadedFileCleanupService = uploadedFileCleanupService;
     }
 
-    /// <inheritdoc cref="MessageSendOrchestrator.SendAsync{TContext}"/>
+    /// <remarks>
+    /// Mention membership is validated before the transaction opens (same race window
+    /// as <see cref="MessageSendOrchestrator.SendAsync{TContext}"/>).
+    /// </remarks>
     public async Task<ApplicationResponse<MessageEditResult>> EditAsync<TContext>(
         IMessageEditDeleteScope<TContext> scope,
         MessageScope messageScope,
