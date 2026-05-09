@@ -64,6 +64,9 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
         Context context,
         CancellationToken ct)
     {
+        if (userIds.Count == 0)
+            return Result.Success();
+
         var participants = await _participantRepository.GetByConversationIdAsync(context.ConversationId, ct);
         var participantIds = participants.Select(p => p.UserId).ToHashSet();
         foreach (var userId in userIds)

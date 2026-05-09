@@ -29,7 +29,9 @@ public static class EditMessageEndpoint
                 ApplicationErrorCodes.Conversation.NotFound,
                 ApplicationErrorCodes.Conversation.AccessDenied,
                 ApplicationErrorCodes.Message.NotFound,
-                ApplicationErrorCodes.Message.EditForbidden);
+                ApplicationErrorCodes.Message.EditForbidden,
+                ApplicationErrorCodes.Message.MentionedUserNotFound,
+                ApplicationErrorCodes.Message.MentionedUserNotMember);
     }
 
     private static async Task<IResult> HandleAsync(

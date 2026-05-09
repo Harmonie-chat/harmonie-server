@@ -344,6 +344,8 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Invite.Expired => HttpStatusCode.Gone,
             ApplicationErrorCodes.Invite.Exhausted => HttpStatusCode.Gone,
             ApplicationErrorCodes.Invite.RevokeForbidden => HttpStatusCode.Forbidden,
+            ApplicationErrorCodes.Message.MentionedUserNotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Message.MentionedUserNotMember => HttpStatusCode.Forbidden,
             _ => HttpStatusCode.InternalServerError
         };
 }

@@ -38,6 +38,13 @@ public sealed class MessageSendOrchestrator
         _unitOfWork = unitOfWork;
     }
 
+    /// <remarks>
+    /// Mention membership is validated before the transaction opens.
+    /// There is a theoretical race window: if a user is removed from the guild/conversation
+    /// between validation and commit, a mention to a non-member may be persisted.
+    /// This is accepted as the window is narrow and the impact is non-blocking
+    /// (the mention is still a valid FK reference).
+    /// </remarks>
     public async Task<ApplicationResponse<MessageSendResult>> SendAsync<TContext>(
         ISendMessageScope<TContext> scope,
         MessageScope messageScope,

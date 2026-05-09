@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS message_mentions (
     CONSTRAINT pk_message_mentions PRIMARY KEY (message_id, mentioned_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_message_mentions_message_id
-    ON message_mentions(message_id);
+-- Index for "find all messages where a user is mentioned" queries
+CREATE INDEX IF NOT EXISTS idx_message_mentions_mentioned_user_id
+    ON message_mentions(mentioned_user_id);
 
 COMMENT ON TABLE message_mentions IS 'Mentioned users for messages (channel and conversation)';

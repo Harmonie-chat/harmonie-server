@@ -30,7 +30,9 @@ public static class SendMessageEndpoint
                 ApplicationErrorCodes.Guild.AccessDenied,
                 ApplicationErrorCodes.Channel.NotFound,
                 ApplicationErrorCodes.Channel.NotText,
-                ApplicationErrorCodes.Channel.AccessDenied);
+                ApplicationErrorCodes.Channel.AccessDenied,
+                ApplicationErrorCodes.Message.MentionedUserNotFound,
+                ApplicationErrorCodes.Message.MentionedUserNotMember);
     }
 
     private static async Task<IResult> HandleAsync(

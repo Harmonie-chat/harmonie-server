@@ -38,6 +38,7 @@ public sealed class MessageEditDeleteOrchestrator
         _uploadedFileCleanupService = uploadedFileCleanupService;
     }
 
+    /// <inheritdoc cref="MessageSendOrchestrator.SendAsync{TContext}"/>
     public async Task<ApplicationResponse<MessageEditResult>> EditAsync<TContext>(
         IMessageEditDeleteScope<TContext> scope,
         MessageScope messageScope,

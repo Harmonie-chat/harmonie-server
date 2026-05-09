@@ -28,7 +28,9 @@ public static class SendMessageEndpoint
                 ApplicationErrorCodes.Message.ContentEmpty,
                 ApplicationErrorCodes.Message.ContentTooLong,
                 ApplicationErrorCodes.Conversation.NotFound,
-                ApplicationErrorCodes.Conversation.AccessDenied);
+                ApplicationErrorCodes.Conversation.AccessDenied,
+                ApplicationErrorCodes.Message.MentionedUserNotFound,
+                ApplicationErrorCodes.Message.MentionedUserNotMember);
     }
 
     private static async Task<IResult> HandleAsync(
