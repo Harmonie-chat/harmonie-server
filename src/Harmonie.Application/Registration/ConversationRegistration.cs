@@ -1,5 +1,6 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Features.Conversations.AcknowledgeRead;
+using Harmonie.Application.Features.Conversations.GetConversationParticipants;
 using Harmonie.Application.Features.Conversations.GetConversationVoiceParticipants;
 using Harmonie.Application.Features.Conversations.JoinConversationVoice;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -56,6 +57,9 @@ public static class ConversationRegistration
         // Voice
         services.AddAuthenticatedHandler<ConversationId, JoinConversationVoiceResponse, JoinConversationVoiceHandler>();
         services.AddAuthenticatedHandler<ConversationId, GetConversationVoiceParticipantsResponse, GetConversationVoiceParticipantsHandler>();
+
+        // Participants
+        services.AddAuthenticatedHandler<ConversationId, GetConversationParticipantsResponse, GetConversationParticipantsHandler>();
 
         return services;
     }

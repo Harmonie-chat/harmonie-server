@@ -34,12 +34,26 @@ public sealed record ConversationAccess(
     string? CallerUsername = null,
     string? CallerDisplayName = null);
 
+public sealed record ParticipantProfile(
+    Guid UserId,
+    string Username,
+    string? DisplayName,
+    Guid? AvatarFileId,
+    string? AvatarColor,
+    string? AvatarIcon,
+    string? AvatarBg,
+    DateTime JoinedAtUtc);
+
 public sealed record ConversationAccessWithAllParticipants(
     Conversation Conversation,
     ConversationParticipant? CallerParticipant,
     IReadOnlyList<ConversationParticipant> AllParticipants,
     string? CallerUsername,
     string? CallerDisplayName);
+
+public sealed record ConversationAccessWithParticipantProfiles(
+    ConversationParticipant? CallerParticipant,
+    IReadOnlyList<ParticipantProfile> Participants);
 
 public sealed record UserConversationSummary(
     ConversationId ConversationId,
@@ -75,6 +89,11 @@ public interface IConversationRepository
         CancellationToken cancellationToken = default);
 
     Task<ConversationAccessWithAllParticipants?> GetByIdWithAllParticipantsAsync(
+        ConversationId conversationId,
+        UserId callerId,
+        CancellationToken cancellationToken = default);
+
+    Task<ConversationAccessWithParticipantProfiles?> GetParticipantsWithProfilesAsync(
         ConversationId conversationId,
         UserId callerId,
         CancellationToken cancellationToken = default);

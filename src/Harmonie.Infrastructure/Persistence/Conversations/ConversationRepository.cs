@@ -351,6 +351,73 @@ public sealed class ConversationRepository : IConversationRepository
             convRow.CallerDisplayName);
     }
 
+    public async Task<ConversationAccessWithParticipantProfiles?> GetParticipantsWithProfilesAsync(
+        ConversationId conversationId,
+        UserId callerId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           SELECT c.id
+                           FROM conversations c
+                           WHERE c.id = @ConversationId;
+
+                           SELECT cp.user_id       AS "UserId",
+                                  cp.joined_at_utc AS "JoinedAtUtc",
+                                  cp.hidden_at_utc AS "HiddenAtUtc",
+                                  u.username       AS "Username",
+                                  u.display_name   AS "DisplayName",
+                                  u.avatar_file_id AS "AvatarFileId",
+                                  u.avatar_color   AS "AvatarColor",
+                                  u.avatar_icon    AS "AvatarIcon",
+                                  u.avatar_bg      AS "AvatarBg"
+                           FROM conversation_participants cp
+                           JOIN users u ON u.id = cp.user_id AND u.deleted_at IS NULL
+                           WHERE cp.conversation_id = @ConversationId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { ConversationId = conversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        using var multi = await connection.QueryMultipleAsync(command);
+        var exists = await multi.ReadFirstOrDefaultAsync<Guid?>();
+        if (exists is null)
+            return null;
+
+        var rows = (await multi.ReadAsync<ParticipantProfileRow>()).ToArray();
+        // If the conversation exists but has no active (non-deleted) participants, treat as not found.
+        if (rows.Length == 0)
+            return null;
+
+        ConversationParticipant? callerParticipant = null;
+        var profiles = rows.Select(r =>
+        {
+            if (r.UserId == callerId.Value)
+            {
+                callerParticipant = ConversationParticipant.Rehydrate(
+                    conversationId,
+                    callerId,
+                    r.JoinedAtUtc,
+                    r.HiddenAtUtc);
+            }
+
+            return new ParticipantProfile(
+                UserId: r.UserId,
+                Username: r.Username,
+                DisplayName: r.DisplayName,
+                AvatarFileId: r.AvatarFileId,
+                AvatarColor: r.AvatarColor,
+                AvatarIcon: r.AvatarIcon,
+                AvatarBg: r.AvatarBg,
+                JoinedAtUtc: r.JoinedAtUtc);
+        }).ToArray();
+
+        return new ConversationAccessWithParticipantProfiles(callerParticipant, profiles);
+    }
+
     public async Task<ConversationWithParticipant?> GetWithParticipantAsync(
         ConversationId conversationId,
         UserId userId,
@@ -516,6 +583,27 @@ public sealed class ConversationRepository : IConversationRepository
         public DateTime JoinedAtUtc { get; init; }
 
         public DateTime? HiddenAtUtc { get; init; }
+    }
+
+    private sealed class ParticipantProfileRow
+    {
+        public Guid UserId { get; init; }
+
+        public DateTime JoinedAtUtc { get; init; }
+
+        public DateTime? HiddenAtUtc { get; init; }
+
+        public string Username { get; init; } = string.Empty;
+
+        public string? DisplayName { get; init; }
+
+        public Guid? AvatarFileId { get; init; }
+
+        public string? AvatarColor { get; init; }
+
+        public string? AvatarIcon { get; init; }
+
+        public string? AvatarBg { get; init; }
     }
 
     private sealed class ConversationWithParticipantProfileRow

@@ -1,5 +1,6 @@
 using Harmonie.Application.Features.Conversations.CreateGroupConversation;
 using Harmonie.Application.Features.Conversations.DeleteConversation;
+using Harmonie.Application.Features.Conversations.GetConversationParticipants;
 using Harmonie.Application.Features.Conversations.GetConversationVoiceParticipants;
 using Harmonie.Application.Features.Conversations.JoinConversationVoice;
 using Harmonie.Application.Features.Conversations.ListConversations;
@@ -53,5 +54,8 @@ public static class ConversationEndpoints
         // Voice
         JoinConversationVoiceEndpoint.Map(app);
         GetConversationVoiceParticipantsEndpoint.Map(app);
+
+        // Participants
+        GetConversationParticipantsEndpoint.Map(app);
     }
 }
