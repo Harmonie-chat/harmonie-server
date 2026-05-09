@@ -15,17 +15,20 @@ public sealed record DeleteConversationMessageAttachmentInput(ConversationId Con
 public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<DeleteConversationMessageAttachmentInput, bool>
 {
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConversationParticipantRepository _participantRepository;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
     private readonly ILogger<ConversationMessageEditDeleteScope> _scopeLogger;
     private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageAttachmentHandler(
         IConversationRepository conversationRepository,
+        IConversationParticipantRepository participantRepository,
         IConversationMessageNotifier conversationMessageNotifier,
         ILogger<ConversationMessageEditDeleteScope> scopeLogger,
         MessageEditDeleteOrchestrator orchestrator)
     {
         _conversationRepository = conversationRepository;
+        _participantRepository = participantRepository;
         _conversationMessageNotifier = conversationMessageNotifier;
         _scopeLogger = scopeLogger;
         _orchestrator = orchestrator;
@@ -39,6 +42,7 @@ public sealed class DeleteMessageAttachmentHandler : IAuthenticatedHandler<Delet
         var scope = new ConversationMessageEditDeleteScope(
             request.ConversationId,
             _conversationRepository,
+            _participantRepository,
             _conversationMessageNotifier,
             _scopeLogger);
 

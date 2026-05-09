@@ -76,6 +76,9 @@ public sealed class MessageFetchOrchestrator
                 {
                     page.ReplyPreviewsByTargetMessageId?.TryGetValue(x.ReplyToMessageId.Value, out replyTo);
                 }
+                IReadOnlyList<Guid>? mentionedIds = null;
+                page.MentionedUserIdsByMessageId?.TryGetValue(x.Id.Value, out mentionedIds);
+                var mentionedUserIds = mentionedIds ?? Array.Empty<Guid>();
                 return new GetMessagesItemResponse(
                     MessageId: x.Id.Value,
                     AuthorUserId: x.AuthorUserId.Value,
@@ -88,6 +91,7 @@ public sealed class MessageFetchOrchestrator
                     LinkPreviews: previews?.ToArray(),
                     IsPinned: isPinned,
                     ReplyTo: replyTo,
+                    MentionedUserIds: mentionedUserIds?.ToArray() ?? Array.Empty<Guid>(),
                     CreatedAtUtc: x.CreatedAtUtc,
                     UpdatedAtUtc: x.UpdatedAtUtc);
             })

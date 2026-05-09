@@ -1,7 +1,9 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Services;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
@@ -28,6 +30,7 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
 
     private readonly GuildChannelId _channelId;
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<ChannelSendMessageScope> _logger;
@@ -35,12 +38,14 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
     public ChannelSendMessageScope(
         GuildChannelId channelId,
         IGuildChannelRepository guildChannelRepository,
+        IGuildMemberRepository guildMemberRepository,
         ITextChannelNotifier textChannelNotifier,
         LinkPreviewResolutionService linkPreviewService,
         ILogger<ChannelSendMessageScope> logger)
     {
         _channelId = channelId;
         _guildChannelRepository = guildChannelRepository;
+        _guildMemberRepository = guildMemberRepository;
         _textChannelNotifier = textChannelNotifier;
         _linkPreviewService = linkPreviewService;
         _logger = logger;
@@ -64,6 +69,23 @@ public sealed class ChannelSendMessageScope : ISendMessageScope<ChannelSendMessa
 
     public Task ApplyInTransactionSideEffectsAsync(Context context, CancellationToken ct)
         => Task.CompletedTask;
+
+    public async Task<Result> ValidateMentionedUsersAsync(
+        IReadOnlyCollection<UserId> userIds,
+        Context context,
+        CancellationToken ct)
+    {
+        foreach (var userId in userIds)
+        {
+            var isMember = await _guildMemberRepository.IsMemberAsync(context.GuildId, userId, ct);
+            if (!isMember)
+            {
+                return Result.Failure($"User {userId.Value} is not a member of guild {context.GuildId.Value}");
+            }
+        }
+
+        return Result.Success();
+    }
 
     public async Task NotifyMessageCreatedAsync(
         Context context,

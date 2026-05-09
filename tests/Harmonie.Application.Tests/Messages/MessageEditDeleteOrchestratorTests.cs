@@ -5,6 +5,7 @@ using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.Entities.Uploads;
@@ -30,6 +31,7 @@ public sealed class MessageEditDeleteOrchestratorTests
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
     private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     private static readonly OrchestratorTestContext Ctx = new();
@@ -42,6 +44,12 @@ public sealed class MessageEditDeleteOrchestratorTests
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
         _objectStorageServiceMock = new Mock<IObjectStorageService>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+
+        _messageRepositoryMock
+            .Setup(x => x.GetMentionedUserIdsByMessageIdAsync(
+                It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, IReadOnlyList<Guid>>());
 
         var uploadedFileCleanupService = new UploadedFileCleanupService(
             _uploadedFileRepositoryMock.Object,
@@ -51,6 +59,7 @@ public sealed class MessageEditDeleteOrchestratorTests
         _orchestrator = new MessageEditDeleteOrchestrator(
             _messageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
+            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService);
     }
@@ -121,7 +130,7 @@ public sealed class MessageEditDeleteOrchestratorTests
     {
         var scope = CreateAuthorizedScope();
         var result = await _orchestrator.EditAsync(
-            scope.Object, ChannelScope(), AnyMessageId(), "   ", AnyUser(), TestContext.Current.CancellationToken);
+            scope.Object, ChannelScope(), AnyMessageId(), "   ", null, AnyUser(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
@@ -133,7 +142,7 @@ public sealed class MessageEditDeleteOrchestratorTests
     {
         var scope = CreateDeniedScope("AUTH_DENIED", "Not allowed");
         var result = await _orchestrator.EditAsync(
-            scope.Object, ChannelScope(), AnyMessageId(), TestContent, AnyUser(), TestContext.Current.CancellationToken);
+            scope.Object, ChannelScope(), AnyMessageId(), TestContent, null, AnyUser(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be("AUTH_DENIED");
@@ -147,7 +156,7 @@ public sealed class MessageEditDeleteOrchestratorTests
         SetupMessageNotFound(messageId);
 
         var result = await _orchestrator.EditAsync(
-            scope.Object, ChannelScope(), messageId, TestContent, AnyUser(), TestContext.Current.CancellationToken);
+            scope.Object, ChannelScope(), messageId, TestContent, null, AnyUser(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
@@ -162,7 +171,7 @@ public sealed class MessageEditDeleteOrchestratorTests
         SetupMessageExists(messageId, wrongScope);
 
         var result = await _orchestrator.EditAsync(
-            scope.Object, ChannelScope(), messageId, TestContent, AnyUser(), TestContext.Current.CancellationToken);
+            scope.Object, ChannelScope(), messageId, TestContent, null, AnyUser(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be(ApplicationErrorCodes.Message.NotFound);
@@ -179,7 +188,7 @@ public sealed class MessageEditDeleteOrchestratorTests
         SetupMessageExists(messageId, messageScope, authorId);
 
         var result = await _orchestrator.EditAsync(
-            scope.Object, messageScope, messageId, TestContent, callerId, TestContext.Current.CancellationToken);
+            scope.Object, messageScope, messageId, TestContent, null, callerId, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be(ApplicationErrorCodes.Message.EditForbidden);
@@ -214,7 +223,7 @@ public sealed class MessageEditDeleteOrchestratorTests
             .Returns(Task.CompletedTask);
 
         var result = await _orchestrator.EditAsync(
-            scopeMock.Object, messageScope, messageId, TestContent, authorId, TestContext.Current.CancellationToken);
+            scopeMock.Object, messageScope, messageId, TestContent, null, authorId, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Data!.Content.Should().Be(TestContent);

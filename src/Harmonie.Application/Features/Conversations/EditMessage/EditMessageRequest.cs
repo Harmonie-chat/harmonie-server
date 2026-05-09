@@ -1,3 +1,3 @@
 namespace Harmonie.Application.Features.Conversations.EditMessage;
 
-public sealed record EditMessageRequest(string Content);
+public sealed record EditMessageRequest(string Content, IReadOnlyList<Guid>? MentionedUserIds = null);

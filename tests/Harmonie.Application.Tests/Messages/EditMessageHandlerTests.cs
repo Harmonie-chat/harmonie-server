@@ -6,8 +6,10 @@ using Harmonie.Application.Features.Channels.EditMessage;
 using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
@@ -25,8 +27,10 @@ namespace Harmonie.Application.Tests.Messages;
 public sealed class EditMessageHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ITextChannelNotifier> _textChannelNotifierMock;
@@ -36,8 +40,10 @@ public sealed class EditMessageHandlerTests
     public EditMessageHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _channelMessageRepositoryMock = new Mock<IMessageRepository>();
         _messageAttachmentRepositoryMock = new Mock<IMessageAttachmentRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _textChannelNotifierMock = new Mock<ITextChannelNotifier>();
@@ -52,6 +58,11 @@ public sealed class EditMessageHandlerTests
             .Setup(x => x.GetByMessageIdAsync(It.IsAny<MessageId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<MessageAttachment>());
 
+        _channelMessageRepositoryMock
+            .Setup(x => x.GetMentionedUserIdsByMessageIdAsync(
+                It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, IReadOnlyList<Guid>>());
+
         var uploadedFileCleanupService = new UploadedFileCleanupService(
             new Mock<IUploadedFileRepository>().Object,
             new Mock<IObjectStorageService>().Object,
@@ -60,11 +71,13 @@ public sealed class EditMessageHandlerTests
         _orchestrator = new MessageEditDeleteOrchestrator(
             _channelMessageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
+            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService);
 
         _handler = new EditMessageHandler(
             _guildChannelRepositoryMock.Object,
+            _guildMemberRepositoryMock.Object,
             _textChannelNotifierMock.Object,
             NullLogger<ChannelMessageEditDeleteScope>.Instance,
             _orchestrator);

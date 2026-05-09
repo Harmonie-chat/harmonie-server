@@ -10,4 +10,5 @@ public sealed record SendMessageResponse(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);

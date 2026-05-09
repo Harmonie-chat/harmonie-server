@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Conversations.SendMessage;
 
-public sealed record SendConversationMessageInput(ConversationId ConversationId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null);
+public sealed record SendConversationMessageInput(ConversationId ConversationId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null, IReadOnlyList<Guid>? MentionedUserIds = null);
 
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationMessageInput, SendMessageResponse>
 {
@@ -55,6 +55,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             request.Content,
             request.AttachmentFileIds,
             request.ReplyToMessageId,
+            request.MentionedUserIds,
             currentUserId,
             cancellationToken);
 
@@ -68,6 +69,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendConversationM
             result.Data.Content,
             result.Data.Attachments,
             result.Data.ReplyTo,
+            result.Data.MentionedUserIds,
             result.Data.CreatedAtUtc));
     }
 }

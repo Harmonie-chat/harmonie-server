@@ -3,6 +3,7 @@ using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -19,17 +20,20 @@ public sealed class MessageEditDeleteOrchestrator
 {
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageAttachmentRepository _messageAttachmentRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
 
     public MessageEditDeleteOrchestrator(
         IMessageRepository messageRepository,
         IMessageAttachmentRepository messageAttachmentRepository,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         UploadedFileCleanupService uploadedFileCleanupService)
     {
         _messageRepository = messageRepository;
         _messageAttachmentRepository = messageAttachmentRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _uploadedFileCleanupService = uploadedFileCleanupService;
     }
@@ -39,6 +43,7 @@ public sealed class MessageEditDeleteOrchestrator
         MessageScope messageScope,
         MessageId messageId,
         string rawContent,
+        IReadOnlyList<Guid>? mentionedUserIds,
         UserId callerId,
         CancellationToken ct)
         where TContext : ScopeContext
@@ -91,9 +96,41 @@ public sealed class MessageEditDeleteOrchestrator
                 "Message edit succeeded but updated timestamp is missing");
         }
 
+        // ── Mention validation ──────────────────────────────────────────
+        IReadOnlyList<Guid>? validatedMentionIds = null;
+        if (mentionedUserIds is { Count: > 0 })
+        {
+            var distinctMentionIds = mentionedUserIds.Distinct().ToArray();
+            var userIds = distinctMentionIds.Select(UserId.From).ToArray();
+
+            // Verify all users exist
+            var existingUsers = await _userRepository.GetManyByIdsAsync(userIds.ToArray(), ct);
+            var existingUserIds = existingUsers.Select(u => u.Id).ToHashSet();
+            var missingIds = userIds.Where(id => !existingUserIds.Contains(id)).ToArray();
+            if (missingIds.Length > 0)
+            {
+                return ApplicationResponse<MessageEditResult>.Fail(
+                    ApplicationErrorCodes.Message.MentionedUserNotFound,
+                    $"One or more mentioned users were not found: {string.Join(", ", missingIds.Select(id => id.Value))}");
+            }
+
+            // Verify membership via scope
+            var validateResult = await scope.ValidateMentionedUsersAsync(userIds.ToArray(), context, ct);
+            if (validateResult.IsFailure)
+            {
+                return ApplicationResponse<MessageEditResult>.Fail(
+                    ApplicationErrorCodes.Message.MentionedUserNotMember,
+                    validateResult.Error ?? "One or more mentioned users are not members of this scope");
+            }
+
+            validatedMentionIds = distinctMentionIds;
+        }
+
         // ── Persist ─────────────────────────────────────────────────────
         await using var transaction = await _unitOfWork.BeginAsync(ct);
         await _messageRepository.UpdateAsync(message, ct);
+        if (validatedMentionIds is not null)
+            await _messageRepository.ReplaceMentionsAsync(message.Id, validatedMentionIds.Select(UserId.From).ToArray(), ct);
         await transaction.CommitAsync(ct);
 
         // ── Notify ──────────────────────────────────────────────────────
@@ -107,12 +144,26 @@ public sealed class MessageEditDeleteOrchestrator
         // ── Attachments for response ────────────────────────────────────
         var attachments = await _messageAttachmentRepository.GetByMessageIdAsync(messageId, ct);
 
+        // ── Retrieve mentions for response ──────────────────────────────
+        IReadOnlyList<Guid> mentionIdsResponse;
+        if (validatedMentionIds is not null)
+        {
+            mentionIdsResponse = validatedMentionIds;
+        }
+        else
+        {
+            var mentionsDict = await _messageRepository.GetMentionedUserIdsByMessageIdAsync(
+                [message.Id.Value], ct);
+            mentionIdsResponse = mentionsDict.TryGetValue(message.Id.Value, out var ids) ? ids : Array.Empty<Guid>();
+        }
+
         // ── Result ──────────────────────────────────────────────────────
         return ApplicationResponse<MessageEditResult>.Ok(new MessageEditResult(
             MessageId: message.Id.Value,
             AuthorUserId: message.AuthorUserId.Value,
             Content: message.Content?.Value,
             Attachments: attachments.Select(MessageAttachmentDto.FromDomain).ToArray(),
+            MentionedUserIds: mentionIdsResponse.ToArray(),
             CreatedAtUtc: message.CreatedAtUtc,
             UpdatedAtUtc: updatedAtUtc));
     }

@@ -290,4 +290,89 @@ internal sealed class MessageRepository : IMessageRepository
         return await connection.ExecuteAsync(command);
     }
 
+    public async Task AddMentionsAsync(
+        MessageId messageId,
+        IReadOnlyCollection<UserId> mentionedUserIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (mentionedUserIds.Count == 0)
+            return;
+
+        const string sql = """
+                           INSERT INTO message_mentions (message_id, mentioned_user_id)
+                           VALUES (@MessageId, @MentionedUserId)
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        foreach (var userId in mentionedUserIds)
+        {
+            var command = new CommandDefinition(
+                sql,
+                new
+                {
+                    MessageId = messageId.Value,
+                    MentionedUserId = userId.Value
+                },
+                transaction: _dbSession.Transaction,
+                cancellationToken: cancellationToken);
+
+            await connection.ExecuteAsync(command);
+        }
+    }
+
+    public async Task ReplaceMentionsAsync(
+        MessageId messageId,
+        IReadOnlyCollection<UserId> mentionedUserIds,
+        CancellationToken cancellationToken = default)
+    {
+        const string deleteSql = """
+                                 DELETE FROM message_mentions
+                                 WHERE message_id = @MessageId
+                                 """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var deleteCommand = new CommandDefinition(
+            deleteSql,
+            new { MessageId = messageId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(deleteCommand);
+
+        if (mentionedUserIds.Count > 0)
+        {
+            await AddMentionsAsync(messageId, mentionedUserIds, cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetMentionedUserIdsByMessageIdAsync(
+        IReadOnlyCollection<Guid> messageIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (messageIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<Guid>>();
+
+        const string sql = """
+                           SELECT message_id, mentioned_user_id
+                           FROM message_mentions
+                           WHERE message_id = ANY(@MessageIds)
+                           ORDER BY message_id
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { MessageIds = messageIds.ToArray() },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.QueryAsync<(Guid messageId, Guid mentionedUserId)>(command);
+
+        return rows
+            .GroupBy(r => r.messageId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<Guid>)g.Select(r => r.mentionedUserId).Distinct().ToArray());
+    }
+
 }

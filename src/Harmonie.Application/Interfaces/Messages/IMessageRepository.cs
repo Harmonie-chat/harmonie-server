@@ -56,6 +56,30 @@ public interface IMessageRepository
         UserId authorUserId,
         int days,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persist mention rows for a message. Must be called inside the same transaction as the message insert.
+    /// </summary>
+    Task AddMentionsAsync(
+        MessageId messageId,
+        IReadOnlyCollection<UserId> mentionedUserIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replace the mention set for a message atomically (delete all existing, insert new).
+    /// Must be called inside a transaction.
+    /// </summary>
+    Task ReplaceMentionsAsync(
+        MessageId messageId,
+        IReadOnlyCollection<UserId> mentionedUserIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get mentioned user IDs for a set of messages. Returns empty for messages without mentions.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetMentionedUserIdsByMessageIdAsync(
+        IReadOnlyCollection<Guid> messageIds,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record MessageCursor(
@@ -70,6 +94,7 @@ public sealed record MessagePage(
     IReadOnlyDictionary<Guid, IReadOnlyList<LinkPreviewDto>>? LinkPreviewsByMessageId = null,
     IReadOnlySet<Guid>? PinnedMessageIds = null,
     IReadOnlyDictionary<Guid, ReplyPreviewDto>? ReplyPreviewsByTargetMessageId = null,
+    IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>? MentionedUserIdsByMessageId = null,
     MessageReadState? LastReadState = null);
 
 public sealed record SearchGuildMessagesQuery(

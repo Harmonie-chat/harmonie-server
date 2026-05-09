@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Users;
 
@@ -45,6 +46,15 @@ public interface ISendMessageScope<TContext> where TContext : ScopeContext
         CancellationToken ct);
 
     /// <summary>
+    /// Validates that all mentioned user IDs exist and are members/participants of the scope.
+    /// Returns a failure on the first invalid mention, or success.
+    /// </summary>
+    Task<Result> ValidateMentionedUsersAsync(
+        IReadOnlyCollection<UserId> userIds,
+        TContext context,
+        CancellationToken ct);
+
+    /// <summary>
     /// Triggers fire-and-forget link preview resolution for the given message.
     /// </summary>
     void ScheduleLinkPreviewResolution(
@@ -76,4 +86,5 @@ public sealed record MessageSendResult(
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
     ReplyPreviewDto? ReplyTo,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc);

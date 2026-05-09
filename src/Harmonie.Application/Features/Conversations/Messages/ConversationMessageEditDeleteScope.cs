@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Conversations;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -23,17 +24,20 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
 
     private readonly ConversationId _conversationId;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IConversationParticipantRepository _participantRepository;
     private readonly IConversationMessageNotifier _conversationMessageNotifier;
     private readonly ILogger<ConversationMessageEditDeleteScope> _logger;
 
     public ConversationMessageEditDeleteScope(
         ConversationId conversationId,
         IConversationRepository conversationRepository,
+        IConversationParticipantRepository participantRepository,
         IConversationMessageNotifier conversationMessageNotifier,
         ILogger<ConversationMessageEditDeleteScope> logger)
     {
         _conversationId = conversationId;
         _conversationRepository = conversationRepository;
+        _participantRepository = participantRepository;
         _conversationMessageNotifier = conversationMessageNotifier;
         _logger = logger;
     }
@@ -54,6 +58,24 @@ public sealed class ConversationMessageEditDeleteScope : IMessageEditDeleteScope
     // Conversations have no admin role; only the author can delete their own messages.
     public bool CanDeleteOthersMessages(Context context)
         => false;
+
+    public async Task<Result> ValidateMentionedUsersAsync(
+        IReadOnlyCollection<UserId> userIds,
+        Context context,
+        CancellationToken ct)
+    {
+        var participants = await _participantRepository.GetByConversationIdAsync(context.ConversationId, ct);
+        var participantIds = participants.Select(p => p.UserId).ToHashSet();
+        foreach (var userId in userIds)
+        {
+            if (!participantIds.Contains(userId))
+            {
+                return Result.Failure($"User {userId.Value} is not a participant of conversation {context.ConversationId.Value}");
+            }
+        }
+
+        return Result.Success();
+    }
 
     public async Task NotifyMessageUpdatedAsync(
         Context context,

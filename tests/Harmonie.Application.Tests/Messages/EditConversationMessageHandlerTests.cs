@@ -8,6 +8,7 @@ using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -24,6 +25,8 @@ public sealed class EditConversationMessageHandlerTests
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IMessageRepository> _directMessageRepositoryMock;
     private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IConversationMessageNotifier> _directMessageNotifierMock;
@@ -35,6 +38,8 @@ public sealed class EditConversationMessageHandlerTests
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _directMessageRepositoryMock = new Mock<IMessageRepository>();
         _messageAttachmentRepositoryMock = new Mock<IMessageAttachmentRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
         _directMessageNotifierMock = new Mock<IConversationMessageNotifier>();
@@ -49,6 +54,11 @@ public sealed class EditConversationMessageHandlerTests
             .Setup(x => x.GetByMessageIdAsync(It.IsAny<MessageId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<MessageAttachment>());
 
+        _directMessageRepositoryMock
+            .Setup(x => x.GetMentionedUserIdsByMessageIdAsync(
+                It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, IReadOnlyList<Guid>>());
+
         var uploadedFileCleanupService = new UploadedFileCleanupService(
             new Mock<IUploadedFileRepository>().Object,
             new Mock<IObjectStorageService>().Object,
@@ -57,11 +67,13 @@ public sealed class EditConversationMessageHandlerTests
         _orchestrator = new MessageEditDeleteOrchestrator(
             _directMessageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
+            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService);
 
         _handler = new EditMessageHandler(
             _conversationRepositoryMock.Object,
+            _participantRepositoryMock.Object,
             _directMessageNotifierMock.Object,
             NullLogger<ConversationMessageEditDeleteScope>.Instance,
             _orchestrator);

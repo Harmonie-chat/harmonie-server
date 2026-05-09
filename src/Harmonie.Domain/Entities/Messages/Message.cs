@@ -8,6 +8,8 @@ namespace Harmonie.Domain.Entities.Messages;
 
 public sealed class Message : Entity<MessageId>
 {
+    public const int MaxMentionedUsers = 50;
+
     public MessageScope Scope { get; private set; }
 
     public UserId AuthorUserId { get; private set; }
@@ -18,6 +20,8 @@ public sealed class Message : Entity<MessageId>
 
     public DateTime? DeletedAtUtc { get; private set; }
 
+    public IReadOnlyCollection<UserId> MentionedUserIds { get; private set; }
+
     private Message(
         MessageId id,
         MessageScope scope,
@@ -26,7 +30,8 @@ public sealed class Message : Entity<MessageId>
         MessageContent? content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc,
-        DateTime? deletedAtUtc)
+        DateTime? deletedAtUtc,
+        IReadOnlyCollection<UserId> mentionedUserIds)
     {
         Id = id;
         Scope = scope;
@@ -36,18 +41,28 @@ public sealed class Message : Entity<MessageId>
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
         DeletedAtUtc = deletedAtUtc;
+        MentionedUserIds = mentionedUserIds;
     }
 
     public static Result<Message> Create(
         MessageScope scope,
         UserId authorUserId,
         MessageContent? content,
-        MessageId? replyToMessageId = null)
+        MessageId? replyToMessageId = null,
+        IReadOnlyCollection<UserId>? mentionedUserIds = null)
     {
         if (scope is null)
             return Result.Failure<Message>("Message scope is required");
         if (authorUserId is null)
             return Result.Failure<Message>("Author user ID is required");
+
+        var mentions = mentionedUserIds ?? Array.Empty<UserId>();
+
+        if (mentions.Count > MaxMentionedUsers)
+            return Result.Failure<Message>($"A message can mention at most {MaxMentionedUsers} users");
+
+        if (mentions.Distinct().Count() != mentions.Count)
+            return Result.Failure<Message>("Mentioned user IDs must be distinct");
 
         return Result.Success(new Message(
             MessageId.New(),
@@ -57,7 +72,8 @@ public sealed class Message : Entity<MessageId>
             content,
             DateTime.UtcNow,
             updatedAtUtc: null,
-            deletedAtUtc: null));
+            deletedAtUtc: null,
+            mentionedUserIds: mentions.ToArray()));
     }
 
     public Result UpdateContent(MessageContent newContent)
@@ -85,7 +101,8 @@ public sealed class Message : Entity<MessageId>
         MessageContent? content,
         DateTime createdAtUtc,
         DateTime? updatedAtUtc,
-        DateTime? deletedAtUtc)
+        DateTime? deletedAtUtc,
+        IReadOnlyCollection<UserId>? mentionedUserIds = null)
     {
         ArgumentNullException.ThrowIfNull(id);
         ArgumentNullException.ThrowIfNull(scope);
@@ -99,6 +116,7 @@ public sealed class Message : Entity<MessageId>
             content,
             createdAtUtc,
             updatedAtUtc,
-            deletedAtUtc);
+            deletedAtUtc,
+            mentionedUserIds ?? Array.Empty<UserId>());
     }
 }

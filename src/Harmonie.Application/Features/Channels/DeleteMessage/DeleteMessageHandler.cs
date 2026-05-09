@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
@@ -14,17 +15,20 @@ public sealed record DeleteChannelMessageInput(GuildChannelId ChannelId, Message
 public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMessageInput, bool>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<ChannelMessageEditDeleteScope> _scopeLogger;
     private readonly MessageEditDeleteOrchestrator _orchestrator;
 
     public DeleteMessageHandler(
         IGuildChannelRepository guildChannelRepository,
+        IGuildMemberRepository guildMemberRepository,
         ITextChannelNotifier textChannelNotifier,
         ILogger<ChannelMessageEditDeleteScope> scopeLogger,
         MessageEditDeleteOrchestrator orchestrator)
     {
         _guildChannelRepository = guildChannelRepository;
+        _guildMemberRepository = guildMemberRepository;
         _textChannelNotifier = textChannelNotifier;
         _scopeLogger = scopeLogger;
         _orchestrator = orchestrator;
@@ -38,6 +42,7 @@ public sealed class DeleteMessageHandler : IAuthenticatedHandler<DeleteChannelMe
         var scope = new ChannelMessageEditDeleteScope(
             request.ChannelId,
             _guildChannelRepository,
+            _guildMemberRepository,
             _textChannelNotifier,
             _scopeLogger);
 

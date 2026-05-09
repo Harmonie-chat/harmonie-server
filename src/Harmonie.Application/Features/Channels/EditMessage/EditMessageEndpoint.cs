@@ -49,7 +49,7 @@ public static class EditMessageEndpoint
 
         var callerId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(new EditChannelMessageInput(channelId, messageId, request.Content), callerId, cancellationToken);
+        var response = await handler.HandleAsync(new EditChannelMessageInput(channelId, messageId, request.Content, request.MentionedUserIds), callerId, cancellationToken);
         return response.ToHttpResult(httpContext);
     }
 }

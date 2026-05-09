@@ -1,6 +1,7 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Services;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Messages;
@@ -9,11 +10,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Harmonie.Application.Features.Channels.SendMessage;
 
-public sealed record SendChannelMessageInput(GuildChannelId ChannelId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null);
+public sealed record SendChannelMessageInput(GuildChannelId ChannelId, string? Content, IReadOnlyList<Guid>? AttachmentFileIds = null, Guid? ReplyToMessageId = null, IReadOnlyList<Guid>? MentionedUserIds = null);
 
 public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessageInput, SendMessageResponse>
 {
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly LinkPreviewResolutionService _linkPreviewService;
     private readonly ILogger<ChannelSendMessageScope> _scopeLogger;
@@ -21,12 +23,14 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
 
     public SendMessageHandler(
         IGuildChannelRepository guildChannelRepository,
+        IGuildMemberRepository guildMemberRepository,
         ITextChannelNotifier textChannelNotifier,
         LinkPreviewResolutionService linkPreviewService,
         ILogger<ChannelSendMessageScope> scopeLogger,
         MessageSendOrchestrator orchestrator)
     {
         _guildChannelRepository = guildChannelRepository;
+        _guildMemberRepository = guildMemberRepository;
         _textChannelNotifier = textChannelNotifier;
         _linkPreviewService = linkPreviewService;
         _scopeLogger = scopeLogger;
@@ -41,6 +45,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
         var scope = new ChannelSendMessageScope(
             request.ChannelId,
             _guildChannelRepository,
+            _guildMemberRepository,
             _textChannelNotifier,
             _linkPreviewService,
             _scopeLogger);
@@ -51,6 +56,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             request.Content,
             request.AttachmentFileIds,
             request.ReplyToMessageId,
+            request.MentionedUserIds,
             currentUserId,
             cancellationToken);
 
@@ -64,6 +70,7 @@ public sealed class SendMessageHandler : IAuthenticatedHandler<SendChannelMessag
             result.Data.Content,
             result.Data.Attachments,
             result.Data.ReplyTo,
+            result.Data.MentionedUserIds,
             result.Data.CreatedAtUtc));
     }
 }

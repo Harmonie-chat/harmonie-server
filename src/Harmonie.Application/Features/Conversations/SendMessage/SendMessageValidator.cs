@@ -20,5 +20,20 @@ public sealed class SendMessageValidator : AbstractValidator<SendMessageRequest>
             .Must(ids => ids is null || ids.Distinct().Count() == ids.Count)
             .WithMessage("Attachment file IDs must be unique")
             .When(x => x.AttachmentFileIds is not null);
+
+        RuleForEach(x => x.MentionedUserIds)
+            .NotEqual(Guid.Empty)
+            .WithMessage("Mentioned user IDs must be valid non-empty GUIDs")
+            .When(x => x.MentionedUserIds is not null);
+
+        RuleFor(x => x.MentionedUserIds)
+            .Must(ids => ids is null || ids.Distinct().Count() == ids.Count)
+            .WithMessage("Mentioned user IDs must be unique")
+            .When(x => x.MentionedUserIds is not null);
+
+        RuleFor(x => x.MentionedUserIds)
+            .Must(ids => ids is null || ids.Count <= 50)
+            .WithMessage("A message can mention at most 50 users")
+            .When(x => x.MentionedUserIds is not null);
     }
 }

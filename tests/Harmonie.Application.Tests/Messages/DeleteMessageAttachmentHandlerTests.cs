@@ -6,8 +6,10 @@ using Harmonie.Application.Features.Channels.DeleteMessageAttachment;
 using Harmonie.Application.Features.Channels.Messages;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
@@ -24,10 +26,12 @@ namespace Harmonie.Application.Tests.Messages;
 public sealed class DeleteMessageAttachmentHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
     private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
     private readonly Mock<IObjectStorageService> _objectStorageServiceMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly MessageEditDeleteOrchestrator _orchestrator;
@@ -36,9 +40,11 @@ public sealed class DeleteMessageAttachmentHandlerTests
     public DeleteMessageAttachmentHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _messageRepositoryMock = new Mock<IMessageRepository>();
         _messageAttachmentRepositoryMock = new Mock<IMessageAttachmentRepository>();
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
         _objectStorageServiceMock = new Mock<IObjectStorageService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
@@ -53,11 +59,13 @@ public sealed class DeleteMessageAttachmentHandlerTests
         _orchestrator = new MessageEditDeleteOrchestrator(
             _messageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
+            _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService);
 
         _handler = new DeleteMessageAttachmentHandler(
             _guildChannelRepositoryMock.Object,
+            _guildMemberRepositoryMock.Object,
             new Mock<ITextChannelNotifier>().Object,
             NullLogger<ChannelMessageEditDeleteScope>.Instance,
             _orchestrator);

@@ -73,6 +73,8 @@ public static class ApplicationErrorCodes
         public const string AttachmentNotFound = "MESSAGE_ATTACHMENT_NOT_FOUND";
         public const string EditForbidden = "MESSAGE_EDIT_FORBIDDEN";
         public const string DeleteForbidden = "MESSAGE_DELETE_FORBIDDEN";
+        public const string MentionedUserNotFound = "MESSAGE_MENTIONED_USER_NOT_FOUND";
+        public const string MentionedUserNotMember = "MESSAGE_MENTIONED_USER_NOT_MEMBER";
     }
 
     public static class Reaction

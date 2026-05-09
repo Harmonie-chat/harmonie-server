@@ -1,6 +1,8 @@
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Channels;
+using Harmonie.Application.Interfaces.Guilds;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -26,17 +28,20 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
 
     private readonly GuildChannelId _channelId;
     private readonly IGuildChannelRepository _guildChannelRepository;
+    private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly ITextChannelNotifier _textChannelNotifier;
     private readonly ILogger<ChannelMessageEditDeleteScope> _logger;
 
     public ChannelMessageEditDeleteScope(
         GuildChannelId channelId,
         IGuildChannelRepository guildChannelRepository,
+        IGuildMemberRepository guildMemberRepository,
         ITextChannelNotifier textChannelNotifier,
         ILogger<ChannelMessageEditDeleteScope> logger)
     {
         _channelId = channelId;
         _guildChannelRepository = guildChannelRepository;
+        _guildMemberRepository = guildMemberRepository;
         _textChannelNotifier = textChannelNotifier;
         _logger = logger;
     }
@@ -59,6 +64,23 @@ public sealed class ChannelMessageEditDeleteScope : IMessageEditDeleteScope<Chan
     // In channels, admins can delete any message, not just their own.
     public bool CanDeleteOthersMessages(Context context)
         => context.CallerRole == GuildRole.Admin;
+
+    public async Task<Result> ValidateMentionedUsersAsync(
+        IReadOnlyCollection<UserId> userIds,
+        Context context,
+        CancellationToken ct)
+    {
+        foreach (var userId in userIds)
+        {
+            var isMember = await _guildMemberRepository.IsMemberAsync(context.GuildId, userId, ct);
+            if (!isMember)
+            {
+                return Result.Failure($"User {userId.Value} is not a member of guild {context.GuildId.Value}");
+            }
+        }
+
+        return Result.Success();
+    }
 
     public async Task NotifyMessageUpdatedAsync(
         Context context,

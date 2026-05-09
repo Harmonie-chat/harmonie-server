@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Services;
+using Harmonie.Domain.Common;
 using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.Entities.Messages;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -89,6 +90,23 @@ public sealed class ConversationSendMessageScope : ISendMessageScope<Conversatio
             p.Unhide();
 
         await _participantRepository.UpdateRangeAsync(hidden, ct);
+    }
+
+    public Task<Result> ValidateMentionedUsersAsync(
+        IReadOnlyCollection<UserId> userIds,
+        Context context,
+        CancellationToken ct)
+    {
+        var participantIds = context.AllParticipants.Select(p => p.UserId).ToHashSet();
+        foreach (var userId in userIds)
+        {
+            if (!participantIds.Contains(userId))
+            {
+                return Task.FromResult(Result.Failure($"User {userId.Value} is not a participant of conversation {context.ConversationId.Value}"));
+            }
+        }
+
+        return Task.FromResult(Result.Success());
     }
 
     public async Task NotifyMessageCreatedAsync(

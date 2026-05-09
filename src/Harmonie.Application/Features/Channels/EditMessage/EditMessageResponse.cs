@@ -9,5 +9,6 @@ public sealed record EditMessageResponse(
     Guid AuthorUserId,
     string? Content,
     IReadOnlyList<MessageAttachmentDto> Attachments,
+    IReadOnlyList<Guid> MentionedUserIds,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

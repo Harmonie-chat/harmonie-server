@@ -5,8 +5,10 @@ using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Services;
 using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
+using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
 using Harmonie.Application.Interfaces.Uploads;
+using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Entities.Messages;
@@ -27,9 +29,11 @@ namespace Harmonie.Application.Tests.Messages;
 public sealed class SendMessageHandlerTests
 {
     private readonly Mock<IGuildChannelRepository> _guildChannelRepositoryMock;
+    private readonly Mock<IGuildMemberRepository> _guildMemberRepositoryMock;
     private readonly Mock<IMessageRepository> _channelMessageRepositoryMock;
     private readonly Mock<IMessageAttachmentRepository> _messageAttachmentRepositoryMock;
     private readonly Mock<IUploadedFileRepository> _uploadedFileRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<ILinkPreviewRepository> _linkPreviewRepositoryMock;
@@ -42,7 +46,9 @@ public sealed class SendMessageHandlerTests
     public SendMessageHandlerTests()
     {
         _guildChannelRepositoryMock = new Mock<IGuildChannelRepository>();
+        _guildMemberRepositoryMock = new Mock<IGuildMemberRepository>();
         _channelMessageRepositoryMock = new Mock<IMessageRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
         _uploadedFileRepositoryMock = new Mock<IUploadedFileRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = new Mock<IUnitOfWorkTransaction>();
@@ -78,10 +84,12 @@ public sealed class SendMessageHandlerTests
             _channelMessageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
+            _userRepositoryMock.Object,
             _unitOfWorkMock.Object);
 
         _handler = new SendMessageHandler(
             _guildChannelRepositoryMock.Object,
+            _guildMemberRepositoryMock.Object,
             _textChannelNotifierMock.Object,
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
