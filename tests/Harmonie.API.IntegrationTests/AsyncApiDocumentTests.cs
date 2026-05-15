@@ -1,5 +1,7 @@
+using System.Reflection;
 using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
+using Harmonie.API.RealTime.Common;
 using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Text.Json.Nodes;
@@ -56,6 +58,30 @@ public sealed class AsyncApiDocumentTests : IClassFixture<HarmonieWebApplication
 
         document!["channels"]!["Realtime"].Should().NotBeNull();
         document["channels"]!["Realtime"]!["address"]?.GetValue<string>().Should().Be("/hubs/realtime");
+    }
+
+    [Fact]
+    public async Task GetAsyncApiJson_DocumentContainsEveryRealtimeClientEvent()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/asyncapi/v1.json", TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var document = JsonNode.Parse(body);
+
+        var operations = document!["operations"]!.AsObject();
+        var documentedEvents = operations
+            .Where(operation => operation.Value?["action"]?.GetValue<string>() == "send")
+            .Select(operation => operation.Key.Split('.').Last())
+            .ToHashSet(StringComparer.Ordinal);
+
+        var realtimeClientEvents = typeof(IRealtimeClient)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Select(method => method.Name)
+            .ToArray();
+
+        documentedEvents.Should().Contain(realtimeClientEvents);
     }
 
     [Fact]
