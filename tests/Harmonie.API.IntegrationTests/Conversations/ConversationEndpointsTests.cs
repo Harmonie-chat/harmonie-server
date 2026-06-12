@@ -72,6 +72,47 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
     }
 
     [Fact]
+    public async Task OpenConversation_ConcurrentRequestsForSamePair_ShouldCreateSingleConversation()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var target = await AuthTestHelper.RegisterAsync(_client);
+
+        var openTasks = Enumerable.Range(0, 6)
+            .Select(i => i % 2 == 0
+                ? _client.SendAuthorizedPostAsync(
+                    "/api/conversations",
+                    new OpenConversationRequest(target.UserId),
+                    caller.AccessToken)
+                : _client.SendAuthorizedPostAsync(
+                    "/api/conversations",
+                    new OpenConversationRequest(caller.UserId),
+                    target.AccessToken))
+            .ToArray();
+
+        var responses = await Task.WhenAll(openTasks);
+
+        var payloads = new List<OpenConversationResponse>();
+        foreach (var response in responses)
+        {
+            response.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
+            var payload = await response.Content.ReadFromJsonAsync<OpenConversationResponse>(TestContext.Current.CancellationToken);
+            payload.Should().NotBeNull();
+            payloads.Add(payload!);
+        }
+
+        payloads.Select(p => p.ConversationId).Distinct().Should().HaveCount(1);
+        payloads.Count(p => p.Created).Should().Be(1);
+
+        var listResponse = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(TestContext.Current.CancellationToken);
+        listPayload.Should().NotBeNull();
+        listPayload!.Conversations.Should().ContainSingle(c =>
+            c.Participants.Any(p => p.UserId == target.UserId));
+    }
+
+    [Fact]
     public async Task OpenConversation_WhenTargetUserDoesNotExist_ShouldReturnNotFound()
     {
         var caller = await AuthTestHelper.RegisterAsync(_client);

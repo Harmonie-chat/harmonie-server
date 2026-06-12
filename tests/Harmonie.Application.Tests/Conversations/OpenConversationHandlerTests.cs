@@ -21,6 +21,8 @@ public sealed class OpenConversationHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IConversationRepository> _conversationRepositoryMock;
     private readonly Mock<IConversationParticipantRepository> _participantRepositoryMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IConversationNotifier> _conversationNotifierMock;
     private readonly OpenConversationHandler _handler;
 
@@ -29,6 +31,8 @@ public sealed class OpenConversationHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _conversationRepositoryMock = new Mock<IConversationRepository>();
         _participantRepositoryMock = new Mock<IConversationParticipantRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _transactionMock = _unitOfWorkMock.SetupTransactionMock();
         _conversationNotifierMock = new Mock<IConversationNotifier>();
 
         _participantRepositoryMock
@@ -43,6 +47,7 @@ public sealed class OpenConversationHandlerTests
             _userRepositoryMock.Object,
             _conversationRepositoryMock.Object,
             _participantRepositoryMock.Object,
+            _unitOfWorkMock.Object,
             new Mock<IRealtimeGroupManager>().Object,
             _conversationNotifierMock.Object,
             NullLogger<OpenConversationHandler>.Instance);
@@ -242,6 +247,34 @@ public sealed class OpenConversationHandlerTests
         _participantRepositoryMock.Verify(
             x => x.UpdateRangeAsync(It.IsAny<IReadOnlyList<ConversationParticipant>>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenConversationIsOpened_ShouldCommitTransaction()
+    {
+        var callerUserId = UserId.New();
+        var targetUserId = UserId.New();
+        var callerUser = CreateUser(callerUserId, "caller");
+        var targetUser = CreateUser(targetUserId, "target");
+        var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
+
+        _userRepositoryMock
+            .Setup(x => x.GetManyByIdsAsync(
+                It.Is<IReadOnlyList<UserId>>(ids => ids.Contains(callerUserId) && ids.Contains(targetUserId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([callerUser, targetUser]);
+
+        _conversationRepositoryMock
+            .Setup(x => x.GetOrCreateDirectAsync(callerUserId, targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConversationGetOrCreateResult(conversation, true));
+
+        var response = await _handler.HandleAsync(
+            new OpenConversationRequest(targetUserId),
+            callerUserId,
+            TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
