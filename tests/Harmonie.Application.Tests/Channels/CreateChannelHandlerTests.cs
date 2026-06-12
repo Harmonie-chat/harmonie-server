@@ -35,6 +35,10 @@ public sealed class CreateChannelHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildChannelRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _guildNotifierMock
             .Setup(x => x.NotifyChannelCreatedAsync(
                 It.IsAny<ChannelCreatedNotification>(),
@@ -182,12 +186,37 @@ public sealed class CreateChannelHandlerTests
         await _handler.HandleAsync(new CreateChannelInput(guild.Id, "lounge", GuildChannelType.Text, 3), adminId, TestContext.Current.CancellationToken);
 
         _guildChannelRepositoryMock.Verify(
-            x => x.AddAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            x => x.TryAddAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenInsertHitsNameUniqueIndex_ShouldReturnNameConflictWithoutCommit()
+    {
+        // The name pre-check passes (concurrent creation race), the insert reports the conflict
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var adminId = UserId.New();
+
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var response = await _handler.HandleAsync(new CreateChannelInput(guild.Id, "lounge", GuildChannelType.Text, 3), adminId, TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
+
+        _transactionMock.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

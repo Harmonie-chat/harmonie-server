@@ -114,7 +114,17 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
                 "You are already a member of this guild");
         }
 
-        await _guildInviteRepository.IncrementUsesCountAsync(inviteCode, cancellationToken);
+        // The max_uses pre-check above can race with a concurrent accept; the
+        // conditional increment is the source of truth. A failure rolls back
+        // the membership insert when the transaction is disposed.
+        var useConsumed = await _guildInviteRepository.TryIncrementUsesCountAsync(inviteCode, cancellationToken);
+        if (!useConsumed)
+        {
+            return ApplicationResponse<AcceptInviteResponse>.Fail(
+                ApplicationErrorCodes.Invite.Exhausted,
+                "This invite has reached its maximum number of uses");
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         await BestEffortNotificationHelper.TryNotifyAsync(

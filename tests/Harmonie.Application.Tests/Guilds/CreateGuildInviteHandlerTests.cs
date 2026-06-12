@@ -32,6 +32,10 @@ public sealed class CreateGuildInviteHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildInviteRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _handler = new CreateGuildInviteHandler(
             _guildRepositoryMock.Object,
             _guildInviteRepositoryMock.Object,
@@ -106,7 +110,7 @@ public sealed class CreateGuildInviteHandlerTests
         response.Data.Code.Should().HaveLength(8);
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _guildInviteRepositoryMock.Verify(x => x.AddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()), Times.Once);
+        _guildInviteRepositoryMock.Verify(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()), Times.Once);
         _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -125,6 +129,51 @@ public sealed class CreateGuildInviteHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.MaxUses.Should().BeNull();
         response.Data.ExpiresAtUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenCodeCollides_ShouldRetryWithFreshCode()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var callerId = UserId.New();
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildInviteRepositoryMock
+            .SetupSequence(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false)
+            .ReturnsAsync(true);
+
+        var response = await _handler.HandleAsync(new CreateGuildInviteInput(guild.Id), callerId, TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data!.Code.Should().HaveLength(8);
+
+        _guildInviteRepositoryMock.Verify(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenCodeAlwaysCollides_ShouldThrowAfterMaxAttempts()
+    {
+        var guild = ApplicationTestBuilders.CreateGuild();
+        var callerId = UserId.New();
+        _guildRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(guild.Id, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GuildAccessContext(guild, GuildRole.Admin));
+
+        _guildInviteRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var act = async () => await _handler.HandleAsync(new CreateGuildInviteInput(guild.Id), callerId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        _guildInviteRepositoryMock.Verify(x => x.TryAddAsync(It.IsAny<GuildInvite>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+        _transactionMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
 }

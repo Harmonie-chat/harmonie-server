@@ -45,6 +45,10 @@ public sealed class AcceptInviteHandlerTests
             .Setup(x => x.GetByIdAsync(_guildId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApplicationTestBuilders.CreateGuild(guildId: _guildId));
 
+        _guildInviteRepositoryMock
+            .Setup(x => x.TryIncrementUsesCountAsync(InviteCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _handler = new AcceptInviteHandler(
             _guildInviteRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
@@ -153,10 +157,48 @@ public sealed class AcceptInviteHandlerTests
         response.Data.Role.Should().Be(GuildRole.Member.ToString());
 
         _guildInviteRepositoryMock.Verify(
-            x => x.IncrementUsesCountAsync(InviteCode, It.IsAny<CancellationToken>()),
+            x => x.TryIncrementUsesCountAsync(InviteCode, It.IsAny<CancellationToken>()),
             Times.Once);
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenUsesConsumeFails_ShouldReturnExhaustedWithoutCommit()
+    {
+        // The stale read passes the max_uses check, but a concurrent accept
+        // consumed the last use before the conditional increment.
+        var details = new InviteAcceptDetails(
+            _guildId, _creatorId, UsesCount: 0, MaxUses: 1,
+            ExpiresAtUtc: null);
+
+        _guildInviteRepositoryMock
+            .Setup(x => x.GetAcceptDetailsByCodeAsync(InviteCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(details);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.IsMemberAsync(_guildId, _callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _guildMemberRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<GuildMember>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _guildInviteRepositoryMock
+            .Setup(x => x.TryIncrementUsesCountAsync(InviteCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var response = await _handler.HandleAsync(InviteCode, _callerId, TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Invite.Exhausted);
+
+        _transactionMock.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _transactionMock.Verify(
+            x => x.DisposeAsync(),
             Times.Once);
     }
 

@@ -134,7 +134,21 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var accessTokenExpiresAt = _jwtTokenService.GetAccessTokenExpirationUtc();
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _userRepository.AddAsync(user, cancellationToken);
+
+        // The duplicate pre-check above can race with a concurrent registration;
+        // the unique constraints are the source of truth at insert time.
+        var addResult = await _userRepository.TryAddAsync(user, cancellationToken);
+
+        if (addResult == UserAddResult.DuplicateEmail)
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Auth.DuplicateEmail,
+                $"A user with email '{emailResult.Value}' already exists");
+
+        if (addResult == UserAddResult.DuplicateUsername)
+            return ApplicationResponse<RegisterResponse>.Fail(
+                ApplicationErrorCodes.Auth.DuplicateUsername,
+                $"A user with username '{usernameResult.Value}' already exists");
+
         await _refreshTokenRepository.StoreAsync(
             user.Id,
             refreshTokenHash,

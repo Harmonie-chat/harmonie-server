@@ -97,7 +97,17 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
         if (request.Name is not null || request.Position is not null)
         {
             await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-            await _guildChannelRepository.UpdateAsync(channel, cancellationToken);
+
+            // The name pre-check above can race with a concurrent rename; the
+            // unique index on (guild_id, name) is the source of truth at update time.
+            var updated = await _guildChannelRepository.TryUpdateAsync(channel, cancellationToken);
+            if (!updated)
+            {
+                return ApplicationResponse<UpdateChannelResponse>.Fail(
+                    ApplicationErrorCodes.Channel.NameConflict,
+                    "A channel with this name already exists in this guild");
+            }
+
             await transaction.CommitAsync(cancellationToken);
 
             await BestEffortNotificationHelper.TryNotifyAsync(

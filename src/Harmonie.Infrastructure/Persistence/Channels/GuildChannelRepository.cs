@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Channels;
+using Npgsql;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.Enums;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -88,6 +89,21 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
+    }
+
+    public async Task<bool> TryAddAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await AddAsync(channel, cancellationToken);
+            return true;
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<GuildChannel>> GetByGuildIdAsync(
@@ -191,6 +207,21 @@ public sealed class GuildChannelRepository : IGuildChannelRepository
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
+    }
+
+    public async Task<bool> TryUpdateAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await UpdateAsync(channel, cancellationToken);
+            return true;
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return false;
+        }
     }
 
     public async Task DeleteAsync(
