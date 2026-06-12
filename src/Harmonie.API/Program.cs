@@ -67,7 +67,10 @@ app.MapConversationEndpoints();
 app.MapUserEndpoints();
 app.MapUploadEndpoints();
 app.MapVoiceEndpoints();
-app.MapHub<RealtimeHub>("/hubs/realtime");
+// Close realtime connections when the access token expires so a stale session
+// (logout, ban, expired token) stops receiving events; clients reconnect with
+// a fresh token via their accessTokenFactory.
+app.MapHub<RealtimeHub>("/hubs/realtime", options => options.CloseOnAuthenticationExpiration = true);
 
 app.Run();
 
