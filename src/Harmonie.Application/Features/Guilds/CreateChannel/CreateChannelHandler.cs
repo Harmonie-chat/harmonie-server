@@ -80,7 +80,17 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _guildChannelRepository.AddAsync(channel, cancellationToken);
+
+        // The name pre-check above can race with a concurrent creation; the
+        // unique index on (guild_id, name) is the source of truth at insert time.
+        var added = await _guildChannelRepository.TryAddAsync(channel, cancellationToken);
+        if (!added)
+        {
+            return ApplicationResponse<CreateChannelResponse>.Fail(
+                ApplicationErrorCodes.Channel.NameConflict,
+                "A channel with this name already exists in this guild");
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         if (channel.Type == GuildChannelType.Text)

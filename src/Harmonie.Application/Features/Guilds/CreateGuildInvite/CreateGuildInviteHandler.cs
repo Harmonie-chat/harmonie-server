@@ -12,6 +12,8 @@ public sealed record CreateGuildInviteInput(GuildId GuildId, int? MaxUses = null
 
 public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuildInviteInput, CreateGuildInviteResponse>
 {
+    private const int MaxCodeGenerationAttempts = 3;
+
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -46,19 +48,34 @@ public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuild
                 "Only guild administrators can create invite links");
         }
 
-        var inviteResult = GuildInvite.Create(input.GuildId, currentUserId, input.MaxUses, input.ExpiresInHours);
-        if (inviteResult.IsFailure || inviteResult.Value is null)
+        GuildInvite? invite = null;
+
+        // Each attempt generates a fresh random code; a unique-constraint
+        // collision on the code is retried with a new transaction scope.
+        for (var attempt = 0; attempt < MaxCodeGenerationAttempts && invite is null; attempt++)
         {
-            return ApplicationResponse<CreateGuildInviteResponse>.Fail(
-                ApplicationErrorCodes.Common.DomainRuleViolation,
-                inviteResult.Error ?? "Unable to create guild invite");
+            var inviteResult = GuildInvite.Create(input.GuildId, currentUserId, input.MaxUses, input.ExpiresInHours);
+            if (inviteResult.IsFailure || inviteResult.Value is null)
+            {
+                return ApplicationResponse<CreateGuildInviteResponse>.Fail(
+                    ApplicationErrorCodes.Common.DomainRuleViolation,
+                    inviteResult.Error ?? "Unable to create guild invite");
+            }
+
+            await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+            var added = await _guildInviteRepository.TryAddAsync(inviteResult.Value, cancellationToken);
+            if (!added)
+                continue;
+
+            await transaction.CommitAsync(cancellationToken);
+            invite = inviteResult.Value;
         }
 
-        var invite = inviteResult.Value;
-
-        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _guildInviteRepository.AddAsync(invite, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (invite is null)
+        {
+            throw new InvalidOperationException(
+                $"Failed to generate a unique invite code after {MaxCodeGenerationAttempts} attempts.");
+        }
 
         var payload = new CreateGuildInviteResponse(
             InviteId: invite.Id.Value,

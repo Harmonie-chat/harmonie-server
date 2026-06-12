@@ -46,6 +46,14 @@ public interface IGuildChannelRepository
         GuildChannel channel,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Add the channel; returns false when the name conflicts with an
+    /// existing channel in the same guild.
+    /// </summary>
+    Task<bool> TryAddAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<GuildChannel>> GetByGuildIdAsync(
         GuildId guildId,
         CancellationToken cancellationToken = default);
@@ -56,6 +64,14 @@ public interface IGuildChannelRepository
         CancellationToken cancellationToken = default);
 
     Task UpdateAsync(
+        GuildChannel channel,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update the channel; returns false when the new name conflicts with an
+    /// existing channel in the same guild.
+    /// </summary>
+    Task<bool> TryUpdateAsync(
         GuildChannel channel,
         CancellationToken cancellationToken = default);
 

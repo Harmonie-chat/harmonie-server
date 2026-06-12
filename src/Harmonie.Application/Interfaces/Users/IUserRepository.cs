@@ -8,6 +8,16 @@ namespace Harmonie.Application.Interfaces.Users;
 
 public sealed record UserDuplicateCheck(bool EmailExists, bool UsernameExists);
 
+/// <summary>
+/// Outcome of an attempt to insert a new user.
+/// </summary>
+public enum UserAddResult
+{
+    Success,
+    DuplicateEmail,
+    DuplicateUsername
+}
+
 public sealed record SearchUsersQuery(
     string SearchText,
     GuildId? GuildId,
@@ -73,9 +83,11 @@ public interface IUserRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Add a new user
+    /// Add a new user, reporting email/username unique-constraint conflicts
+    /// as a result instead of throwing, so concurrent registrations of the
+    /// same identity surface as an expected failure.
     /// </summary>
-    Task AddAsync(User user, CancellationToken cancellationToken = default);
+    Task<UserAddResult> TryAddAsync(User user, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Update an existing user

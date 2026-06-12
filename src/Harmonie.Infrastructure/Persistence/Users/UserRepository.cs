@@ -1,6 +1,7 @@
 using System.Text;
 using Dapper;
 using Harmonie.Application.Interfaces.Users;
+using Npgsql;
 using Harmonie.Domain.Entities.Users;
 using Harmonie.Domain.ValueObjects.Common;
 using Harmonie.Domain.ValueObjects.Conversations;
@@ -212,7 +213,7 @@ public sealed class UserRepository : IUserRepository
         return rows.Select(MapToSearchUserResult).ToArray();
     }
 
-    public async Task AddAsync(User user, CancellationToken ct = default)
+    public async Task<UserAddResult> TryAddAsync(User user, CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO users (id, email, username, password_hash, avatar_url, avatar_file_id, is_email_verified,
@@ -252,7 +253,19 @@ public sealed class UserRepository : IUserRepository
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
 
-        await conn.ExecuteAsync(cmd);
+        try
+        {
+            await conn.ExecuteAsync(cmd);
+            return UserAddResult.Success;
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation && ex.ConstraintName is not null)
+        {
+            if (ex.ConstraintName.Contains("email", StringComparison.OrdinalIgnoreCase))
+                return UserAddResult.DuplicateEmail;
+            if (ex.ConstraintName.Contains("username", StringComparison.OrdinalIgnoreCase))
+                return UserAddResult.DuplicateUsername;
+            throw;
+        }
     }
 
     public async Task UpdateAsync(User user, CancellationToken ct = default)

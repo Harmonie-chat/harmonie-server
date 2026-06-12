@@ -37,6 +37,10 @@ public sealed class RegisterHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _userRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserAddResult.Success);
+
         _handler = new RegisterHandler(
             _userRepositoryMock.Object,
             _refreshTokenRepositoryMock.Object,
@@ -100,7 +104,7 @@ public sealed class RegisterHandlerTests
             Times.Once);
 
         _userRepositoryMock.Verify(
-            x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+            x => x.TryAddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _refreshTokenRepositoryMock.Verify(
@@ -176,7 +180,7 @@ public sealed class RegisterHandlerTests
             Times.Once);
 
         _userRepositoryMock.Verify(
-            x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
+            x => x.TryAddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _refreshTokenRepositoryMock.Verify(
@@ -186,6 +190,77 @@ public sealed class RegisterHandlerTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+
+        _transactionMock.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _transactionMock.Verify(
+            x => x.DisposeAsync(),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(UserAddResult.DuplicateEmail)]
+    [InlineData(UserAddResult.DuplicateUsername)]
+    public async Task HandleAsync_WhenInsertHitsUniqueConstraint_ShouldReturnDuplicateFailureWithoutCommit(
+        UserAddResult addResult)
+    {
+        // Arrange: the pre-check passes (concurrent registration race), the insert reports the conflict
+        var request = new RegisterRequest(
+            "test@harmonie.chat",
+            "testuser",
+            "Test123!@#");
+
+        _userRepositoryMock
+            .Setup(x => x.CheckDuplicatesAsync(It.IsAny<Email>(), It.IsAny<Username>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDuplicateCheck(false, false));
+
+        _userRepositoryMock
+            .Setup(x => x.TryAddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(addResult);
+
+        _passwordHasherMock
+            .Setup(x => x.HashPassword(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("hashed_password");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GenerateAccessToken(It.IsAny<UserId>(), It.IsAny<Email>(), It.IsAny<Username>()))
+            .Returns("access_token");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GenerateRefreshToken())
+            .Returns("refresh_token");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.HashRefreshToken(It.IsAny<string>()))
+            .Returns("refresh_token_hash");
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GetAccessTokenExpirationUtc())
+            .Returns(DateTime.UtcNow.AddMinutes(15));
+
+        _jwtTokenServiceMock
+            .Setup(x => x.GetRefreshTokenExpirationUtc())
+            .Returns(DateTime.UtcNow.AddDays(30));
+
+        // Act
+        var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(addResult == UserAddResult.DuplicateEmail
+            ? ApplicationErrorCodes.Auth.DuplicateEmail
+            : ApplicationErrorCodes.Auth.DuplicateUsername);
+
+        _refreshTokenRepositoryMock.Verify(
+            x => x.StoreAsync(
+                It.IsAny<UserId>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),

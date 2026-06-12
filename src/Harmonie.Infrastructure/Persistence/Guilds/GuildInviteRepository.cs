@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Guilds;
+using Npgsql;
 using Harmonie.Domain.Entities.Guilds;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Uploads;
@@ -17,7 +18,7 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
         _dbSession = dbSession;
     }
 
-    public async Task AddAsync(GuildInvite invite, CancellationToken cancellationToken = default)
+    public async Task<bool> TryAddAsync(GuildInvite invite, CancellationToken cancellationToken = default)
     {
         const string sql = """
                            INSERT INTO guild_invites (
@@ -57,7 +58,18 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        await connection.ExecuteAsync(command);
+        try
+        {
+            await connection.ExecuteAsync(command);
+            return true;
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UniqueViolation &&
+            ex.ConstraintName is not null &&
+            ex.ConstraintName.Contains("code", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
     }
 
     public async Task<InvitePreview?> GetPreviewByCodeAsync(string code, CancellationToken cancellationToken = default)
@@ -135,12 +147,15 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
             row.ExpiresAtUtc);
     }
 
-    public async Task IncrementUsesCountAsync(string code, CancellationToken cancellationToken = default)
+    public async Task<bool> TryIncrementUsesCountAsync(string code, CancellationToken cancellationToken = default)
     {
+        // The max_uses guard makes the consume atomic: concurrent accepts past
+        // the handler's stale read cannot push uses_count over the limit.
         const string sql = """
                            UPDATE guild_invites
                            SET uses_count = uses_count + 1
                            WHERE code = @Code
+                             AND (max_uses IS NULL OR uses_count < max_uses)
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
@@ -150,7 +165,8 @@ public sealed class GuildInviteRepository : IGuildInviteRepository
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
-        await connection.ExecuteAsync(command);
+        var rowsAffected = await connection.ExecuteAsync(command);
+        return rowsAffected == 1;
     }
 
     public async Task<IReadOnlyList<GuildInviteSummary>> GetByGuildIdAsync(GuildId guildId, CancellationToken cancellationToken = default)

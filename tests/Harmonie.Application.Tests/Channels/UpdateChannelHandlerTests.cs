@@ -33,6 +33,10 @@ public sealed class UpdateChannelHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
+        _guildChannelRepositoryMock
+            .Setup(x => x.TryUpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _guildNotifierMock
             .Setup(x => x.NotifyChannelUpdatedAsync(
                 It.IsAny<ChannelUpdatedNotification>(),
@@ -195,12 +199,46 @@ public sealed class UpdateChannelHandlerTests
         await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request.Name, request.Position), adminId, TestContext.Current.CancellationToken);
 
         _guildChannelRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            x => x.TryUpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenUpdateHitsNameUniqueIndex_ShouldReturnNameConflictWithoutCommit()
+    {
+        // The name pre-check passes (concurrent rename race), the update reports the conflict
+        var channel = CreateChannel("old-name");
+        var adminId = UserId.New();
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.GetWithCallerRoleAsync(channel.Id, adminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Admin));
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.ExistsByNameInGuildAsync(
+                channel.GuildId,
+                "new-name",
+                channel.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _guildChannelRepositoryMock
+            .Setup(x => x.TryUpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var request = new UpdateChannelRequest(Name: "new-name");
+        var response = await _handler.HandleAsync(new UpdateChannelInput(channel.Id, request.Name, request.Position), adminId, TestContext.Current.CancellationToken);
+
+        response.Success.Should().BeFalse();
+        response.Error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
+
+        _transactionMock.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -228,7 +266,7 @@ public sealed class UpdateChannelHandlerTests
             Times.Never);
 
         _guildChannelRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            x => x.TryUpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
             Times.Never);
 
         _unitOfWorkMock.Verify(
@@ -255,7 +293,7 @@ public sealed class UpdateChannelHandlerTests
         response.Data.Position.Should().Be(2);
 
         _guildChannelRepositoryMock.Verify(
-            x => x.UpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
+            x => x.TryUpdateAsync(It.IsAny<GuildChannel>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
