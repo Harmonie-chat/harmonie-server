@@ -14,6 +14,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
     private readonly IUserRepository _userRepository;
     private readonly IConversationRepository _conversationRepository;
     private readonly IConversationParticipantRepository _participantRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IConversationNotifier _conversationNotifier;
     private readonly ILogger<OpenConversationHandler> _logger;
@@ -22,6 +23,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         IUserRepository userRepository,
         IConversationRepository conversationRepository,
         IConversationParticipantRepository participantRepository,
+        IUnitOfWork unitOfWork,
         IRealtimeGroupManager realtimeGroupManager,
         IConversationNotifier conversationNotifier,
         ILogger<OpenConversationHandler> logger)
@@ -29,6 +31,7 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
         _userRepository = userRepository;
         _conversationRepository = conversationRepository;
         _participantRepository = participantRepository;
+        _unitOfWork = unitOfWork;
         _realtimeGroupManager = realtimeGroupManager;
         _conversationNotifier = conversationNotifier;
         _logger = logger;
@@ -66,10 +69,32 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                 "Current user was not found");
         }
 
+        // Transactional scope so a request losing the creation race never leaves
+        // a partially-created conversation behind.
+        await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+
         var result = await _conversationRepository.GetOrCreateDirectAsync(
             currentUserId,
             targetUserId,
             cancellationToken);
+
+        if (!result.WasCreated)
+        {
+            // Reopen: clear hidden_at_utc for hidden participants so the conversation reappears
+            var participants = await _participantRepository.GetByConversationIdAsync(result.Conversation.Id, cancellationToken);
+
+            var hidden = participants
+                .Where(p => p.HiddenAtUtc is not null)
+                .ToArray();
+
+            foreach (var p in hidden)
+                p.Unhide();
+
+            if (hidden.Length > 0)
+                await _participantRepository.UpdateRangeAsync(hidden, cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
 
         if (result.WasCreated)
         {
@@ -96,22 +121,6 @@ public sealed class OpenConversationHandler : IAuthenticatedHandler<OpenConversa
                 _logger,
                 "Failed to notify direct conversation {ConversationId} creation",
                 conversationId);
-        }
-        else
-        {
-            // Reopen: clear hidden_at_utc for hidden participants so the conversation reappears
-            var conversationId = result.Conversation.Id;
-            var participants = await _participantRepository.GetByConversationIdAsync(conversationId, cancellationToken);
-
-            var hidden = participants
-                .Where(p => p.HiddenAtUtc is not null)
-                .ToArray();
-
-            foreach (var p in hidden)
-                p.Unhide();
-
-            if (hidden.Length > 0)
-                await _participantRepository.UpdateRangeAsync(hidden, cancellationToken);
         }
 
         var payload = new OpenConversationResponse(

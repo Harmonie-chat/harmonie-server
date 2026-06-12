@@ -76,7 +76,9 @@ public sealed class ConversationRepository : IConversationRepository
             return new ConversationGetOrCreateResult(existing!, WasCreated: false);
         }
 
-        // Step 2: create the conversation, participants and lookup entry
+        // Step 2: create the conversation and claim the lookup entry.
+        // The lookup primary key (user1_id, user2_id) is the concurrency guard:
+        // when two requests race past the select above, only one insert wins.
         var newConversationId = ConversationId.New();
         var createdAtUtc = DateTime.UtcNow;
 
@@ -89,6 +91,46 @@ public sealed class ConversationRepository : IConversationRepository
             new { Id = newConversationId.Value, CreatedAtUtc = createdAtUtc },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken));
+
+        const string insertLookupSql = """
+                                        INSERT INTO direct_conversation_lookup (user1_id, user2_id, conversation_id)
+                                        VALUES (@User1Id, @User2Id, @ConversationId)
+                                        ON CONFLICT (user1_id, user2_id) DO NOTHING
+                                        """;
+        var lookupRowsInserted = await connection.ExecuteAsync(new CommandDefinition(
+            insertLookupSql,
+            new { User1Id = user1Id, User2Id = user2Id, ConversationId = newConversationId.Value },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken));
+
+        if (lookupRowsInserted == 0)
+        {
+            // Lost the race: a concurrent request created the conversation for this
+            // pair first. Discard our conversation and return the winning one.
+            const string deleteConversationSql = """
+                                                  DELETE FROM conversations WHERE id = @Id
+                                                  """;
+            await connection.ExecuteAsync(new CommandDefinition(
+                deleteConversationSql,
+                new { Id = newConversationId.Value },
+                transaction: _dbSession.Transaction,
+                cancellationToken: cancellationToken));
+
+            var winningConversationId = await connection.QueryFirstOrDefaultAsync<Guid?>(new CommandDefinition(
+                selectLookupSql,
+                new { User1Id = user1Id, User2Id = user2Id },
+                transaction: _dbSession.Transaction,
+                cancellationToken: cancellationToken));
+
+            if (winningConversationId is null)
+                throw new InvalidOperationException("Direct conversation lookup entry disappeared after insert conflict.");
+
+            var winner = await GetByIdAsync(ConversationId.From(winningConversationId.Value), cancellationToken);
+            if (winner is null)
+                throw new InvalidOperationException("Direct conversation referenced by lookup entry was not found.");
+
+            return new ConversationGetOrCreateResult(winner, WasCreated: false);
+        }
 
         const string insertParticipantsSql = """
                                               INSERT INTO conversation_participants (conversation_id, user_id, joined_at_utc)
@@ -104,17 +146,6 @@ public sealed class ConversationRepository : IConversationRepository
                 UserId2 = secondUserId.Value,
                 JoinedAt = createdAtUtc
             },
-            transaction: _dbSession.Transaction,
-            cancellationToken: cancellationToken));
-
-        const string insertLookupSql = """
-                                        INSERT INTO direct_conversation_lookup (user1_id, user2_id, conversation_id)
-                                        VALUES (@User1Id, @User2Id, @ConversationId)
-                                        ON CONFLICT (user1_id, user2_id) DO NOTHING
-                                        """;
-        await connection.ExecuteAsync(new CommandDefinition(
-            insertLookupSql,
-            new { User1Id = user1Id, User2Id = user2Id, ConversationId = newConversationId.Value },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken));
 
