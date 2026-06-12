@@ -57,6 +57,32 @@ public sealed class CreateChannelTests : IClassFixture<HarmonieWebApplicationFac
         error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
     }
 
+    [Fact]
+    public async Task CreateChannel_ConcurrentRequestsWithSameName_ShouldCreateSingleChannel()
+    {
+        // Race safety net: the losers must get a clean name conflict, never a 500
+        var token = Guid.NewGuid().ToString("N")[..8];
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
+        var guildId = await GuildTestHelper.CreateGuildAndGetIdAsync(_client, owner.AccessToken, $"ChanRace{token}");
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(i => _client.SendAuthorizedPostAsync(
+                $"/api/guilds/{guildId}/channels",
+                new CreateChannelRequest($"race-channel-{token}", ChannelTypeInput.Text, 10 + i),
+                owner.AccessToken)));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.Created).Should().Be(1);
+
+        foreach (var loser in responses.Where(r => r.StatusCode != HttpStatusCode.Created))
+        {
+            loser.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var error = await loser.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
+            error.Should().NotBeNull();
+            error!.Code.Should().Be(ApplicationErrorCodes.Channel.NameConflict);
+        }
+    }
+
     private async Task CreateChannelInGuildAsync(
         Guid guildId,
         CreateChannelRequest request,

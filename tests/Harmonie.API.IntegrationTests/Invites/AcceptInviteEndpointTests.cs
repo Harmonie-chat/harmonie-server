@@ -125,4 +125,31 @@ public sealed class AcceptInviteEndpointTests : IClassFixture<HarmonieWebApplica
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Invite.Exhausted);
     }
+
+    [Fact]
+    public async Task AcceptInvite_ConcurrentAcceptsOnLastUse_ShouldNotExceedMaxUses()
+    {
+        // Race safety net: both accepts pass the stale max_uses pre-check,
+        // but only one may consume the last use and join
+        var token = Guid.NewGuid().ToString("N")[..8];
+        var owner = await AuthTestHelper.RegisterAsync(_client, token);
+        var joinerA = await AuthTestHelper.RegisterAsync(_client, token + "a");
+        var joinerB = await AuthTestHelper.RegisterAsync(_client, token + "b");
+
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"RaceGuild{token}", owner.AccessToken);
+        var invite = await GuildTestHelper.CreateInviteAsync(_client, guild.GuildId, owner.AccessToken, maxUses: 1);
+
+        var responses = await Task.WhenAll(
+            _client.SendAuthorizedPostNoBodyAsync($"/api/invites/{invite.Code}/accept", joinerA.AccessToken),
+            _client.SendAuthorizedPostNoBodyAsync($"/api/invites/{invite.Code}/accept", joinerB.AccessToken));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1);
+
+        var loser = responses.Single(r => r.StatusCode != HttpStatusCode.OK);
+        loser.StatusCode.Should().Be(HttpStatusCode.Gone);
+
+        var error = await loser.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ApplicationErrorCodes.Invite.Exhausted);
+    }
 }

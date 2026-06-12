@@ -489,4 +489,31 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         result.Avatar.Bg.Should().BeNull();
         result.Theme.Should().Be("default");
     }
+
+    [Fact]
+    public async Task Register_ConcurrentRequestsWithSameIdentity_ShouldCreateSingleUser()
+    {
+        // Race safety net: the losers must get a clean duplicate error, never a 500
+        var token = Guid.NewGuid().ToString("N")[..12];
+        var request = new RegisterRequest(
+            Email: $"race{token}@harmonie.chat",
+            Username: $"race{token}",
+            Password: "Test123!@#");
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(_ => _client.PostAsJsonAsync("/api/auth/register", request)));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.Created).Should().Be(1);
+
+        foreach (var loser in responses.Where(r => r.StatusCode != HttpStatusCode.Created))
+        {
+            loser.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var error = await loser.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
+            error.Should().NotBeNull();
+            error!.Code.Should().BeOneOf(
+                ApplicationErrorCodes.Auth.DuplicateEmail,
+                ApplicationErrorCodes.Auth.DuplicateUsername);
+        }
+    }
 }
