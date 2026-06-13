@@ -67,6 +67,7 @@ app.MapConversationEndpoints();
 app.MapUserEndpoints();
 app.MapUploadEndpoints();
 app.MapVoiceEndpoints();
+app.MapNotificationEndpoints();
 app.MapHub<RealtimeHub>("/hubs/realtime");
 
 app.Run();

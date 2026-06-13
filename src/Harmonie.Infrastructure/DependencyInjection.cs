@@ -4,6 +4,7 @@ using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Conversations;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Interfaces.Voice;
@@ -17,6 +18,7 @@ using Harmonie.Infrastructure.Persistence.Common;
 using Harmonie.Infrastructure.Persistence.Conversations;
 using Harmonie.Infrastructure.Persistence.Guilds;
 using Harmonie.Infrastructure.Persistence.Messages;
+using Harmonie.Infrastructure.Persistence.Notifications;
 using Harmonie.Infrastructure.Persistence.Uploads;
 using Harmonie.Infrastructure.Persistence.Users;
 using Harmonie.Infrastructure.Services;
@@ -71,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<IChannelReadStateRepository, ChannelReadStateRepository>();
         services.AddScoped<IConversationReadStateRepository, ConversationReadStateRepository>();
         services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+        services.AddScoped<INotificationDeviceRepository, NotificationDeviceRepository>();
 
         return services;
     }
