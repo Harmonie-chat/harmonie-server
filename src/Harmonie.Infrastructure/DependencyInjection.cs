@@ -22,9 +22,11 @@ using Harmonie.Infrastructure.Persistence.Notifications;
 using Harmonie.Infrastructure.Persistence.Uploads;
 using Harmonie.Infrastructure.Persistence.Users;
 using Harmonie.Infrastructure.Services;
+using Harmonie.Infrastructure.Services.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using WebPush;
 
 namespace Harmonie.Infrastructure;
 
@@ -75,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
         services.AddScoped<INotificationDeviceRepository, NotificationDeviceRepository>();
         services.AddScoped<IMessageNotificationOutboxRepository, MessageNotificationOutboxRepository>();
+        services.AddScoped<IMessageNotificationContextRepository, MessageNotificationContextRepository>();
 
         return services;
     }
@@ -134,6 +137,30 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(5);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Harmonie-LinkPreview/1.0");
         });
+
+        return services;
+    }
+
+    public static IServiceCollection AddNotificationDeliveryInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<WebPushSettings>()
+            .Configure(options =>
+            {
+                configuration.GetSection(WebPushSettings.SectionName).Bind(options);
+                options.PublicKey = configuration["VAPID_PUBLIC_KEY"] ?? options.PublicKey;
+                options.PrivateKey = configuration["VAPID_PRIVATE_KEY"] ?? options.PrivateKey;
+                options.Subject = configuration["VAPID_SUBJECT"] ?? options.Subject;
+            })
+            .Validate(
+                settings => !settings.HasVapidCredentials
+                            || Uri.TryCreate(settings.Subject, UriKind.Absolute, out _)
+                            || settings.Subject.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase),
+                "WebPush:Subject must be an absolute URI or mailto URI when VAPID credentials are configured.")
+            .ValidateOnStart();
+
+        services.AddSingleton<WebPushClient>();
+        services.AddSingleton<WebPushEndpointValidator>();
+        services.AddScoped<INotificationDeliveryAdapter, WebPushNotificationDeliveryAdapter>();
 
         return services;
     }

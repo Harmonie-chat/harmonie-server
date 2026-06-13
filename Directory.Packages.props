@@ -32,6 +32,7 @@
   <!-- External services -->
   <ItemGroup>
     <PackageVersion Include="Livekit.Server.Sdk.Dotnet" Version="1.2.1" />
+    <PackageVersion Include="WebPush" Version="1.0.13" />
   </ItemGroup>
   <!-- Configuration -->
   <ItemGroup>

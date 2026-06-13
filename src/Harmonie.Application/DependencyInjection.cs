@@ -3,6 +3,7 @@ using FluentValidation;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Common.Uploads;
 using Harmonie.Application.Services;
+using Harmonie.Application.Services.Notifications;
 using Harmonie.Application.Registration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +24,9 @@ public static class DependencyInjection
         services.AddScoped<ReadOrchestrator>();
         services.AddScoped<MessageFetchOrchestrator>();
         services.AddScoped<PinnedMessageFetchOrchestrator>();
+        services.AddScoped<MessageNotificationRecipientResolver>();
+        services.AddScoped<MessageNotificationPayloadFactory>();
+        services.AddScoped<NotificationDispatchService>();
 
         services.AddAuthHandlers();
         services.AddGuildHandlers();

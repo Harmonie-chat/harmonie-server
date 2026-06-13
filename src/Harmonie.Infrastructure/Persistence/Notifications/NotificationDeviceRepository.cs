@@ -1,13 +1,12 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Notifications;
+using Harmonie.Domain.ValueObjects.Users;
 using Harmonie.Infrastructure.Persistence.Common;
 
 namespace Harmonie.Infrastructure.Persistence.Notifications;
 
 public sealed class NotificationDeviceRepository : INotificationDeviceRepository
 {
-    private const string WebPushPlatform = "web_push";
-
     private readonly DbSession _dbSession;
 
     public NotificationDeviceRepository(DbSession dbSession)
@@ -57,7 +56,7 @@ public sealed class NotificationDeviceRepository : INotificationDeviceRepository
             {
                 Id = Guid.NewGuid(),
                 UserId = registration.UserId.Value,
-                Platform = WebPushPlatform,
+                Platform = NotificationDevicePlatforms.WebPush,
                 Token = registration.Endpoint,
                 WebPushP256dh = registration.P256dh,
                 WebPushAuth = registration.Auth,
@@ -68,5 +67,88 @@ public sealed class NotificationDeviceRepository : INotificationDeviceRepository
             cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
+    }
+
+    public async Task<IReadOnlyList<NotificationDevice>> GetActiveByUserIdsAsync(
+        IReadOnlyCollection<UserId> userIds,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return [];
+
+        const string sql = """
+                           SELECT
+                               id AS "Id",
+                               user_id AS "UserId",
+                               platform AS "Platform",
+                               token AS "Token",
+                               web_push_p256dh AS "WebPushP256dh",
+                               web_push_auth AS "WebPushAuth",
+                               expires_at_utc AS "ExpiresAtUtc"
+                           FROM notification_devices
+                           WHERE user_id = ANY(@UserIds)
+                             AND (expires_at_utc IS NULL OR expires_at_utc > @NowUtc)
+                           ORDER BY updated_at_utc ASC, id ASC
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                UserIds = userIds.Select(userId => userId.Value).ToArray(),
+                NowUtc = nowUtc
+            },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        var rows = await connection.QueryAsync<NotificationDeviceRow>(command);
+        return rows
+            .Select(row => new NotificationDevice(
+                row.Id,
+                UserId.From(row.UserId),
+                row.Platform,
+                row.Token,
+                row.WebPushP256dh,
+                row.WebPushAuth,
+                row.ExpiresAtUtc))
+            .ToArray();
+    }
+
+    public async Task DeleteAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           DELETE FROM notification_devices
+                           WHERE id = @DeviceId
+                           """;
+
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            new { DeviceId = deviceId },
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
+    private sealed class NotificationDeviceRow
+    {
+        public Guid Id { get; init; }
+
+        public Guid UserId { get; init; }
+
+        public string Platform { get; init; } = string.Empty;
+
+        public string Token { get; init; } = string.Empty;
+
+        public string? WebPushP256dh { get; init; }
+
+        public string? WebPushAuth { get; init; }
+
+        public DateTime? ExpiresAtUtc { get; init; }
     }
 }

@@ -33,4 +33,21 @@ public interface IMessageNotificationOutboxRepository
         DateTime nowUtc,
         TimeSpan lockDuration,
         CancellationToken cancellationToken = default);
+
+    Task MarkProcessedAsync(
+        Guid jobId,
+        DateTime processedAtUtc,
+        CancellationToken cancellationToken = default);
+
+    Task ScheduleRetryAsync(
+        Guid jobId,
+        DateTime nextAttemptAtUtc,
+        string error,
+        CancellationToken cancellationToken = default);
+
+    Task MarkFailedAsync(
+        Guid jobId,
+        string error,
+        DateTime failedAtUtc,
+        CancellationToken cancellationToken = default);
 }
