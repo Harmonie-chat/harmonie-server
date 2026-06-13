@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Services;
 using Harmonie.Domain.Common;
@@ -22,6 +23,7 @@ public sealed class MessageSendOrchestrator
     private readonly IMessageAttachmentRepository _messageAttachmentRepository;
     private readonly MessageAttachmentResolver _attachmentResolver;
     private readonly IUserRepository _userRepository;
+    private readonly IMessageNotificationOutboxRepository _messageNotificationOutboxRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public MessageSendOrchestrator(
@@ -29,12 +31,14 @@ public sealed class MessageSendOrchestrator
         IMessageAttachmentRepository messageAttachmentRepository,
         MessageAttachmentResolver attachmentResolver,
         IUserRepository userRepository,
+        IMessageNotificationOutboxRepository messageNotificationOutboxRepository,
         IUnitOfWork unitOfWork)
     {
         _messageRepository = messageRepository;
         _messageAttachmentRepository = messageAttachmentRepository;
         _attachmentResolver = attachmentResolver;
         _userRepository = userRepository;
+        _messageNotificationOutboxRepository = messageNotificationOutboxRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -179,6 +183,7 @@ public sealed class MessageSendOrchestrator
         if (mentionUserIds is { Length: > 0 })
             await _messageRepository.AddMentionsAsync(messageResult.Value.Id, mentionUserIds, ct);
         await scope.ApplyInTransactionSideEffectsAsync(context, ct);
+        await _messageNotificationOutboxRepository.AddPendingAsync(messageResult.Value.Id, DateTime.UtcNow, ct);
         await transaction.CommitAsync(ct);
 
         // ── Reply preview DTO ───────────────────────────────────────────
