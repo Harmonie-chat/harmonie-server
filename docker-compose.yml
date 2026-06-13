@@ -90,6 +90,24 @@ services:
     networks:
       - harmonie-network
 
+  # Harmonie background workers (optional)
+  harmonie-workers:
+    profiles: ["workers"]
+    build:
+      context: .
+      dockerfile: src/Harmonie.Workers/Dockerfile
+    container_name: harmonie-workers
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      harmonie-migrations:
+        condition: service_completed_successfully
+    networks:
+      - harmonie-network
+
 volumes:
   postgres-data:
     driver: local

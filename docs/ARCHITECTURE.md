@@ -43,6 +43,14 @@ Responsibilities:
 - Dapper-based repositories
 - JWT generation/validation and password hashing
 - Options/configuration objects
+- Modular DI registration so API and worker hosts can opt into only the infrastructure they need
+
+## Workers (`src/Harmonie.Workers`)
+
+Responsibilities:
+- Independent background worker host
+- Long-running/background orchestration that should not share the HTTP API process
+- Reuses Application services and Infrastructure adapters without depending on `Harmonie.API`
 
 ## Data and Migration Strategy
 

@@ -76,7 +76,30 @@ be backed by an S3-compatible service.
 - Health: `GET /health`
 - OpenAPI: browse Scalar API reference at `/scalar` (Development only)
 
-## 5. Run Tests
+## 5. Run Background Workers
+
+The worker host is a separate executable in the same solution. It currently provides the runtime host for background notification work and can be run independently from the API.
+
+PowerShell:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project src/Harmonie.Workers
+```
+
+Bash:
+
+```bash
+DOTNET_ENVIRONMENT=Development dotnet run --project src/Harmonie.Workers
+```
+
+With compose, the worker service is optional and behind the `workers` profile:
+
+```bash
+podman compose --profile workers up -d harmonie-workers
+```
+
+## 6. Run Tests
 
 ```bash
 dotnet test
