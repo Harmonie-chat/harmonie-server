@@ -45,6 +45,10 @@ public sealed class NotificationDispatchService
         var context = await _contextRepository.GetAsync(job.MessageId, cancellationToken);
         if (context is null)
         {
+            _logger.LogInformation(
+                "Message notification outbox job {JobId} skipped because message {MessageId} no longer exists or is deleted.",
+                job.Id,
+                job.MessageId.Value);
             await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
             return;
         }
@@ -52,6 +56,10 @@ public sealed class NotificationDispatchService
         var recipientIds = _recipientResolver.Resolve(context);
         if (recipientIds.Count == 0)
         {
+            _logger.LogDebug(
+                "Message notification outbox job {JobId} completed without recipients for message {MessageId}.",
+                job.Id,
+                job.MessageId.Value);
             await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
             return;
         }
@@ -59,6 +67,10 @@ public sealed class NotificationDispatchService
         var devices = await _deviceRepository.GetActiveByUserIdsAsync(recipientIds, nowUtc, cancellationToken);
         if (devices.Count == 0)
         {
+            _logger.LogDebug(
+                "Message notification outbox job {JobId} completed because {RecipientCount} recipients have no active notification devices.",
+                job.Id,
+                recipientIds.Count);
             await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
             return;
         }
@@ -71,6 +83,11 @@ public sealed class NotificationDispatchService
         {
             if (!_adaptersByPlatform.TryGetValue(platformDevices.Key, out var adapter))
             {
+                _logger.LogWarning(
+                    "Message notification outbox job {JobId} found {DeviceCount} devices for unsupported notification platform {Platform}.",
+                    job.Id,
+                    platformDevices.Count(),
+                    platformDevices.Key);
                 unsupportedPlatforms.Add(platformDevices.Key);
                 continue;
             }
@@ -79,9 +96,18 @@ public sealed class NotificationDispatchService
             deliveryResults.AddRange(results);
         }
 
-        foreach (var invalidDevice in deliveryResults.Where(result => result.Status == NotificationDeliveryResultStatus.InvalidDevice))
+        var invalidDeviceIds = deliveryResults
+            .Where(result => result.Status == NotificationDeliveryResultStatus.InvalidDevice)
+            .Select(result => result.DeviceId)
+            .Distinct()
+            .ToArray();
+        if (invalidDeviceIds.Length > 0)
         {
-            await _deviceRepository.DeleteAsync(invalidDevice.DeviceId, cancellationToken);
+            _logger.LogInformation(
+                "Removing {InvalidDeviceCount} invalid notification devices after message notification outbox job {JobId}.",
+                invalidDeviceIds.Length,
+                job.Id);
+            await _deviceRepository.DeleteManyAsync(invalidDeviceIds, cancellationToken);
         }
 
         var blockingFailures = deliveryResults
@@ -92,6 +118,10 @@ public sealed class NotificationDispatchService
 
         if (blockingFailures.Length == 0)
         {
+            _logger.LogDebug(
+                "Message notification outbox job {JobId} processed for {DeviceCount} devices.",
+                job.Id,
+                devices.Count);
             await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
             return;
         }
@@ -109,6 +139,12 @@ public sealed class NotificationDispatchService
         }
 
         var nextAttemptAtUtc = nowUtc.Add(CalculateRetryDelay(job.Attempts));
+        _logger.LogWarning(
+            "Message notification outbox job {JobId} attempt {Attempts} failed and will retry at {NextAttemptAtUtc}: {Error}",
+            job.Id,
+            job.Attempts,
+            nextAttemptAtUtc,
+            error);
         await _outboxRepository.ScheduleRetryAsync(job.Id, nextAttemptAtUtc, error, cancellationToken);
     }
 

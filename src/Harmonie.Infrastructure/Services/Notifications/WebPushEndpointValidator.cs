@@ -3,6 +3,9 @@ using System.Net.Sockets;
 
 namespace Harmonie.Infrastructure.Services.Notifications;
 
+/// <summary>
+/// Protects Web Push delivery from SSRF-style endpoints because subscription URLs are provided by clients.
+/// </summary>
 public sealed class WebPushEndpointValidator
 {
     public async Task<bool> IsAllowedAsync(

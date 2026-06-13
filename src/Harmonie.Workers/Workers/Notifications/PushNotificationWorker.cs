@@ -1,4 +1,3 @@
-using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Services.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -54,20 +53,8 @@ public sealed class PushNotificationWorker : BackgroundService
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var outboxRepository = scope.ServiceProvider.GetRequiredService<IMessageNotificationOutboxRepository>();
-            var dispatchService = scope.ServiceProvider.GetRequiredService<NotificationDispatchService>();
-            var nowUtc = DateTime.UtcNow;
-
-            var jobs = await outboxRepository.ClaimPendingAsync(
-                _options.BatchSize,
-                nowUtc,
-                TimeSpan.FromSeconds(_options.LockDurationSeconds),
-                stoppingToken);
-
-            foreach (var job in jobs)
-            {
-                await dispatchService.DispatchAsync(job, DateTime.UtcNow, stoppingToken);
-            }
+            var processor = scope.ServiceProvider.GetRequiredService<PushNotificationBatchProcessor>();
+            await processor.ProcessBatchAsync(stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

@@ -62,7 +62,9 @@ public sealed class NotificationDispatchServiceTests
         await service.DispatchAsync(CreateJob(attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
 
         _deviceRepositoryMock.Verify(
-            x => x.DeleteAsync(invalidDevice.Id, It.IsAny<CancellationToken>()),
+            x => x.DeleteManyAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(invalidDevice.Id)),
+                It.IsAny<CancellationToken>()),
             Times.Once);
         _outboxRepositoryMock.Verify(
             x => x.MarkProcessedAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
@@ -130,7 +132,7 @@ public sealed class NotificationDispatchServiceTests
             _deviceRepositoryMock.Object,
             _outboxRepositoryMock.Object,
             new MessageNotificationRecipientResolver(),
-            new MessageNotificationPayloadFactory(),
+            new MessageNotificationPayloadFactory(Options.Create(new PushNotificationOptions())),
             adapters,
             Options.Create(new PushNotificationOptions
             {
@@ -164,6 +166,9 @@ public sealed class NotificationDispatchServiceTests
             .Returns(Task.CompletedTask);
         _deviceRepositoryMock
             .Setup(x => x.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _deviceRepositoryMock
+            .Setup(x => x.DeleteManyAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
     }
 

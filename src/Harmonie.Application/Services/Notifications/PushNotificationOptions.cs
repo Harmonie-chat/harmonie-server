@@ -17,9 +17,20 @@ public sealed class PushNotificationOptions
     [Range(1, 3600)]
     public int LockDurationSeconds { get; set; } = 300;
 
+    [Range(1, 50)]
+    public int MaxConcurrentJobs { get; set; } = 4;
+
     [Range(1, 20)]
     public int MaxAttempts { get; set; } = 5;
 
     [Range(1, 3600)]
     public int RetryBaseDelaySeconds { get; set; } = 30;
+
+    [Required]
+    [MinLength(1)]
+    public string Icon { get; set; } = "/harmonie.png";
+
+    [Required]
+    [MinLength(1)]
+    public string Badge { get; set; } = "/pwa-icon-192.png";
 }

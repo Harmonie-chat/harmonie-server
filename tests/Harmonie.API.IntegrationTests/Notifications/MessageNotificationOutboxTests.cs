@@ -90,7 +90,7 @@ public sealed class MessageNotificationOutboxTests : IClassFixture<HarmonieWebAp
             channelId,
             "claim me once",
             user.AccessToken);
-        await DelayOtherPendingOutboxJobsAsync(message.MessageId, DateTime.UtcNow.AddDays(1));
+        await DelayOtherClaimableOutboxJobsAsync(message.MessageId, DateTime.UtcNow.AddDays(1));
         await SetOutboxNextAttemptAsync(message.MessageId, new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
         var firstClaim = await ClaimPendingAsync(batchSize: 1);
@@ -117,7 +117,7 @@ public sealed class MessageNotificationOutboxTests : IClassFixture<HarmonieWebAp
             TestContext.Current.CancellationToken);
     }
 
-    private async Task DelayOtherPendingOutboxJobsAsync(Guid messageId, DateTime nextAttemptAtUtc)
+    private async Task DelayOtherClaimableOutboxJobsAsync(Guid messageId, DateTime nextAttemptAtUtc)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
@@ -126,13 +126,21 @@ public sealed class MessageNotificationOutboxTests : IClassFixture<HarmonieWebAp
         await using var command = connection.CreateCommand();
         command.CommandText = """
                               UPDATE message_notification_outbox
-                              SET next_attempt_at_utc = @NextAttemptAtUtc
+                              SET next_attempt_at_utc = CASE
+                                      WHEN status = @PendingStatus THEN @NextAttemptAtUtc
+                                      ELSE next_attempt_at_utc
+                                  END,
+                                  locked_until_utc = CASE
+                                      WHEN status = @ProcessingStatus THEN @NextAttemptAtUtc
+                                      ELSE locked_until_utc
+                                  END
                               WHERE message_id <> @MessageId
-                                AND status = @PendingStatus
+                                AND status IN (@PendingStatus, @ProcessingStatus)
                               """;
         command.Parameters.AddWithValue("NextAttemptAtUtc", nextAttemptAtUtc);
         command.Parameters.AddWithValue("MessageId", messageId);
         command.Parameters.AddWithValue("PendingStatus", MessageNotificationOutboxStatuses.Pending);
+        command.Parameters.AddWithValue("ProcessingStatus", MessageNotificationOutboxStatuses.Processing);
 
         await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }

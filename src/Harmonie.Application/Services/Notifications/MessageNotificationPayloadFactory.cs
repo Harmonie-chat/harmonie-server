@@ -1,11 +1,16 @@
 using Harmonie.Application.Interfaces.Notifications;
+using Microsoft.Extensions.Options;
 
 namespace Harmonie.Application.Services.Notifications;
 
 public sealed class MessageNotificationPayloadFactory
 {
-    private const string DefaultIcon = "/harmonie.png";
-    private const string DefaultBadge = "/pwa-icon-192.png";
+    private readonly PushNotificationOptions _options;
+
+    public MessageNotificationPayloadFactory(IOptions<PushNotificationOptions> options)
+    {
+        _options = options.Value;
+    }
 
     public NotificationDeliveryPayload Create(MessageNotificationContext context)
     {
@@ -21,16 +26,16 @@ public sealed class MessageNotificationPayloadFactory
                 body,
                 $"/guilds/{channel.GuildId.Value}/channels/{channel.ChannelId.Value}",
                 $"message-{context.MessageId.Value}",
-                DefaultIcon,
-                DefaultBadge),
+                _options.Icon,
+                _options.Badge),
 
             MessageNotificationTarget.Conversation conversation => new NotificationDeliveryPayload(
                 authorName,
                 body,
                 $"/conversations/{conversation.ConversationId.Value}",
                 $"message-{context.MessageId.Value}",
-                DefaultIcon,
-                DefaultBadge),
+                _options.Icon,
+                _options.Badge),
 
             _ => throw new InvalidOperationException("Unsupported message notification target")
         };

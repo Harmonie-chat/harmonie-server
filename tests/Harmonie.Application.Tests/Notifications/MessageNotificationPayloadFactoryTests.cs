@@ -6,13 +6,18 @@ using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Guilds;
 using Harmonie.Domain.ValueObjects.Messages;
 using Harmonie.Domain.ValueObjects.Users;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Harmonie.Application.Tests.Notifications;
 
 public sealed class MessageNotificationPayloadFactoryTests
 {
-    private readonly MessageNotificationPayloadFactory _factory = new();
+    private readonly MessageNotificationPayloadFactory _factory = new(Options.Create(new PushNotificationOptions
+    {
+        Icon = "/custom-icon.png",
+        Badge = "/custom-badge.png"
+    }));
 
     [Fact]
     public void Create_ForChannelMessage_ShouldBuildServiceWorkerPayload()
@@ -35,8 +40,8 @@ public sealed class MessageNotificationPayloadFactoryTests
         payload.Body.Should().Be("Salut !");
         payload.TargetUrl.Should().Be($"/guilds/{guildId.Value}/channels/{channelId.Value}");
         payload.Tag.Should().Be($"message-{messageId.Value}");
-        payload.Icon.Should().Be("/harmonie.png");
-        payload.Badge.Should().Be("/pwa-icon-192.png");
+        payload.Icon.Should().Be("/custom-icon.png");
+        payload.Badge.Should().Be("/custom-badge.png");
     }
 
     [Fact]
@@ -59,7 +64,7 @@ public sealed class MessageNotificationPayloadFactoryTests
         payload.Body.Should().Be("Salut !");
         payload.TargetUrl.Should().Be($"/conversations/{conversationId.Value}");
         payload.Tag.Should().Be($"message-{messageId.Value}");
-        payload.Icon.Should().Be("/harmonie.png");
-        payload.Badge.Should().Be("/pwa-icon-192.png");
+        payload.Icon.Should().Be("/custom-icon.png");
+        payload.Badge.Should().Be("/custom-badge.png");
     }
 }

@@ -37,4 +37,8 @@ public interface INotificationDeviceRepository
     Task DeleteAsync(
         Guid deviceId,
         CancellationToken cancellationToken = default);
+
+    Task DeleteManyAsync(
+        IReadOnlyCollection<Guid> deviceIds,
+        CancellationToken cancellationToken = default);
 }

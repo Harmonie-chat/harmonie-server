@@ -116,19 +116,29 @@ public sealed class NotificationDeviceRepository : INotificationDeviceRepository
             .ToArray();
     }
 
-    public async Task DeleteAsync(
+    public Task DeleteAsync(
         Guid deviceId,
         CancellationToken cancellationToken = default)
     {
+        return DeleteManyAsync([deviceId], cancellationToken);
+    }
+
+    public async Task DeleteManyAsync(
+        IReadOnlyCollection<Guid> deviceIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (deviceIds.Count == 0)
+            return;
+
         const string sql = """
                            DELETE FROM notification_devices
-                           WHERE id = @DeviceId
+                           WHERE id = ANY(@DeviceIds)
                            """;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(
             sql,
-            new { DeviceId = deviceId },
+            new { DeviceIds = deviceIds.ToArray() },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
 
