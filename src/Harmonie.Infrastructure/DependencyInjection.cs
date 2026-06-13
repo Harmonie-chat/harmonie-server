@@ -25,41 +25,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Harmonie.Infrastructure;
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<JwtSettings>()
-            .Bind(configuration.GetSection("Jwt"))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        services.AddPersistence(configuration);
+        services.AddAuthInfrastructure(configuration);
+        services.AddLiveKitInfrastructure(configuration);
+        services.AddObjectStorageInfrastructure(configuration);
+        services.AddLinkPreviewInfrastructure();
+
+        return services;
+    }
+
+    public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration)
+    {
         services.AddOptions<DatabaseSettings>()
             .Configure(options => options.ConnectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty)
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        services.AddOptions<LiveKitSettings>()
-            .Bind(configuration.GetSection("LiveKit"))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-        services.AddOptions<ObjectStorageSettings>()
-            .Bind(configuration.GetSection("ObjectStorage"))
-            .ValidateDataAnnotations()
-            .Validate(
-                settings => Uri.TryCreate(settings.LocalBaseUrl, UriKind.Absolute, out _),
-                "ObjectStorage:LocalBaseUrl must be a valid absolute URL.")
-            .ValidateOnStart();
-        services.AddScoped<IPasswordHasher, PasswordHasher>();
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
-        services.AddScoped<ILiveKitWebhookReceiver, LiveKitWebhookReceiver>();
-        services.AddSingleton(sp =>
-        {
-            _ = sp.GetRequiredService<IOptions<LiveKitSettings>>().Value;
-            return new HttpClient();
-        });
-        services.AddSingleton<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
-        services.AddScoped<ILiveKitRoomService, LiveKitRoomService>();
-        services.AddScoped<IObjectStorageService, LocalFileSystemObjectStorageService>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");
@@ -87,7 +72,59 @@ public static class DependencyInjection
         services.AddScoped<IConversationReadStateRepository, ConversationReadStateRepository>();
         services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
 
-        // Link preview
+        return services;
+    }
+
+    public static IServiceCollection AddAuthInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection("Jwt"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddLiveKitInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<LiveKitSettings>()
+            .Bind(configuration.GetSection("LiveKit"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton(sp =>
+        {
+            _ = sp.GetRequiredService<IOptions<LiveKitSettings>>().Value;
+            return new HttpClient();
+        });
+        services.AddSingleton<ILiveKitRoomApiClient, LiveKitSdkRoomApiClient>();
+        services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
+        services.AddScoped<ILiveKitWebhookReceiver, LiveKitWebhookReceiver>();
+        services.AddScoped<ILiveKitRoomService, LiveKitRoomService>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddObjectStorageInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ObjectStorageSettings>()
+            .Bind(configuration.GetSection("ObjectStorage"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => Uri.TryCreate(settings.LocalBaseUrl, UriKind.Absolute, out _),
+                "ObjectStorage:LocalBaseUrl must be a valid absolute URL.")
+            .ValidateOnStart();
+
+        services.AddScoped<IObjectStorageService, LocalFileSystemObjectStorageService>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddLinkPreviewInfrastructure(this IServiceCollection services)
+    {
         services.AddHttpClient<ILinkPreviewFetcher, LinkPreviewFetcher>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);

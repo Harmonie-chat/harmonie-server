@@ -46,6 +46,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Harmonie.Infrastructure.Tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Harmonie.API.Tests", "tests\Harmonie.API.Tests\Harmonie.API.Tests.csproj", "{A8CD8BE2-2396-48A0-ADFE-9943DB2E2C3F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Harmonie.Workers", "src\Harmonie.Workers\Harmonie.Workers.csproj", "{4B03C010-5B78-454D-B589-13AC20B1D13B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -176,6 +178,18 @@ Global
 		{A8CD8BE2-2396-48A0-ADFE-9943DB2E2C3F}.Release|x64.Build.0 = Release|Any CPU
 		{A8CD8BE2-2396-48A0-ADFE-9943DB2E2C3F}.Release|x86.ActiveCfg = Release|Any CPU
 		{A8CD8BE2-2396-48A0-ADFE-9943DB2E2C3F}.Release|x86.Build.0 = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|x64.Build.0 = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Debug|x86.Build.0 = Debug|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|x64.ActiveCfg = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|x64.Build.0 = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|x86.ActiveCfg = Release|Any CPU
+		{4B03C010-5B78-454D-B589-13AC20B1D13B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -191,6 +205,7 @@ Global
 		{D1E7A1F1-8C2E-4D3A-9F5B-1234567890C1} = {E1E7A1F1-8C2E-4D3A-9F5B-1234567890D3}
 		{41BF7DBE-349D-41F0-8779-CD2A42AAB553} = {E1E7A1F1-8C2E-4D3A-9F5B-1234567890D2}
 		{A8CD8BE2-2396-48A0-ADFE-9943DB2E2C3F} = {E1E7A1F1-8C2E-4D3A-9F5B-1234567890D2}
+		{4B03C010-5B78-454D-B589-13AC20B1D13B} = {E1E7A1F1-8C2E-4D3A-9F5B-1234567890D1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F1E7A1F1-8C2E-4D3A-9F5B-1234567890E1}

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Harmonie.Workers": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
