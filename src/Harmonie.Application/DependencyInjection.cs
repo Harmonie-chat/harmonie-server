@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddUserHandlers();
         services.AddUploadHandlers();
         services.AddVoiceHandlers();
+        services.AddNotificationHandlers();
 
         return services;
     }
