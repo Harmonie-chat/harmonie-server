@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Harmonie.Workers.Workers.Notifications;
 
-public sealed class PushNotificationBatchProcessor
+public sealed class PushNotificationBatchProcessor : IPushNotificationBatchProcessor
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMessageNotificationOutboxRepository _outboxRepository;
@@ -50,7 +50,7 @@ public sealed class PushNotificationBatchProcessor
         await Parallel.ForEachAsync(jobs, parallelOptions, async (job, ct) =>
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var dispatchService = scope.ServiceProvider.GetRequiredService<NotificationDispatchService>();
+            var dispatchService = scope.ServiceProvider.GetRequiredService<INotificationDispatchService>();
             await dispatchService.DispatchAsync(job, DateTime.UtcNow, ct);
         });
     }

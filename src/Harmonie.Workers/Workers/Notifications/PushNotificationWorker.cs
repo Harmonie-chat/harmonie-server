@@ -53,7 +53,7 @@ public sealed class PushNotificationWorker : BackgroundService
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var processor = scope.ServiceProvider.GetRequiredService<PushNotificationBatchProcessor>();
+            var processor = scope.ServiceProvider.GetRequiredService<IPushNotificationBatchProcessor>();
             await processor.ProcessBatchAsync(stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

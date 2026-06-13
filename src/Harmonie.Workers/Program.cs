@@ -18,7 +18,7 @@ builder.Services.AddOptions<PushNotificationOptions>()
     .Bind(builder.Configuration.GetSection(PushNotificationOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
-builder.Services.AddScoped<PushNotificationBatchProcessor>();
+builder.Services.AddScoped<IPushNotificationBatchProcessor, PushNotificationBatchProcessor>();
 builder.Services.AddHostedService<PushNotificationWorker>();
 
 await builder.Build().RunAsync();

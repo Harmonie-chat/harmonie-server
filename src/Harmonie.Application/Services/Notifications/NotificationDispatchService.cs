@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Harmonie.Application.Services.Notifications;
 
-public sealed class NotificationDispatchService
+public sealed class NotificationDispatchService : INotificationDispatchService
 {
     private readonly IMessageNotificationContextRepository _contextRepository;
     private readonly INotificationDeviceRepository _deviceRepository;
