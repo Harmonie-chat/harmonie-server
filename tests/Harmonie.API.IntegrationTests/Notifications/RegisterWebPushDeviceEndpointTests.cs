@@ -115,6 +115,8 @@ public sealed class RegisterWebPushDeviceEndpointTests : IClassFixture<HarmonieW
             }
         };
 
+    // TODO: Replace this direct SQL read with production repository methods once the notification
+    // dispatch worker needs query methods for registered devices.
     private async Task<StoredNotificationDevice?> GetStoredDeviceAsync(string endpoint)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -141,6 +143,8 @@ public sealed class RegisterWebPushDeviceEndpointTests : IClassFixture<HarmonieW
             reader.GetString(4));
     }
 
+    // TODO: Replace this direct SQL read with production repository methods once the notification
+    // dispatch worker needs query methods for registered devices.
     private async Task<long> CountStoredDevicesAsync(string endpoint)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
