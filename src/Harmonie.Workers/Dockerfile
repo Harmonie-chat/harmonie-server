@@ -26,6 +26,12 @@ RUN dotnet publish "Harmonie.Workers.csproj" -c Release -o /app/publish /p:UseAp
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
+# Npgsql can probe PostgreSQL GSS/Kerberos support when opening connections.
+# Install the native library to avoid noisy runtime loader errors in worker containers.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy published app
 COPY --from=publish /app/publish .
 
