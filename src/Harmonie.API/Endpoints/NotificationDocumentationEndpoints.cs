@@ -19,24 +19,22 @@ public static class NotificationDocumentationEndpoints
     private static string BuildDescription()
     {
         var builder = new StringBuilder();
-        builder.AppendLine("Documentation-only Development endpoint for outbound push notification payloads emitted by Harmonie.Workers. It does not send notifications and should not be used as a production API action.");
+        builder.AppendLine("Documentation-only Development endpoint. It documents push payloads emitted by Harmonie.Workers; it does not send notifications.");
         builder.AppendLine();
-        builder.AppendLine("## Delivery model");
+        builder.AppendLine("## Client delivery flow");
         builder.AppendLine();
-        builder.AppendLine("Clients register devices through the API. Message sends create outbox jobs. Harmonie.Workers claims jobs and delivers push notifications asynchronously through platform adapters.");
+        builder.AppendLine("1. The client registers a browser Web Push subscription with `PUT /api/notifications/push-subscriptions`.");
+        builder.AppendLine("2. Harmonie.Workers sends encrypted payloads to the browser push service endpoint from that subscription.");
+        builder.AppendLine("3. The browser wakes the frontend service worker and raises a `push` event.");
+        builder.AppendLine("4. The service worker reads `event.data.json()`, renders the visible notification, and handles `notificationclick` for routing.");
         builder.AppendLine();
-        builder.AppendLine("## Current policy");
-        builder.AppendLine();
-        builder.AppendLine("- Direct conversation messages notify participants except the author.");
-        builder.AppendLine("- Group conversation messages notify participants except the author.");
-        builder.AppendLine("- Guild channel messages notify channel candidate members except the author by default.");
-        builder.AppendLine("- Mention-only, mute, quiet hours, and per-platform preferences can be added in the policy layer later.");
+        builder.AppendLine("No client `GET`/`PUT` receives the push itself. The app may optionally call the API after a push or click to fetch fresh message/channel/conversation details.");
         builder.AppendLine();
         builder.AppendLine("## Payload notes");
         builder.AppendLine();
         builder.AppendLine("- Payloads intentionally exclude message content.");
         builder.AppendLine("- Frontend/service worker owns notification text, routing, i18n, icon, badge, and tag.");
-        builder.AppendLine("- The top-level `type` field identifies the event. The `data.scope` field narrows the message target shape.");
+        builder.AppendLine("- `type` identifies the event; `data.scope` narrows the message target shape.");
         builder.AppendLine();
         builder.AppendLine("## `message.created` channel payload");
         builder.AppendLine();

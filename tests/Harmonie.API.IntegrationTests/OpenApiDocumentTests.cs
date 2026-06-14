@@ -90,8 +90,9 @@ public sealed class OpenApiDocumentTests : IClassFixture<HarmonieWebApplicationF
         var description = operation["description"]?.GetValue<string>();
         description.Should().NotBeNull();
         description.Should().Contain("does not send notifications");
-        description.Should().Contain("## Delivery model");
-        description.Should().Contain("## Current policy");
+        description.Should().Contain("## Client delivery flow");
+        description.Should().Contain("service worker");
+        description.Should().Contain("No client `GET`/`PUT` receives the push itself");
         description.Should().Contain("## `message.created` channel payload");
         description.Should().Contain("\"type\": \"message.created\"");
         description.Should().Contain("\"scope\": \"channel\"");
