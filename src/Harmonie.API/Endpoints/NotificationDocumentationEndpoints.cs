@@ -19,22 +19,7 @@ public static class NotificationDocumentationEndpoints
     private static string BuildDescription()
     {
         var builder = new StringBuilder();
-        builder.AppendLine("Documentation-only Development endpoint. It documents push payloads emitted by Harmonie.Workers; it does not send notifications.");
-        builder.AppendLine();
-        builder.AppendLine("## Client delivery flow");
-        builder.AppendLine();
-        builder.AppendLine("1. The client registers a browser Web Push subscription with `PUT /api/notifications/push-subscriptions`.");
-        builder.AppendLine("2. Harmonie.Workers sends encrypted payloads to the browser push service endpoint from that subscription.");
-        builder.AppendLine("3. The browser wakes the frontend service worker and raises a `push` event.");
-        builder.AppendLine("4. The service worker reads `event.data.json()`, renders the visible notification, and handles `notificationclick` for routing.");
-        builder.AppendLine();
-        builder.AppendLine("No client `GET`/`PUT` receives the push itself. The app may optionally call the API after a push or click to fetch fresh message/channel/conversation details.");
-        builder.AppendLine();
-        builder.AppendLine("## Payload notes");
-        builder.AppendLine();
-        builder.AppendLine("- Payloads intentionally exclude message content.");
-        builder.AppendLine("- Frontend/service worker owns notification text, routing, i18n, icon, badge, and tag.");
-        builder.AppendLine("- `type` identifies the event; `data.scope` narrows the message target shape.");
+        builder.AppendLine("Documentation-only Development endpoint. It documents outbound push payload shapes emitted by Harmonie.Workers; it does not send notifications.");
         builder.AppendLine();
         builder.AppendLine("## `message.created` channel payload");
         builder.AppendLine();
