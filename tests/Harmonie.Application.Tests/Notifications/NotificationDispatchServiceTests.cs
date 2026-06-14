@@ -132,7 +132,7 @@ public sealed class NotificationDispatchServiceTests
             _deviceRepositoryMock.Object,
             _outboxRepositoryMock.Object,
             new MessageNotificationRecipientResolver(),
-            new MessageNotificationPayloadFactory(Options.Create(new PushNotificationOptions())),
+            new MessageNotificationPayloadFactory(),
             adapters,
             Options.Create(new PushNotificationOptions
             {
@@ -180,8 +180,7 @@ public sealed class NotificationDispatchServiceTests
             authorId,
             "alice",
             "Alice",
-            "hello",
-            new MessageNotificationTarget.Channel(GuildId.New(), GuildChannelId.New(), "general"),
+            new MessageNotificationTarget.Channel(GuildId.New(), "Harmonie", GuildChannelId.New(), "general"),
             new HashSet<UserId> { authorId, recipientId });
     }
 

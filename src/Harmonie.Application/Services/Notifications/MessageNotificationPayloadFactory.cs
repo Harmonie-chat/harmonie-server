@@ -1,43 +1,44 @@
 using Harmonie.Application.Interfaces.Notifications;
-using Microsoft.Extensions.Options;
 
 namespace Harmonie.Application.Services.Notifications;
 
+public static class NotificationMessageScopes
+{
+    public const string Channel = "channel";
+    public const string Conversation = "conversation";
+}
+
 public sealed class MessageNotificationPayloadFactory
 {
-    private readonly PushNotificationOptions _options;
-
-    public MessageNotificationPayloadFactory(IOptions<PushNotificationOptions> options)
-    {
-        _options = options.Value;
-    }
-
     public NotificationDeliveryPayload Create(MessageNotificationContext context)
     {
         var authorName = string.IsNullOrWhiteSpace(context.AuthorDisplayName)
             ? context.AuthorUsername
             : context.AuthorDisplayName;
-        var body = string.IsNullOrWhiteSpace(context.Content) ? "New message" : context.Content;
 
-        return context.Target switch
+        object data = context.Target switch
         {
-            MessageNotificationTarget.Channel channel => new NotificationDeliveryPayload(
-                $"{authorName} | {channel.ChannelName}",
-                body,
-                $"/guilds/{channel.GuildId.Value}/channels/{channel.ChannelId.Value}",
-                $"message-{context.MessageId.Value}",
-                _options.Icon,
-                _options.Badge),
-
-            MessageNotificationTarget.Conversation conversation => new NotificationDeliveryPayload(
+            MessageNotificationTarget.Channel channel => new MessageCreatedChannelNotificationData(
+                NotificationMessageScopes.Channel,
+                context.MessageId.Value,
+                context.AuthorUserId.Value,
                 authorName,
-                body,
-                $"/conversations/{conversation.ConversationId.Value}",
-                $"message-{context.MessageId.Value}",
-                _options.Icon,
-                _options.Badge),
+                channel.GuildId.Value,
+                channel.GuildName,
+                channel.ChannelId.Value,
+                channel.ChannelName),
+
+            MessageNotificationTarget.Conversation conversation => new MessageCreatedConversationNotificationData(
+                NotificationMessageScopes.Conversation,
+                context.MessageId.Value,
+                context.AuthorUserId.Value,
+                authorName,
+                conversation.ConversationId.Value,
+                conversation.ConversationName),
 
             _ => throw new InvalidOperationException("Unsupported message notification target")
         };
+
+        return new NotificationDeliveryPayload(NotificationDeliveryPayloadTypes.MessageCreated, data);
     }
 }

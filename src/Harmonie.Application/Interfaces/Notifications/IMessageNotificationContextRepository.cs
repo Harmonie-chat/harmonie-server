@@ -10,9 +10,9 @@ public abstract record MessageNotificationTarget
 {
     private MessageNotificationTarget() { }
 
-    public sealed record Channel(GuildId GuildId, GuildChannelId ChannelId, string ChannelName) : MessageNotificationTarget;
+    public sealed record Channel(GuildId GuildId, string GuildName, GuildChannelId ChannelId, string ChannelName) : MessageNotificationTarget;
 
-    public sealed record Conversation(ConversationId ConversationId) : MessageNotificationTarget;
+    public sealed record Conversation(ConversationId ConversationId, string? ConversationName) : MessageNotificationTarget;
 }
 
 public sealed record MessageNotificationContext(
@@ -20,7 +20,6 @@ public sealed record MessageNotificationContext(
     UserId AuthorUserId,
     string AuthorUsername,
     string? AuthorDisplayName,
-    string? Content,
     MessageNotificationTarget Target,
     IReadOnlySet<UserId> CandidateRecipientUserIds);
 

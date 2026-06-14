@@ -21,8 +21,7 @@ public sealed class MessageNotificationRecipientResolverTests
             authorId,
             "alice",
             "Alice",
-            "hello",
-            new MessageNotificationTarget.Channel(GuildId.New(), GuildChannelId.New(), "general"),
+            new MessageNotificationTarget.Channel(GuildId.New(), "Harmonie", GuildChannelId.New(), "general"),
             new HashSet<UserId> { authorId, recipientId });
         var resolver = new MessageNotificationRecipientResolver();
 

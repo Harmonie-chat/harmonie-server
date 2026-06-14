@@ -28,14 +28,17 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                                       m.author_user_id AS "AuthorUserId",
                                       u.username AS "AuthorUsername",
                                       u.display_name AS "AuthorDisplayName",
-                                      m.content AS "Content",
                                       m.channel_id AS "ChannelId",
                                       gc.guild_id AS "GuildId",
+                                      g.name AS "GuildName",
                                       gc.name AS "ChannelName",
-                                      m.conversation_id AS "ConversationId"
+                                      m.conversation_id AS "ConversationId",
+                                      c.name AS "ConversationName"
                                   FROM messages m
                                   JOIN users u ON u.id = m.author_user_id
                                   LEFT JOIN guild_channels gc ON gc.id = m.channel_id
+                                  LEFT JOIN guilds g ON g.id = gc.guild_id
+                                  LEFT JOIN conversations c ON c.id = m.conversation_id
                                   WHERE m.id = @MessageId
                                     AND m.deleted_at_utc IS NULL
                                   """;
@@ -51,7 +54,7 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
         if (row is null)
             return null;
 
-        if (row.ChannelId is not null && row.GuildId is not null && row.ChannelName is not null)
+        if (row.ChannelId is not null && row.GuildId is not null && row.GuildName is not null && row.ChannelName is not null)
         {
             var recipientRows = await QueryRecipientIdsAsync(
                 """
@@ -67,9 +70,9 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                 UserId.From(row.AuthorUserId),
                 row.AuthorUsername,
                 row.AuthorDisplayName,
-                row.Content,
                 new MessageNotificationTarget.Channel(
                     GuildId.From(row.GuildId.Value),
+                    row.GuildName,
                     GuildChannelId.From(row.ChannelId.Value),
                     row.ChannelName),
                 recipientRows.Select(UserId.From).ToHashSet());
@@ -91,8 +94,7 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                 UserId.From(row.AuthorUserId),
                 row.AuthorUsername,
                 row.AuthorDisplayName,
-                row.Content,
-                new MessageNotificationTarget.Conversation(ConversationId.From(row.ConversationId.Value)),
+                new MessageNotificationTarget.Conversation(ConversationId.From(row.ConversationId.Value), row.ConversationName),
                 recipientRows.Select(UserId.From).ToHashSet());
         }
 
@@ -125,14 +127,16 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
 
         public string? AuthorDisplayName { get; init; }
 
-        public string? Content { get; init; }
-
         public Guid? ChannelId { get; init; }
 
         public Guid? GuildId { get; init; }
 
+        public string? GuildName { get; init; }
+
         public string? ChannelName { get; init; }
 
         public Guid? ConversationId { get; init; }
+
+        public string? ConversationName { get; init; }
     }
 }

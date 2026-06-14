@@ -25,12 +25,4 @@ public sealed class PushNotificationOptions
 
     [Range(1, 3600)]
     public int RetryBaseDelaySeconds { get; set; } = 30;
-
-    [Required]
-    [MinLength(1)]
-    public string Icon { get; set; } = "/harmonie.png";
-
-    [Required]
-    [MinLength(1)]
-    public string Badge { get; set; } = "/pwa-icon-192.png";
 }

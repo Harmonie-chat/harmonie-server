@@ -8,13 +8,32 @@ public enum NotificationDeliveryResultStatus
     PermanentFailure
 }
 
+public static class NotificationDeliveryPayloadTypes
+{
+    public const string MessageCreated = "message.created";
+}
+
 public sealed record NotificationDeliveryPayload(
-    string Title,
-    string Body,
-    string TargetUrl,
-    string Tag,
-    string Icon,
-    string Badge);
+    string Type,
+    object Data);
+
+public sealed record MessageCreatedChannelNotificationData(
+    string Scope,
+    Guid MessageId,
+    Guid AuthorUserId,
+    string AuthorDisplayName,
+    Guid GuildId,
+    string GuildName,
+    Guid ChannelId,
+    string ChannelName);
+
+public sealed record MessageCreatedConversationNotificationData(
+    string Scope,
+    Guid MessageId,
+    Guid AuthorUserId,
+    string AuthorDisplayName,
+    Guid ConversationId,
+    string? ConversationName);
 
 public sealed record NotificationDeliveryResult(
     Guid DeviceId,
