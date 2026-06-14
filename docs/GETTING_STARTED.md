@@ -101,9 +101,10 @@ podman compose --profile workers up -d harmonie-workers
 
 Push notification dispatch runs in this worker host. The API only registers Web Push subscriptions and creates notification outbox jobs when messages are sent. The worker claims pending jobs and sends notifications through the configured delivery adapters.
 
-Development Web Push configuration is provided through `VAPID_*` environment variables in compose. For local API docs, Scalar exposes the registration endpoint:
+Development Web Push configuration is provided through `VAPID_*` environment variables in compose. For local API docs, Scalar exposes the Web Push endpoints:
 
-- `PUT /api/notifications/push-subscriptions`
+- `GET /api/notifications/web-push-public-key` returns the VAPID public key clients use with `PushManager.subscribe()`.
+- `PUT /api/notifications/push-subscriptions` registers the resulting browser subscription.
 
 Current backend notification behavior:
 - conversation messages notify participants except the author;

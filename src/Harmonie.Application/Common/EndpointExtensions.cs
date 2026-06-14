@@ -328,6 +328,7 @@ public static class EndpointExtensions
             ApplicationErrorCodes.Message.EditForbidden => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.Message.DeleteForbidden => HttpStatusCode.Forbidden,
             ApplicationErrorCodes.User.NotFound => HttpStatusCode.NotFound,
+            ApplicationErrorCodes.Notification.WebPushNotConfigured => HttpStatusCode.ServiceUnavailable,
             ApplicationErrorCodes.Upload.StorageUnavailable => HttpStatusCode.ServiceUnavailable,
             ApplicationErrorCodes.Upload.NotFound => HttpStatusCode.NotFound,
             ApplicationErrorCodes.Upload.AccessDenied => HttpStatusCode.Forbidden,

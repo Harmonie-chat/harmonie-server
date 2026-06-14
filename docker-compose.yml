@@ -76,6 +76,7 @@ services:
       - Uploads__MaxFileSizeBytes=26214400
       - ObjectStorage__LocalBasePath=/app/uploads
       - ObjectStorage__LocalBaseUrl=http://192.168.1.67:55401/files
+      - VAPID_PUBLIC_KEY=
     ports:
       - "55401:80"
     volumes:

@@ -73,6 +73,7 @@ services:
       - Uploads__MaxFileSizeBytes=26214400
       - ObjectStorage__LocalBasePath=/app/uploads
       - ObjectStorage__LocalBaseUrl=http://localhost:5001/files
+      - VAPID_PUBLIC_KEY=
     ports:
       - "5001:80"
     volumes:
