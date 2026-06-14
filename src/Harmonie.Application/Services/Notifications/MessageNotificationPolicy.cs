@@ -11,7 +11,7 @@ public sealed class MessageNotificationPolicy : IMessageNotificationPolicy
         IEnumerable<UserId> selectedRecipientUserIds = context.Target switch
         {
             MessageNotificationTarget.Conversation => candidateRecipientUserIds,
-            MessageNotificationTarget.Channel => context.MentionedUserIds.Where(candidateRecipientUserIds.Contains),
+            MessageNotificationTarget.Channel => candidateRecipientUserIds,
             _ => Enumerable.Empty<UserId>()
         };
 

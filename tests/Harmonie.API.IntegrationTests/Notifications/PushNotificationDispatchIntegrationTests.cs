@@ -46,7 +46,7 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
     }
 
     [Fact]
-    public async Task WorkerBatch_WhenChannelMessageMentionsUser_ShouldDispatchWebPushToMentionedRecipientOnly()
+    public async Task WorkerBatch_WhenChannelMessageIsSent_ShouldDispatchWebPushToChannelMembersExceptAuthor()
     {
         var sender = await AuthTestHelper.RegisterAsync(_client);
         var mentionedRecipient = await AuthTestHelper.RegisterAsync(_client);
@@ -68,11 +68,12 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
 
         await ProcessNotificationBatchAsync();
 
-        var delivery = _recordingAdapter.Deliveries.Should().ContainSingle().Subject;
-        delivery.Device.Token.Should().Be(mentionedRecipientEndpoint);
-        delivery.Device.UserId.Value.Should().Be(mentionedRecipient.UserId);
-        delivery.Payload.Type.Should().Be(NotificationDeliveryPayloadTypes.MessageCreated);
-        var payloadData = delivery.Payload.Data.Should().BeOfType<MessageCreatedChannelNotificationData>().Subject;
+        var deliveries = _recordingAdapter.Deliveries;
+        deliveries.Should().HaveCount(2);
+        deliveries.Select(delivery => delivery.Device.Token).Should().BeEquivalentTo(new[] { mentionedRecipientEndpoint, unmentionedMemberEndpoint });
+        deliveries.Select(delivery => delivery.Device.UserId.Value).Should().BeEquivalentTo(new[] { mentionedRecipient.UserId, unmentionedMember.UserId });
+        deliveries.Should().OnlyContain(delivery => delivery.Payload.Type == NotificationDeliveryPayloadTypes.MessageCreated);
+        var payloadData = deliveries[0].Payload.Data.Should().BeOfType<MessageCreatedChannelNotificationData>().Subject;
         payloadData.Scope.Should().Be(NotificationMessageScopes.Channel);
         payloadData.MessageId.Should().Be(message.MessageId);
         payloadData.AuthorUserId.Should().Be(sender.UserId);

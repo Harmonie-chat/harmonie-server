@@ -107,7 +107,7 @@ Development Web Push configuration is provided through `VAPID_*` environment var
 
 Current backend notification behavior:
 - conversation messages notify participants except the author;
-- guild channel messages notify mentioned guild members except the author;
+- guild channel messages notify channel candidate members except the author;
 - payloads are minimal `message.created` business data, without message content or UI presentation fields.
 
 ## 6. Run Tests

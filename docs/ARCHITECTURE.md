@@ -68,8 +68,8 @@ Push notifications are asynchronous and transport-agnostic at the Application bo
 Initial message notification policy:
 - Direct conversation messages: notify participants except the author.
 - Group conversation messages: notify participants except the author.
-- Guild channel messages: notify mentioned guild members except the author.
-- Guild channel all-message notifications are intentionally not enabled by default to avoid push spam.
+- Guild channel messages: notify channel candidate members except the author.
+- Guild channel mention-only notification preferences can be added later without changing the delivery adapters.
 
 The Web Push payload intentionally excludes message content and presentation fields. Clients/service workers own notification text, routing, i18n, icons, badges, and tags.
 

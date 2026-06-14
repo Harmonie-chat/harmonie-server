@@ -49,45 +49,43 @@ public sealed class MessageNotificationPolicyTests
     }
 
     [Fact]
-    public void SelectRecipients_ForGuildChannel_ShouldNotifyMentionedGuildMembersOnly()
+    public void SelectRecipients_ForGuildChannel_ShouldNotifyChannelCandidatesExceptAuthor()
     {
         var authorId = UserId.New();
         var mentionedMemberId = UserId.New();
         var unmentionedMemberId = UserId.New();
-        var mentionedNonMemberId = UserId.New();
         var context = CreateChannelContext(
             authorId,
             Set(authorId, mentionedMemberId, unmentionedMemberId),
-            Set(mentionedMemberId, mentionedNonMemberId));
+            Set(mentionedMemberId));
 
         var recipients = _policy.SelectRecipients(context);
 
-        recipients.Should().ContainSingle().Which.Should().Be(mentionedMemberId);
+        recipients.Should().BeEquivalentTo([mentionedMemberId, unmentionedMemberId]);
     }
 
     [Fact]
-    public void SelectRecipients_ForGuildChannelMentioningAuthor_ShouldExcludeAuthor()
+    public void SelectRecipients_ForGuildChannel_ShouldExcludeAuthor()
     {
         var authorId = UserId.New();
-        var mentionedRecipientId = UserId.New();
+        var recipientId = UserId.New();
         var context = CreateChannelContext(
             authorId,
-            Set(authorId, mentionedRecipientId),
-            Set(authorId, mentionedRecipientId));
+            Set(authorId, recipientId),
+            Set(authorId, recipientId));
 
         var recipients = _policy.SelectRecipients(context);
 
-        recipients.Should().ContainSingle().Which.Should().Be(mentionedRecipientId);
+        recipients.Should().ContainSingle().Which.Should().Be(recipientId);
     }
 
     [Fact]
-    public void SelectRecipients_ForGuildChannelWithoutMentions_ShouldReturnNoRecipients()
+    public void SelectRecipients_ForGuildChannelWithOnlyAuthorCandidate_ShouldReturnNoRecipients()
     {
         var authorId = UserId.New();
-        var guildMemberId = UserId.New();
         var context = CreateChannelContext(
             authorId,
-            Set(authorId, guildMemberId),
+            Set(authorId),
             Set());
 
         var recipients = _policy.SelectRecipients(context);
