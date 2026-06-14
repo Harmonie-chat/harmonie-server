@@ -14,5 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Harmonie.API\Harmonie.API.csproj" />
+    <ProjectReference Include="..\..\src\Harmonie.Workers\Harmonie.Workers.csproj" Aliases="Workers" />
   </ItemGroup>
 </Project>

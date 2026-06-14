@@ -134,6 +134,100 @@ public sealed class MessageNotificationOutboxRepository : IMessageNotificationOu
             .ToArray();
     }
 
+    public async Task MarkProcessedAsync(
+        Guid jobId,
+        DateTime processedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE message_notification_outbox
+                           SET status = @Status,
+                               locked_until_utc = NULL,
+                               last_error = NULL,
+                               processed_at_utc = @ProcessedAtUtc
+                           WHERE id = @JobId
+                           """;
+
+        await ExecuteStateChangeAsync(
+            sql,
+            new
+            {
+                JobId = jobId,
+                Status = MessageNotificationOutboxStatuses.Processed,
+                ProcessedAtUtc = processedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public async Task ScheduleRetryAsync(
+        Guid jobId,
+        DateTime nextAttemptAtUtc,
+        string error,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE message_notification_outbox
+                           SET status = @Status,
+                               next_attempt_at_utc = @NextAttemptAtUtc,
+                               locked_until_utc = NULL,
+                               last_error = @Error
+                           WHERE id = @JobId
+                           """;
+
+        await ExecuteStateChangeAsync(
+            sql,
+            new
+            {
+                JobId = jobId,
+                Status = MessageNotificationOutboxStatuses.Pending,
+                NextAttemptAtUtc = nextAttemptAtUtc,
+                Error = error
+            },
+            cancellationToken);
+    }
+
+    public async Task MarkFailedAsync(
+        Guid jobId,
+        string error,
+        DateTime failedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+                           UPDATE message_notification_outbox
+                           SET status = @Status,
+                               locked_until_utc = NULL,
+                               last_error = @Error,
+                               processed_at_utc = @FailedAtUtc
+                           WHERE id = @JobId
+                           """;
+
+        await ExecuteStateChangeAsync(
+            sql,
+            new
+            {
+                JobId = jobId,
+                Status = MessageNotificationOutboxStatuses.Failed,
+                Error = error,
+                FailedAtUtc = failedAtUtc
+            },
+            cancellationToken);
+    }
+
+    private async Task ExecuteStateChangeAsync(
+        string sql,
+        object parameters,
+        CancellationToken cancellationToken)
+    {
+        var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(
+            sql,
+            parameters,
+            transaction: _dbSession.Transaction,
+            cancellationToken: cancellationToken);
+
+        await connection.ExecuteAsync(command);
+    }
+
     private sealed class MessageNotificationOutboxJobRow
     {
         public Guid Id { get; init; }
