@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddLiveKitInfrastructure(configuration);
         services.AddObjectStorageInfrastructure(configuration);
         services.AddLinkPreviewInfrastructure();
+        services.AddWebPushConfiguration(configuration);
 
         return services;
     }
@@ -141,7 +142,7 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection AddNotificationDeliveryInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddWebPushConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<WebPushSettings>()
             .Configure(options =>
@@ -157,6 +158,15 @@ public static class DependencyInjection
                             || settings.Subject.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase),
                 "WebPush:Subject must be an absolute URI or mailto URI when VAPID credentials are configured.")
             .ValidateOnStart();
+
+        services.AddSingleton<IWebPushPublicKeyProvider, WebPushPublicKeyProvider>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddNotificationDeliveryInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddWebPushConfiguration(configuration);
 
         services.AddSingleton<WebPushClient>();
         services.AddSingleton<WebPushEndpointValidator>();

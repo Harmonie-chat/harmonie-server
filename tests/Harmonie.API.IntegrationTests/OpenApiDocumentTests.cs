@@ -102,6 +102,29 @@ public sealed class OpenApiDocumentTests : IClassFixture<HarmonieWebApplicationF
     }
 
     [Fact]
+    public async Task OpenApiDocument_ShouldDocumentWebPushPublicKeyEndpoint()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var document = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        document.Should().NotBeNull();
+
+        var operation = document!["paths"]?["/api/notifications/web-push-public-key"]?["get"];
+        operation.Should().NotBeNull();
+        operation!["summary"]?.GetValue<string>().Should().Contain("Web Push VAPID public key");
+        operation["description"]?.GetValue<string>().Should().Contain("private VAPID key is never exposed");
+        operation["responses"]?["200"]?["content"]?["application/json"]?["example"]?["publicKey"]?
+            .GetValue<string>().Should().Be("BDp4Base64UrlVapidPublicKeyExample");
+        operation["responses"]?["503"]?["description"]?.GetValue<string>()
+            .Should().Contain(ApplicationErrorCodes.Notification.WebPushNotConfigured);
+    }
+
+    [Fact]
     public async Task OpenApiDocument_ShouldListAllRegisterConflictCodesInResponseDescription()
     {
         using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
