@@ -24,9 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ReadOrchestrator>();
         services.AddScoped<MessageFetchOrchestrator>();
         services.AddScoped<PinnedMessageFetchOrchestrator>();
-        services.AddScoped<IMessageNotificationPolicy, MessageNotificationPolicy>();
-        services.AddScoped<MessageNotificationPayloadFactory>();
-        services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
+        services.AddNotificationApplicationServices();
 
         services.AddAuthHandlers();
         services.AddGuildHandlers();
@@ -36,6 +34,15 @@ public static class DependencyInjection
         services.AddUploadHandlers();
         services.AddVoiceHandlers();
         services.AddNotificationHandlers();
+
+        return services;
+    }
+
+    public static IServiceCollection AddNotificationApplicationServices(this IServiceCollection services)
+    {
+        services.AddScoped<IMessageNotificationPolicy, MessageNotificationPolicy>();
+        services.AddScoped<MessageNotificationPayloadFactory>();
+        services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
 
         return services;
     }
