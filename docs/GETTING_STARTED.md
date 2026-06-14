@@ -99,6 +99,17 @@ With compose, the worker service is optional and behind the `workers` profile:
 podman compose --profile workers up -d harmonie-workers
 ```
 
+Push notification dispatch runs in this worker host. The API only registers Web Push subscriptions and creates notification outbox jobs when messages are sent. The worker claims pending jobs and sends notifications through the configured delivery adapters.
+
+Development Web Push configuration is provided through `VAPID_*` environment variables in compose. For local API docs, Scalar exposes the registration endpoint:
+
+- `PUT /api/notifications/push-subscriptions`
+
+Current backend notification behavior:
+- conversation messages notify participants except the author;
+- guild channel messages notify mentioned guild members except the author;
+- payloads are minimal `message.created` business data, without message content or UI presentation fields.
+
 ## 6. Run Tests
 
 ```bash
