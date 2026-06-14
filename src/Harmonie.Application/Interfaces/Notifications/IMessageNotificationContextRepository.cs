@@ -1,3 +1,4 @@
+using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -12,7 +13,7 @@ public abstract record MessageNotificationTarget
 
     public sealed record Channel(GuildId GuildId, string GuildName, GuildChannelId ChannelId, string ChannelName) : MessageNotificationTarget;
 
-    public sealed record Conversation(ConversationId ConversationId, string? ConversationName) : MessageNotificationTarget;
+    public sealed record Conversation(ConversationId ConversationId, ConversationType ConversationType, string? ConversationName) : MessageNotificationTarget;
 }
 
 public sealed record MessageNotificationContext(
@@ -21,7 +22,8 @@ public sealed record MessageNotificationContext(
     string AuthorUsername,
     string? AuthorDisplayName,
     MessageNotificationTarget Target,
-    IReadOnlySet<UserId> CandidateRecipientUserIds);
+    IReadOnlySet<UserId> CandidateRecipientUserIds,
+    IReadOnlySet<UserId> MentionedUserIds);
 
 public interface IMessageNotificationContextRepository
 {

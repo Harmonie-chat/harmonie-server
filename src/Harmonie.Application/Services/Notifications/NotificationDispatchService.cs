@@ -9,7 +9,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
     private readonly IMessageNotificationContextRepository _contextRepository;
     private readonly INotificationDeviceRepository _deviceRepository;
     private readonly IMessageNotificationOutboxRepository _outboxRepository;
-    private readonly MessageNotificationRecipientResolver _recipientResolver;
+    private readonly IMessageNotificationPolicy _notificationPolicy;
     private readonly MessageNotificationPayloadFactory _payloadFactory;
     private readonly IReadOnlyDictionary<string, INotificationDeliveryAdapter> _adaptersByPlatform;
     private readonly PushNotificationOptions _options;
@@ -19,7 +19,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
         IMessageNotificationContextRepository contextRepository,
         INotificationDeviceRepository deviceRepository,
         IMessageNotificationOutboxRepository outboxRepository,
-        MessageNotificationRecipientResolver recipientResolver,
+        IMessageNotificationPolicy notificationPolicy,
         MessageNotificationPayloadFactory payloadFactory,
         IEnumerable<INotificationDeliveryAdapter> adapters,
         IOptions<PushNotificationOptions> options,
@@ -28,7 +28,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
         _contextRepository = contextRepository;
         _deviceRepository = deviceRepository;
         _outboxRepository = outboxRepository;
-        _recipientResolver = recipientResolver;
+        _notificationPolicy = notificationPolicy;
         _payloadFactory = payloadFactory;
         _adaptersByPlatform = adapters
             .GroupBy(adapter => adapter.Platform, StringComparer.OrdinalIgnoreCase)
@@ -53,7 +53,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
             return;
         }
 
-        var recipientIds = _recipientResolver.Resolve(context);
+        var recipientIds = _notificationPolicy.SelectRecipients(context);
         if (recipientIds.Count == 0)
         {
             _logger.LogDebug(

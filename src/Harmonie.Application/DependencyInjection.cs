@@ -24,7 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ReadOrchestrator>();
         services.AddScoped<MessageFetchOrchestrator>();
         services.AddScoped<PinnedMessageFetchOrchestrator>();
-        services.AddScoped<MessageNotificationRecipientResolver>();
+        services.AddScoped<IMessageNotificationPolicy, MessageNotificationPolicy>();
         services.AddScoped<MessageNotificationPayloadFactory>();
         services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
 
