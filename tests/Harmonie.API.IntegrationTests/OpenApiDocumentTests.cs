@@ -66,6 +66,42 @@ public sealed class OpenApiDocumentTests : IClassFixture<HarmonieWebApplicationF
     }
 
     [Fact]
+    public async Task OpenApiDocument_ShouldDocumentOutboundPushPayloadContracts()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var document = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        document.Should().NotBeNull();
+
+        var notificationsTag = document!["tags"]?.AsArray()
+            .FirstOrDefault(tag => tag?["name"]?.GetValue<string>() == "Notifications");
+        notificationsTag.Should().NotBeNull();
+        notificationsTag!["description"]?.GetValue<string>().Should().Contain("Harmonie.Workers");
+        notificationsTag["description"]?.GetValue<string>().Should().Contain("cannot trigger delivery directly");
+
+        var operation = document["paths"]?["/api/docs/notifications/push-payloads"]?["get"];
+        operation.Should().NotBeNull();
+        operation!["summary"]?.GetValue<string>().Should().Contain("outbound push notification payload contracts");
+        var description = operation["description"]?.GetValue<string>();
+        description.Should().NotBeNull();
+        description.Should().Contain("does not send notifications");
+        description.Should().Contain("## `message.created` channel payload");
+        description.Should().Contain("\"type\": \"message.created\"");
+        description.Should().Contain("\"scope\": \"channel\"");
+        description.Should().Contain("## `message.created` conversation payload");
+        description.Should().Contain("\"scope\": \"conversation\"");
+
+        operation["responses"]?["204"].Should().NotBeNull();
+        operation["responses"]?["200"].Should().BeNull();
+        description.Should().NotContain("\"content\"");
+    }
+
+    [Fact]
     public async Task OpenApiDocument_ShouldListAllRegisterConflictCodesInResponseDescription()
     {
         using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));

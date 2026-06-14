@@ -43,6 +43,7 @@ var app = builder.Build();
 // Middleware
 if (app.Environment.IsDevelopment())
 {
+    app.MapNotificationDocumentationEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference();
     app.MapSignalRAsyncApiDoc();

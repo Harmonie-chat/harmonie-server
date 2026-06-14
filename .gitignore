@@ -78,6 +78,9 @@ ScaffoldingReadMe.txt
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+# Local generated API docs
+openapi.local*.json
+
 # NuGet Packages
 *.nupkg
 *.snupkg
