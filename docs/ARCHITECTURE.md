@@ -52,6 +52,27 @@ Responsibilities:
 - Long-running/background orchestration that should not share the HTTP API process
 - Reuses Application services and Infrastructure adapters without depending on `Harmonie.API`
 
+Current worker jobs:
+- Push notification dispatch from `message_notification_outbox`
+
+## Push Notifications
+
+Push notifications are asynchronous and transport-agnostic at the Application boundary:
+
+1. Message creation writes the message and a `message_notification_outbox` row in the same transaction.
+2. `Harmonie.Workers` claims pending outbox jobs with a lock/retry policy.
+3. `MessageNotificationPolicy` selects users to notify without knowing the delivery platform.
+4. `NotificationDispatchService` loads active notification devices for selected users.
+5. Platform adapters deliver the minimal business payload. Web Push is the first adapter; Android FCM and iOS APNs can be added behind the same device/policy model later.
+
+Initial message notification policy:
+- Direct conversation messages: notify participants except the author.
+- Group conversation messages: notify participants except the author.
+- Guild channel messages: notify channel candidate members except the author.
+- Guild channel mention-only notification preferences can be added later without changing the delivery adapters.
+
+The Web Push payload intentionally excludes message content and presentation fields. Clients/service workers own notification text, routing, i18n, icons, badges, and tags.
+
 ## Data and Migration Strategy
 
 - DB: PostgreSQL

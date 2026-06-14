@@ -16,7 +16,7 @@ public static class RegisterWebPushDeviceEndpoint
             .WithTags("Notifications")
             .RequireAuthorization()
             .WithSummary("Register a Web Push notification device")
-            .WithDescription("Registers or updates the authenticated user's Web Push subscription. Internally this is stored as a web_push notification device so other push platforms can be added later.")
+            .WithDescription("Registers or updates the authenticated user's Web Push subscription. Internally this is stored as a web_push notification device so other push platforms can be added later. Delivery is asynchronous through the worker host; the backend currently emits minimal message.created business payloads for conversation and guild channel messages.")
             .WithJsonRequestBodyDocumentation(
                 "Web Push subscription returned by PushManager.subscribe().",
                 (

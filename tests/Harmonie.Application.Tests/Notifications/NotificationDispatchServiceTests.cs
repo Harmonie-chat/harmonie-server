@@ -131,7 +131,7 @@ public sealed class NotificationDispatchServiceTests
             _contextRepositoryMock.Object,
             _deviceRepositoryMock.Object,
             _outboxRepositoryMock.Object,
-            new MessageNotificationRecipientResolver(),
+            new MessageNotificationPolicy(),
             new MessageNotificationPayloadFactory(),
             adapters,
             Options.Create(new PushNotificationOptions
@@ -181,7 +181,8 @@ public sealed class NotificationDispatchServiceTests
             "alice",
             "Alice",
             new MessageNotificationTarget.Channel(GuildId.New(), "Harmonie", GuildChannelId.New(), "general"),
-            new HashSet<UserId> { authorId, recipientId });
+            new HashSet<UserId> { authorId, recipientId },
+            new HashSet<UserId> { recipientId });
     }
 
     private static NotificationDevice CreateDevice(UserId userId, string platform)

@@ -2,6 +2,7 @@ extern alias Workers;
 
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Interfaces.Notifications;
@@ -42,6 +43,48 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
             });
         });
         _client = _factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task WorkerBatch_WhenChannelMessageIsSent_ShouldDispatchWebPushToChannelMembersExceptAuthor()
+    {
+        var sender = await AuthTestHelper.RegisterAsync(_client);
+        var mentionedRecipient = await AuthTestHelper.RegisterAsync(_client);
+        var unmentionedMember = await AuthTestHelper.RegisterAsync(_client);
+        var senderEndpoint = $"https://push.example/subscriptions/{Guid.NewGuid():N}";
+        var mentionedRecipientEndpoint = $"https://push.example/subscriptions/{Guid.NewGuid():N}";
+        var unmentionedMemberEndpoint = $"https://push.example/subscriptions/{Guid.NewGuid():N}";
+        await RegisterWebPushDeviceAsync(sender.AccessToken, senderEndpoint);
+        await RegisterWebPushDeviceAsync(mentionedRecipient.AccessToken, mentionedRecipientEndpoint);
+        await RegisterWebPushDeviceAsync(unmentionedMember.AccessToken, unmentionedMemberEndpoint);
+        var guild = await GuildTestHelper.CreateGuildAsync(_client, $"guild{Guid.NewGuid():N}"[..16], sender.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, sender.AccessToken, mentionedRecipient.AccessToken);
+        await GuildTestHelper.InviteMemberAsync(_client, guild.GuildId, sender.AccessToken, unmentionedMember.AccessToken);
+        var message = await SendChannelMessageAsync(
+            guild.DefaultTextChannelId,
+            "hello mentioned user",
+            new[] { mentionedRecipient.UserId },
+            sender.AccessToken);
+
+        await ProcessNotificationBatchAsync();
+
+        var deliveries = _recordingAdapter.Deliveries;
+        deliveries.Should().HaveCount(2);
+        deliveries.Select(delivery => delivery.Device.Token).Should().BeEquivalentTo(new[] { mentionedRecipientEndpoint, unmentionedMemberEndpoint });
+        deliveries.Select(delivery => delivery.Device.UserId.Value).Should().BeEquivalentTo(new[] { mentionedRecipient.UserId, unmentionedMember.UserId });
+        deliveries.Should().OnlyContain(delivery => delivery.Payload.Type == NotificationDeliveryPayloadTypes.MessageCreated);
+        var payloadData = deliveries[0].Payload.Data.Should().BeOfType<MessageCreatedChannelNotificationData>().Subject;
+        payloadData.Scope.Should().Be(NotificationMessageScopes.Channel);
+        payloadData.MessageId.Should().Be(message.MessageId);
+        payloadData.AuthorUserId.Should().Be(sender.UserId);
+        payloadData.AuthorDisplayName.Should().Be(sender.Username);
+        payloadData.GuildId.Should().Be(guild.GuildId);
+        payloadData.GuildName.Should().Be(guild.Name);
+        payloadData.ChannelId.Should().Be(guild.DefaultTextChannelId);
+        payloadData.ChannelName.Should().Be("general");
+
+        var storedStatus = await GetOutboxStatusAsync(message.MessageId);
+        storedStatus.Should().Be(MessageNotificationOutboxStatuses.Processed);
     }
 
     [Fact]
@@ -107,6 +150,27 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
             accessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    private async Task<Harmonie.Application.Features.Channels.SendMessage.SendMessageResponse> SendChannelMessageAsync(
+        Guid channelId,
+        string content,
+        IReadOnlyList<Guid> mentionedUserIds,
+        string accessToken)
+    {
+        var response = await _client.SendAuthorizedPostAsync(
+            $"/api/channels/{channelId}/messages",
+            new
+            {
+                content,
+                mentionedUserIds
+            },
+            accessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var payload = await response.Content.ReadFromJsonAsync<Harmonie.Application.Features.Channels.SendMessage.SendMessageResponse>();
+        payload.Should().NotBeNull();
+        return payload!;
     }
 
     private async Task ProcessNotificationBatchAsync()

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Services.Notifications;
+using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -27,6 +28,7 @@ public sealed class MessageNotificationPayloadFactoryTests
             "alice",
             "Alice",
             new MessageNotificationTarget.Channel(guildId, "Harmonie", channelId, "général"),
+            new HashSet<UserId>(),
             new HashSet<UserId>());
 
         var payload = _factory.Create(context);
@@ -55,7 +57,8 @@ public sealed class MessageNotificationPayloadFactoryTests
             authorId,
             "alice",
             null,
-            new MessageNotificationTarget.Conversation(conversationId, null),
+            new MessageNotificationTarget.Conversation(conversationId, ConversationType.Direct, null),
+            new HashSet<UserId>(),
             new HashSet<UserId>());
 
         var payload = _factory.Create(context);

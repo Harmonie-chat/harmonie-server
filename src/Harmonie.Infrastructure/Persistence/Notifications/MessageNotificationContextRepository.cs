@@ -1,5 +1,6 @@
 using Dapper;
 using Harmonie.Application.Interfaces.Notifications;
+using Harmonie.Domain.Entities.Conversations;
 using Harmonie.Domain.ValueObjects.Channels;
 using Harmonie.Domain.ValueObjects.Conversations;
 using Harmonie.Domain.ValueObjects.Guilds;
@@ -33,7 +34,8 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                                       g.name AS "GuildName",
                                       gc.name AS "ChannelName",
                                       m.conversation_id AS "ConversationId",
-                                      c.name AS "ConversationName"
+                                      c.name AS "ConversationName",
+                                      c.type AS "ConversationType"
                                   FROM messages m
                                   JOIN users u ON u.id = m.author_user_id
                                   LEFT JOIN guild_channels gc ON gc.id = m.channel_id
@@ -54,9 +56,18 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
         if (row is null)
             return null;
 
+        var mentionedUserIds = await QueryUserIdsAsync(
+            """
+            SELECT mentioned_user_id
+            FROM message_mentions
+            WHERE message_id = @MessageId
+            """,
+            new { row.MessageId },
+            cancellationToken);
+
         if (row.ChannelId is not null && row.GuildId is not null && row.GuildName is not null && row.ChannelName is not null)
         {
-            var recipientRows = await QueryRecipientIdsAsync(
+            var recipientRows = await QueryUserIdsAsync(
                 """
                 SELECT user_id
                 FROM guild_members
@@ -75,12 +86,13 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                     row.GuildName,
                     GuildChannelId.From(row.ChannelId.Value),
                     row.ChannelName),
-                recipientRows.Select(UserId.From).ToHashSet());
+                recipientRows.Select(UserId.From).ToHashSet(),
+                mentionedUserIds.Select(UserId.From).ToHashSet());
         }
 
-        if (row.ConversationId is not null)
+        if (row.ConversationId is not null && row.ConversationType is not null)
         {
-            var recipientRows = await QueryRecipientIdsAsync(
+            var recipientRows = await QueryUserIdsAsync(
                 """
                 SELECT user_id
                 FROM conversation_participants
@@ -94,14 +106,18 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
                 UserId.From(row.AuthorUserId),
                 row.AuthorUsername,
                 row.AuthorDisplayName,
-                new MessageNotificationTarget.Conversation(ConversationId.From(row.ConversationId.Value), row.ConversationName),
-                recipientRows.Select(UserId.From).ToHashSet());
+                new MessageNotificationTarget.Conversation(
+                    ConversationId.From(row.ConversationId.Value),
+                    ParseConversationType(row.ConversationType),
+                    row.ConversationName),
+                recipientRows.Select(UserId.From).ToHashSet(),
+                mentionedUserIds.Select(UserId.From).ToHashSet());
         }
 
         return null;
     }
 
-    private async Task<IReadOnlyList<Guid>> QueryRecipientIdsAsync(
+    private async Task<IReadOnlyList<Guid>> QueryUserIdsAsync(
         string sql,
         object parameters,
         CancellationToken cancellationToken)
@@ -115,6 +131,16 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
 
         var rows = await connection.QueryAsync<Guid>(command);
         return rows.ToArray();
+    }
+
+    private static ConversationType ParseConversationType(string type)
+    {
+        return type switch
+        {
+            "direct" => ConversationType.Direct,
+            "group" => ConversationType.Group,
+            _ => throw new InvalidOperationException($"Unsupported conversation type '{type}'")
+        };
     }
 
     private sealed class MessageNotificationContextRow
@@ -138,5 +164,7 @@ public sealed class MessageNotificationContextRepository : IMessageNotificationC
         public Guid? ConversationId { get; init; }
 
         public string? ConversationName { get; init; }
+
+        public string? ConversationType { get; init; }
     }
 }
