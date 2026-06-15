@@ -109,7 +109,8 @@ Development Web Push configuration is provided through `VAPID_*` environment var
 Current backend notification behavior:
 - conversation messages notify participants except the author;
 - guild channel messages notify channel candidate members except the author;
-- payloads are minimal `message.created` business data, without message content or UI presentation fields.
+- payloads are minimal `message.created` business data, without message content or UI presentation fields;
+- retries are tracked per device, so a partial Web Push failure does not resend to devices that already succeeded.
 
 ## 6. Run Tests
 

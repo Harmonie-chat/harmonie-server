@@ -17,6 +17,7 @@ public sealed class NotificationDispatchServiceTests
     private readonly Mock<IMessageNotificationContextRepository> _contextRepositoryMock = new();
     private readonly Mock<INotificationDeviceRepository> _deviceRepositoryMock = new();
     private readonly Mock<IMessageNotificationOutboxRepository> _outboxRepositoryMock = new();
+    private readonly InMemoryMessageNotificationDeliveryRepository _deliveryRepository = new();
 
     [Fact]
     public async Task DispatchAsync_ShouldSendOnlyThroughMatchingPlatformAdapter()
@@ -125,12 +126,61 @@ public sealed class NotificationDispatchServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task DispatchAsync_WhenRetryingPartialFailure_ShouldNotResendToSucceededDevice()
+    {
+        var recipientId = UserId.New();
+        var succeededDevice = CreateDevice(recipientId, NotificationDevicePlatforms.WebPush);
+        var retryingDevice = CreateDevice(recipientId, NotificationDevicePlatforms.WebPush);
+        var jobId = Guid.NewGuid();
+        var resultsByDeviceId = new Dictionary<Guid, NotificationDeliveryResultStatus>
+        {
+            [succeededDevice.Id] = NotificationDeliveryResultStatus.Succeeded,
+            [retryingDevice.Id] = NotificationDeliveryResultStatus.TransientFailure
+        };
+        var adapter = new StubNotificationDeliveryAdapter(
+            NotificationDevicePlatforms.WebPush,
+            device => new NotificationDeliveryResult(device.Id, resultsByDeviceId[device.Id], "timeout"));
+        var service = CreateService(adapter);
+
+        SetupContextAndDevices(CreateContext(recipientId), succeededDevice, retryingDevice);
+
+        await service.DispatchAsync(CreateJob(jobId, attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(jobId, attempts: 2), DateTime.UtcNow, TestContext.Current.CancellationToken);
+
+        adapter.SentDeviceIds.Count(deviceId => deviceId == succeededDevice.Id).Should().Be(1);
+        adapter.SentDeviceIds.Count(deviceId => deviceId == retryingDevice.Id).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_WhenOnlyPermanentFailuresOccur_ShouldMarkProcessedWithoutRetry()
+    {
+        var recipientId = UserId.New();
+        var device = CreateDevice(recipientId, NotificationDevicePlatforms.WebPush);
+        var adapter = new StubNotificationDeliveryAdapter(
+            NotificationDevicePlatforms.WebPush,
+            device => new NotificationDeliveryResult(device.Id, NotificationDeliveryResultStatus.PermanentFailure, "forbidden"));
+        var service = CreateService(adapter);
+
+        SetupContextAndDevices(CreateContext(recipientId), device);
+
+        await service.DispatchAsync(CreateJob(attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
+
+        _outboxRepositoryMock.Verify(
+            x => x.MarkProcessedAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _outboxRepositoryMock.Verify(
+            x => x.ScheduleRetryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     private NotificationDispatchService CreateService(params INotificationDeliveryAdapter[] adapters)
     {
         return new NotificationDispatchService(
             _contextRepositoryMock.Object,
             _deviceRepositoryMock.Object,
             _outboxRepositoryMock.Object,
+            _deliveryRepository,
             new MessageNotificationPolicy(),
             new MessageNotificationPayloadFactory(),
             adapters,
@@ -199,8 +249,13 @@ public sealed class NotificationDispatchServiceTests
 
     private static MessageNotificationOutboxJob CreateJob(int attempts)
     {
+        return CreateJob(Guid.NewGuid(), attempts);
+    }
+
+    private static MessageNotificationOutboxJob CreateJob(Guid jobId, int attempts)
+    {
         return new MessageNotificationOutboxJob(
-            Guid.NewGuid(),
+            jobId,
             MessageId.New(),
             MessageNotificationOutboxStatuses.Processing,
             attempts,
@@ -236,5 +291,120 @@ public sealed class NotificationDispatchServiceTests
             _sentDeviceIds.AddRange(devices.Select(device => device.Id));
             return Task.FromResult<IReadOnlyList<NotificationDeliveryResult>>(devices.Select(_resultFactory).ToArray());
         }
+    }
+
+    private sealed class InMemoryMessageNotificationDeliveryRepository : IMessageNotificationDeliveryRepository
+    {
+        private readonly Dictionary<(Guid OutboxJobId, Guid DeviceId), StoredDelivery> _deliveries = new();
+
+        public Task<IReadOnlySet<Guid>> GetOrCreateRetryableDeviceIdsAsync(
+            Guid outboxJobId,
+            IReadOnlyCollection<Guid> deviceIds,
+            DateTime createdAtUtc,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var deviceId in deviceIds.Distinct())
+            {
+                var key = (outboxJobId, deviceId);
+                if (!_deliveries.ContainsKey(key))
+                {
+                    _deliveries[key] = new StoredDelivery(
+                        MessageNotificationDeliveryStatuses.Pending,
+                        Attempts: 0,
+                        LastError: null,
+                        UpdatedAtUtc: createdAtUtc);
+                }
+            }
+
+            var retryableDeviceIds = _deliveries
+                .Where(pair => pair.Key.OutboxJobId == outboxJobId
+                               && deviceIds.Contains(pair.Key.DeviceId)
+                               && pair.Value.Status is MessageNotificationDeliveryStatuses.Pending
+                                   or MessageNotificationDeliveryStatuses.TransientFailure)
+                .Select(pair => pair.Key.DeviceId)
+                .ToHashSet();
+
+            return Task.FromResult<IReadOnlySet<Guid>>(retryableDeviceIds);
+        }
+
+        public Task MarkResultsAsync(
+            Guid outboxJobId,
+            IReadOnlyCollection<NotificationDeliveryResult> results,
+            DateTime attemptedAtUtc,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var result in results)
+            {
+                UpdateDelivery(
+                    outboxJobId,
+                    result.DeviceId,
+                    ToDeliveryStatus(result.Status),
+                    delivery => delivery.Attempts + 1,
+                    result.Error,
+                    attemptedAtUtc);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task MarkDevicesFailedAsync(
+            Guid outboxJobId,
+            IReadOnlyCollection<Guid> deviceIds,
+            string error,
+            DateTime failedAtUtc,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var deviceId in deviceIds)
+            {
+                UpdateDelivery(
+                    outboxJobId,
+                    deviceId,
+                    MessageNotificationDeliveryStatuses.Failed,
+                    delivery => delivery.Attempts,
+                    error,
+                    failedAtUtc);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private void UpdateDelivery(
+            Guid outboxJobId,
+            Guid deviceId,
+            string status,
+            Func<StoredDelivery, int> attemptsFactory,
+            string? error,
+            DateTime updatedAtUtc)
+        {
+            var key = (outboxJobId, deviceId);
+            if (!_deliveries.TryGetValue(key, out var delivery))
+                return;
+
+            _deliveries[key] = delivery with
+            {
+                Status = status,
+                Attempts = attemptsFactory(delivery),
+                LastError = error,
+                UpdatedAtUtc = updatedAtUtc
+            };
+        }
+
+        private static string ToDeliveryStatus(NotificationDeliveryResultStatus status)
+        {
+            return status switch
+            {
+                NotificationDeliveryResultStatus.Succeeded => MessageNotificationDeliveryStatuses.Succeeded,
+                NotificationDeliveryResultStatus.InvalidDevice => MessageNotificationDeliveryStatuses.InvalidDevice,
+                NotificationDeliveryResultStatus.TransientFailure => MessageNotificationDeliveryStatuses.TransientFailure,
+                NotificationDeliveryResultStatus.PermanentFailure => MessageNotificationDeliveryStatuses.Failed,
+                _ => MessageNotificationDeliveryStatuses.Failed
+            };
+        }
+
+        private sealed record StoredDelivery(
+            string Status,
+            int Attempts,
+            string? LastError,
+            DateTime UpdatedAtUtc);
     }
 }

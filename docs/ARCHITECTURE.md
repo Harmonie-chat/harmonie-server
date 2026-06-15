@@ -62,8 +62,8 @@ Push notifications are asynchronous and transport-agnostic at the Application bo
 1. Message creation writes the message and a `message_notification_outbox` row in the same transaction.
 2. `Harmonie.Workers` claims pending outbox jobs with a lock/retry policy.
 3. `MessageNotificationPolicy` selects users to notify without knowing the delivery platform.
-4. `NotificationDispatchService` loads active notification devices for selected users.
-5. Platform adapters deliver the minimal business payload. Web Push is the first adapter; Android FCM and iOS APNs can be added behind the same device/policy model later.
+4. `NotificationDispatchService` loads active notification devices for selected users and records per-device delivery state in `message_notification_deliveries`.
+5. Platform adapters deliver the minimal business payload only to pending/retryable device deliveries. Succeeded device deliveries are not retried, which prevents duplicate pushes after partial failures. Web Push is the first adapter; Android FCM and iOS APNs can be added behind the same device/policy model later.
 
 Initial message notification policy:
 - Direct conversation messages: notify participants except the author.

@@ -102,12 +102,12 @@ public sealed class WebPushNotificationDeliveryAdapter : INotificationDeliveryAd
             await _client.SendNotificationAsync(subscription, payload, vapidDetails, cancellationToken);
             return new NotificationDeliveryResult(deviceId, NotificationDeliveryResultStatus.Succeeded);
         }
-        catch (WebPushException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        catch (WebPushException ex) when (IsInvalidDeviceStatus(ex.StatusCode))
         {
             return new NotificationDeliveryResult(
                 deviceId,
                 NotificationDeliveryResultStatus.InvalidDevice,
-                $"Web Push subscription is no longer valid ({(int)ex.StatusCode})");
+                $"Web Push subscription is no longer valid or no longer accepts this VAPID identity ({(int)ex.StatusCode})");
         }
         catch (WebPushException ex) when (IsTransient(ex.StatusCode))
         {
@@ -135,6 +135,15 @@ public sealed class WebPushNotificationDeliveryAdapter : INotificationDeliveryAd
                 NotificationDeliveryResultStatus.TransientFailure,
                 "Unexpected Web Push send failure");
         }
+    }
+
+    private static bool IsInvalidDeviceStatus(HttpStatusCode statusCode)
+    {
+        return statusCode is HttpStatusCode.BadRequest
+            or HttpStatusCode.Unauthorized
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.NotFound
+            or HttpStatusCode.Gone;
     }
 
     private static bool IsTransient(HttpStatusCode statusCode)
