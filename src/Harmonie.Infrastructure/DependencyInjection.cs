@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
         services.AddScoped<INotificationDeviceRepository, NotificationDeviceRepository>();
         services.AddScoped<IMessageNotificationOutboxRepository, MessageNotificationOutboxRepository>();
+        services.AddScoped<IMessageNotificationDeliveryRepository, MessageNotificationDeliveryRepository>();
         services.AddScoped<IMessageNotificationContextRepository, MessageNotificationContextRepository>();
 
         return services;

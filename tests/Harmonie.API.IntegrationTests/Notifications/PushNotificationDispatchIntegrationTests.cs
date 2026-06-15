@@ -66,7 +66,7 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
             new[] { mentionedRecipient.UserId },
             sender.AccessToken);
 
-        await ProcessNotificationBatchAsync();
+        await ProcessNotificationBatchAsync(message.MessageId);
 
         var deliveries = _recordingAdapter.Deliveries;
         deliveries.Should().HaveCount(2);
@@ -104,7 +104,7 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
             "this content must not be part of the push payload",
             sender.AccessToken);
 
-        await ProcessNotificationBatchAsync();
+        await ProcessNotificationBatchAsync(message.MessageId);
 
         stopwatch.Stop();
         Console.WriteLine($"Push notification dispatch integration test elapsed: {stopwatch.ElapsedMilliseconds}ms");
@@ -173,11 +173,61 @@ public sealed class PushNotificationDispatchIntegrationTests : IClassFixture<Har
         return payload!;
     }
 
-    private async Task ProcessNotificationBatchAsync()
+    private async Task ProcessNotificationBatchAsync(Guid messageId)
     {
+        await DelayOtherClaimableOutboxJobsAsync(messageId, DateTime.UtcNow.AddDays(1));
+        await SetOutboxNextAttemptAsync(messageId, new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
         await using var scope = _factory.Services.CreateAsyncScope();
         var processor = scope.ServiceProvider.GetRequiredService<IPushNotificationBatchProcessor>();
         await processor.ProcessBatchAsync(TestContext.Current.CancellationToken);
+    }
+
+    private async Task DelayOtherClaimableOutboxJobsAsync(Guid messageId, DateTime nextAttemptAtUtc)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
+        var connection = await dbSession.GetOpenConnectionAsync(TestContext.Current.CancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+                              UPDATE message_notification_outbox
+                              SET next_attempt_at_utc = CASE
+                                      WHEN status = @PendingStatus THEN @NextAttemptAtUtc
+                                      ELSE next_attempt_at_utc
+                                  END,
+                                  locked_until_utc = CASE
+                                      WHEN status = @ProcessingStatus THEN @NextAttemptAtUtc
+                                      ELSE locked_until_utc
+                                  END
+                              WHERE message_id <> @MessageId
+                                AND status IN (@PendingStatus, @ProcessingStatus)
+                              """;
+        command.Parameters.AddWithValue("NextAttemptAtUtc", nextAttemptAtUtc);
+        command.Parameters.AddWithValue("MessageId", messageId);
+        command.Parameters.AddWithValue("PendingStatus", MessageNotificationOutboxStatuses.Pending);
+        command.Parameters.AddWithValue("ProcessingStatus", MessageNotificationOutboxStatuses.Processing);
+
+        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+    }
+
+    private async Task SetOutboxNextAttemptAsync(Guid messageId, DateTime nextAttemptAtUtc)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
+        var connection = await dbSession.GetOpenConnectionAsync(TestContext.Current.CancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+                              UPDATE message_notification_outbox
+                              SET next_attempt_at_utc = @NextAttemptAtUtc
+                              WHERE message_id = @MessageId
+                              """;
+        command.Parameters.AddWithValue("NextAttemptAtUtc", nextAttemptAtUtc);
+        command.Parameters.AddWithValue("MessageId", messageId);
+
+        var rows = await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        rows.Should().Be(1);
     }
 
     private async Task<string?> GetOutboxStatusAsync(Guid messageId)

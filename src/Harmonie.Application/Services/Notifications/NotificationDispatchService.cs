@@ -9,6 +9,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
     private readonly IMessageNotificationContextRepository _contextRepository;
     private readonly INotificationDeviceRepository _deviceRepository;
     private readonly IMessageNotificationOutboxRepository _outboxRepository;
+    private readonly IMessageNotificationDeliveryRepository _deliveryRepository;
     private readonly IMessageNotificationPolicy _notificationPolicy;
     private readonly MessageNotificationPayloadFactory _payloadFactory;
     private readonly IReadOnlyDictionary<string, INotificationDeliveryAdapter> _adaptersByPlatform;
@@ -19,6 +20,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
         IMessageNotificationContextRepository contextRepository,
         INotificationDeviceRepository deviceRepository,
         IMessageNotificationOutboxRepository outboxRepository,
+        IMessageNotificationDeliveryRepository deliveryRepository,
         IMessageNotificationPolicy notificationPolicy,
         MessageNotificationPayloadFactory payloadFactory,
         IEnumerable<INotificationDeliveryAdapter> adapters,
@@ -28,6 +30,7 @@ public sealed class NotificationDispatchService : INotificationDispatchService
         _contextRepository = contextRepository;
         _deviceRepository = deviceRepository;
         _outboxRepository = outboxRepository;
+        _deliveryRepository = deliveryRepository;
         _notificationPolicy = notificationPolicy;
         _payloadFactory = payloadFactory;
         _adaptersByPlatform = adapters
@@ -75,25 +78,75 @@ public sealed class NotificationDispatchService : INotificationDispatchService
             return;
         }
 
+        var deviceIds = devices.Select(device => device.Id).Distinct().ToArray();
+        var deliveries = await _deliveryRepository.GetByJobAndDeviceIdsAsync(job.Id, deviceIds, cancellationToken);
+        if (job.Attempts <= 1 || deliveries.Count == 0)
+        {
+            var existingDeliveryDeviceIds = deliveries.Select(delivery => delivery.DeviceId).ToHashSet();
+            var missingDeviceIds = deviceIds.Where(deviceId => !existingDeliveryDeviceIds.Contains(deviceId)).ToArray();
+            if (missingDeviceIds.Length > 0)
+            {
+                await _deliveryRepository.EnsurePendingAsync(job.Id, missingDeviceIds, nowUtc, cancellationToken);
+                deliveries = await _deliveryRepository.GetByJobAndDeviceIdsAsync(job.Id, deviceIds, cancellationToken);
+            }
+        }
+
+        var retryableDeviceIds = deliveries
+            .Where(delivery => IsRetryableDeliveryStatus(delivery.Status))
+            .Select(delivery => delivery.DeviceId)
+            .ToHashSet();
+        var devicesToAttempt = devices
+            .Where(device => retryableDeviceIds.Contains(device.Id))
+            .ToArray();
+
+        if (devicesToAttempt.Length == 0)
+        {
+            _logger.LogDebug(
+                "Message notification outbox job {JobId} processed because all active notification devices are already in terminal delivery states.",
+                job.Id);
+            await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
+            return;
+        }
+
         var payload = _payloadFactory.Create(context);
         var deliveryResults = new List<NotificationDeliveryResult>();
-        var unsupportedPlatforms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unsupportedFailures = new List<(Guid DeviceId, string Error)>();
 
-        foreach (var platformDevices in devices.GroupBy(device => device.Platform, StringComparer.OrdinalIgnoreCase))
+        foreach (var platformDevices in devicesToAttempt.GroupBy(device => device.Platform, StringComparer.OrdinalIgnoreCase))
         {
+            var platformDeviceArray = platformDevices.ToArray();
             if (!_adaptersByPlatform.TryGetValue(platformDevices.Key, out var adapter))
             {
+                var unsupportedError = $"No notification adapter registered for platform '{platformDevices.Key}'";
                 _logger.LogWarning(
                     "Message notification outbox job {JobId} found {DeviceCount} devices for unsupported notification platform {Platform}.",
                     job.Id,
-                    platformDevices.Count(),
+                    platformDeviceArray.Length,
                     platformDevices.Key);
-                unsupportedPlatforms.Add(platformDevices.Key);
+                unsupportedFailures.AddRange(platformDeviceArray.Select(device => (device.Id, unsupportedError)));
                 continue;
             }
 
-            var results = await adapter.SendAsync(payload, platformDevices.ToArray(), cancellationToken);
+            var results = await adapter.SendAsync(payload, platformDeviceArray, cancellationToken);
             deliveryResults.AddRange(results);
+        }
+
+        if (deliveryResults.Count > 0)
+        {
+            await _deliveryRepository.MarkResultsAsync(job.Id, deliveryResults, nowUtc, cancellationToken);
+        }
+
+        if (unsupportedFailures.Count > 0)
+        {
+            foreach (var failureGroup in unsupportedFailures.GroupBy(failure => failure.Error, StringComparer.Ordinal))
+            {
+                await _deliveryRepository.MarkDevicesFailedAsync(
+                    job.Id,
+                    failureGroup.Select(failure => failure.DeviceId).ToArray(),
+                    failureGroup.Key,
+                    nowUtc,
+                    cancellationToken);
+            }
         }
 
         var invalidDeviceIds = deliveryResults
@@ -110,23 +163,26 @@ public sealed class NotificationDispatchService : INotificationDispatchService
             await _deviceRepository.DeleteManyAsync(invalidDeviceIds, cancellationToken);
         }
 
-        var blockingFailures = deliveryResults
-            .Where(result => result.Status is NotificationDeliveryResultStatus.TransientFailure or NotificationDeliveryResultStatus.PermanentFailure)
-            .Select(result => result.Error ?? result.Status.ToString())
-            .Concat(unsupportedPlatforms.Select(platform => $"No notification adapter registered for platform '{platform}'"))
+        var transientFailures = deliveryResults
+            .Where(result => result.Status == NotificationDeliveryResultStatus.TransientFailure)
             .ToArray();
 
-        if (blockingFailures.Length == 0)
+        if (transientFailures.Length == 0)
         {
             _logger.LogDebug(
-                "Message notification outbox job {JobId} processed for {DeviceCount} devices.",
+                "Message notification outbox job {JobId} processed for {AttemptedDeviceCount} attempted devices.",
                 job.Id,
-                devices.Count);
+                devicesToAttempt.Length);
             await _outboxRepository.MarkProcessedAsync(job.Id, nowUtc, cancellationToken);
             return;
         }
 
-        var error = string.Join("; ", blockingFailures.Distinct(StringComparer.Ordinal).Take(5));
+        var error = string.Join(
+            "; ",
+            transientFailures
+                .Select(result => result.Error ?? result.Status.ToString())
+                .Distinct(StringComparer.Ordinal)
+                .Take(5));
         if (job.Attempts >= _options.MaxAttempts)
         {
             _logger.LogWarning(
@@ -134,6 +190,12 @@ public sealed class NotificationDispatchService : INotificationDispatchService
                 job.Id,
                 job.Attempts,
                 error);
+            await _deliveryRepository.MarkDevicesFailedAsync(
+                job.Id,
+                transientFailures.Select(result => result.DeviceId).Distinct().ToArray(),
+                error,
+                nowUtc,
+                cancellationToken);
             await _outboxRepository.MarkFailedAsync(job.Id, error, nowUtc, cancellationToken);
             return;
         }
@@ -146,6 +208,12 @@ public sealed class NotificationDispatchService : INotificationDispatchService
             nextAttemptAtUtc,
             error);
         await _outboxRepository.ScheduleRetryAsync(job.Id, nextAttemptAtUtc, error, cancellationToken);
+    }
+
+    private static bool IsRetryableDeliveryStatus(string status)
+    {
+        return status is MessageNotificationDeliveryStatuses.Pending
+            or MessageNotificationDeliveryStatuses.TransientFailure;
     }
 
     private TimeSpan CalculateRetryDelay(int attempts)
