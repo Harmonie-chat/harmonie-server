@@ -79,22 +79,11 @@ public sealed class NotificationDispatchService : INotificationDispatchService
         }
 
         var deviceIds = devices.Select(device => device.Id).Distinct().ToArray();
-        var deliveries = await _deliveryRepository.GetByJobAndDeviceIdsAsync(job.Id, deviceIds, cancellationToken);
-        if (job.Attempts <= 1 || deliveries.Count == 0)
-        {
-            var existingDeliveryDeviceIds = deliveries.Select(delivery => delivery.DeviceId).ToHashSet();
-            var missingDeviceIds = deviceIds.Where(deviceId => !existingDeliveryDeviceIds.Contains(deviceId)).ToArray();
-            if (missingDeviceIds.Length > 0)
-            {
-                await _deliveryRepository.EnsurePendingAsync(job.Id, missingDeviceIds, nowUtc, cancellationToken);
-                deliveries = await _deliveryRepository.GetByJobAndDeviceIdsAsync(job.Id, deviceIds, cancellationToken);
-            }
-        }
-
-        var retryableDeviceIds = deliveries
-            .Where(delivery => IsRetryableDeliveryStatus(delivery.Status))
-            .Select(delivery => delivery.DeviceId)
-            .ToHashSet();
+        var retryableDeviceIds = await _deliveryRepository.GetOrCreateRetryableDeviceIdsAsync(
+            job.Id,
+            deviceIds,
+            nowUtc,
+            cancellationToken);
         var devicesToAttempt = devices
             .Where(device => retryableDeviceIds.Contains(device.Id))
             .ToArray();
@@ -208,12 +197,6 @@ public sealed class NotificationDispatchService : INotificationDispatchService
             nextAttemptAtUtc,
             error);
         await _outboxRepository.ScheduleRetryAsync(job.Id, nextAttemptAtUtc, error, cancellationToken);
-    }
-
-    private static bool IsRetryableDeliveryStatus(string status)
-    {
-        return status is MessageNotificationDeliveryStatuses.Pending
-            or MessageNotificationDeliveryStatuses.TransientFailure;
     }
 
     private TimeSpan CalculateRetryDelay(int attempts)

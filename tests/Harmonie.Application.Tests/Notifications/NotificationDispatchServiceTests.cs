@@ -295,9 +295,9 @@ public sealed class NotificationDispatchServiceTests
 
     private sealed class InMemoryMessageNotificationDeliveryRepository : IMessageNotificationDeliveryRepository
     {
-        private readonly Dictionary<(Guid OutboxJobId, Guid DeviceId), MessageNotificationDelivery> _deliveries = new();
+        private readonly Dictionary<(Guid OutboxJobId, Guid DeviceId), StoredDelivery> _deliveries = new();
 
-        public Task EnsurePendingAsync(
+        public Task<IReadOnlySet<Guid>> GetOrCreateRetryableDeviceIdsAsync(
             Guid outboxJobId,
             IReadOnlyCollection<Guid> deviceIds,
             DateTime createdAtUtc,
@@ -306,36 +306,25 @@ public sealed class NotificationDispatchServiceTests
             foreach (var deviceId in deviceIds.Distinct())
             {
                 var key = (outboxJobId, deviceId);
-                if (_deliveries.ContainsKey(key))
-                    continue;
-
-                _deliveries[key] = new MessageNotificationDelivery(
-                    Guid.NewGuid(),
-                    outboxJobId,
-                    deviceId,
-                    MessageNotificationDeliveryStatuses.Pending,
-                    0,
-                    null,
-                    null,
-                    null,
-                    null,
-                    createdAtUtc,
-                    createdAtUtc);
+                if (!_deliveries.ContainsKey(key))
+                {
+                    _deliveries[key] = new StoredDelivery(
+                        MessageNotificationDeliveryStatuses.Pending,
+                        Attempts: 0,
+                        LastError: null,
+                        UpdatedAtUtc: createdAtUtc);
+                }
             }
 
-            return Task.CompletedTask;
-        }
+            var retryableDeviceIds = _deliveries
+                .Where(pair => pair.Key.OutboxJobId == outboxJobId
+                               && deviceIds.Contains(pair.Key.DeviceId)
+                               && pair.Value.Status is MessageNotificationDeliveryStatuses.Pending
+                                   or MessageNotificationDeliveryStatuses.TransientFailure)
+                .Select(pair => pair.Key.DeviceId)
+                .ToHashSet();
 
-        public Task<IReadOnlyList<MessageNotificationDelivery>> GetByJobAndDeviceIdsAsync(
-            Guid outboxJobId,
-            IReadOnlyCollection<Guid> deviceIds,
-            CancellationToken cancellationToken = default)
-        {
-            var deviceIdSet = deviceIds.ToHashSet();
-            var deliveries = _deliveries.Values
-                .Where(delivery => delivery.OutboxJobId == outboxJobId && deviceIdSet.Contains(delivery.DeviceId))
-                .ToArray();
-            return Task.FromResult<IReadOnlyList<MessageNotificationDelivery>>(deliveries);
+            return Task.FromResult<IReadOnlySet<Guid>>(retryableDeviceIds);
         }
 
         public Task MarkResultsAsync(
@@ -352,8 +341,7 @@ public sealed class NotificationDispatchServiceTests
                     ToDeliveryStatus(result.Status),
                     delivery => delivery.Attempts + 1,
                     result.Error,
-                    attemptedAtUtc,
-                    result.Status == NotificationDeliveryResultStatus.Succeeded ? attemptedAtUtc : null);
+                    attemptedAtUtc);
             }
 
             return Task.CompletedTask;
@@ -374,8 +362,7 @@ public sealed class NotificationDispatchServiceTests
                     MessageNotificationDeliveryStatuses.Failed,
                     delivery => delivery.Attempts,
                     error,
-                    failedAtUtc,
-                    null);
+                    failedAtUtc);
             }
 
             return Task.CompletedTask;
@@ -385,10 +372,9 @@ public sealed class NotificationDispatchServiceTests
             Guid outboxJobId,
             Guid deviceId,
             string status,
-            Func<MessageNotificationDelivery, int> attemptsFactory,
+            Func<StoredDelivery, int> attemptsFactory,
             string? error,
-            DateTime updatedAtUtc,
-            DateTime? succeededAtUtc)
+            DateTime updatedAtUtc)
         {
             var key = (outboxJobId, deviceId);
             if (!_deliveries.TryGetValue(key, out var delivery))
@@ -399,9 +385,6 @@ public sealed class NotificationDispatchServiceTests
                 Status = status,
                 Attempts = attemptsFactory(delivery),
                 LastError = error,
-                FirstAttemptedAtUtc = delivery.FirstAttemptedAtUtc ?? updatedAtUtc,
-                LastAttemptedAtUtc = updatedAtUtc,
-                SucceededAtUtc = succeededAtUtc ?? delivery.SucceededAtUtc,
                 UpdatedAtUtc = updatedAtUtc
             };
         }
@@ -417,5 +400,11 @@ public sealed class NotificationDispatchServiceTests
                 _ => MessageNotificationDeliveryStatuses.Failed
             };
         }
+
+        private sealed record StoredDelivery(
+            string Status,
+            int Attempts,
+            string? LastError,
+            DateTime UpdatedAtUtc);
     }
 }

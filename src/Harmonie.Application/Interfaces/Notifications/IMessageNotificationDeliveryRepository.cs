@@ -9,30 +9,12 @@ public static class MessageNotificationDeliveryStatuses
     public const string Failed = "failed";
 }
 
-public sealed record MessageNotificationDelivery(
-    Guid Id,
-    Guid OutboxJobId,
-    Guid DeviceId,
-    string Status,
-    int Attempts,
-    string? LastError,
-    DateTime? FirstAttemptedAtUtc,
-    DateTime? LastAttemptedAtUtc,
-    DateTime? SucceededAtUtc,
-    DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc);
-
 public interface IMessageNotificationDeliveryRepository
 {
-    Task EnsurePendingAsync(
+    Task<IReadOnlySet<Guid>> GetOrCreateRetryableDeviceIdsAsync(
         Guid outboxJobId,
         IReadOnlyCollection<Guid> deviceIds,
         DateTime createdAtUtc,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<MessageNotificationDelivery>> GetByJobAndDeviceIdsAsync(
-        Guid outboxJobId,
-        IReadOnlyCollection<Guid> deviceIds,
         CancellationToken cancellationToken = default);
 
     Task MarkResultsAsync(
