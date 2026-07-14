@@ -187,7 +187,7 @@ public sealed class GetGuildChannelsHandlerTests
         bool isDefault,
         int position)
     {
-        var channelResult = GuildChannel.Create(guildId, name, type, isDefault, position);
+        var channelResult = GuildChannel.Create(guildId, name, type, isDefault, position, TestClock.UtcNow);
         if (channelResult.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");
 

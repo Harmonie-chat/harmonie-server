@@ -37,7 +37,8 @@ public sealed class ReactionOrchestratorTests
         _orchestrator = new ReactionOrchestrator(
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
     }
 
     private static MessageScope AnyScope() => new MessageScope.Channel(GuildChannelId.New());

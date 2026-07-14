@@ -20,7 +20,8 @@ public sealed class PreviewInviteHandlerTests
         _guildInviteRepositoryMock = new Mock<IGuildInviteRepository>();
 
         _handler = new PreviewInviteHandler(
-            _guildInviteRepositoryMock.Object);
+            _guildInviteRepositoryMock.Object,
+            TestClock.Provider);
     }
 
     [Fact]
@@ -49,7 +50,7 @@ public sealed class PreviewInviteHandlerTests
             MemberCount: 5,
             UsesCount: 0,
             MaxUses: null,
-            ExpiresAtUtc: DateTime.UtcNow.AddHours(-1));
+            ExpiresAtUtc: TestClock.UtcNow.AddHours(-1));
 
         _guildInviteRepositoryMock
             .Setup(x => x.GetPreviewByCodeAsync("ABCD1234", It.IsAny<CancellationToken>()))
@@ -100,7 +101,7 @@ public sealed class PreviewInviteHandlerTests
             MemberCount: 42,
             UsesCount: 3,
             MaxUses: 10,
-            ExpiresAtUtc: DateTime.UtcNow.AddHours(24));
+            ExpiresAtUtc: TestClock.UtcNow.AddHours(24));
 
         _guildInviteRepositoryMock
             .Setup(x => x.GetPreviewByCodeAsync("ABCD1234", It.IsAny<CancellationToken>()))

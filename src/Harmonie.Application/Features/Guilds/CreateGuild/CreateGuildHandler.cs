@@ -21,6 +21,7 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateGuildHandler> _logger;
 
     public CreateGuildHandler(
@@ -29,6 +30,7 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
         IGuildChannelRepository guildChannelRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<CreateGuildHandler> logger)
     {
         _guildRepository = guildRepository;
@@ -36,6 +38,7 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
         _guildChannelRepository = guildChannelRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -56,7 +59,8 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
                     guildNameResult.Error ?? "Guild name is invalid"));
         }
 
-        var guildResult = Guild.Create(guildNameResult.Value, currentUserId);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        var guildResult = Guild.Create(guildNameResult.Value, currentUserId, nowUtc);
         if (guildResult.IsFailure || guildResult.Value is null)
         {
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -68,7 +72,7 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
 
         if (request.IconFileId.HasValue)
         {
-            var iconFileResult = guild.UpdateIconFile(UploadedFileId.From(request.IconFileId.Value));
+            var iconFileResult = guild.UpdateIconFile(UploadedFileId.From(request.IconFileId.Value), nowUtc);
             if (iconFileResult.IsFailure)
                 return BuildIconValidationFailure(nameof(request.IconFileId), iconFileResult);
         }
@@ -79,14 +83,15 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
             if (appearanceResult.IsFailure || appearanceResult.Value is null)
                 return BuildIconValidationFailure("Icon", appearanceResult.Error);
 
-            guild.UpdateIcon(appearanceResult.Value);
+            guild.UpdateIcon(appearanceResult.Value, nowUtc);
         }
 
         var ownerMembershipResult = GuildMember.Create(
             guild.Id,
             currentUserId,
             GuildRole.Admin,
-            invitedByUserId: null);
+            invitedByUserId: null,
+            joinedAtUtc: nowUtc);
         if (ownerMembershipResult.IsFailure || ownerMembershipResult.Value is null)
         {
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -99,7 +104,8 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
             "general",
             GuildChannelType.Text,
             isDefault: true,
-            position: 0);
+            position: 0,
+            createdAtUtc: nowUtc);
         if (defaultTextChannelResult.IsFailure || defaultTextChannelResult.Value is null)
         {
             return ApplicationResponse<CreateGuildResponse>.Fail(
@@ -112,7 +118,8 @@ public sealed class CreateGuildHandler : IAuthenticatedHandler<CreateGuildReques
             "General Voice",
             GuildChannelType.Voice,
             isDefault: true,
-            position: 1);
+            position: 1,
+            createdAtUtc: nowUtc);
         if (defaultVoiceChannelResult.IsFailure || defaultVoiceChannelResult.Value is null)
         {
             return ApplicationResponse<CreateGuildResponse>.Fail(

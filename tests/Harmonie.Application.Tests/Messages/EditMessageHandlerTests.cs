@@ -73,7 +73,8 @@ public sealed class EditMessageHandlerTests
             _messageAttachmentRepositoryMock.Object,
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            uploadedFileCleanupService);
+            uploadedFileCleanupService,
+            TestClock.Provider);
 
         _handler = new EditMessageHandler(
             _guildChannelRepositoryMock.Object,

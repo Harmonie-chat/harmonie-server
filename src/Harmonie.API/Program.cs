@@ -7,6 +7,7 @@ using Harmonie.API.SignalRDoc.Extensions;
 using Harmonie.Application;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Infrastructure;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -22,6 +23,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Services
+builder.Services.TryAddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection("Cors"));

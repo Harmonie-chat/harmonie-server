@@ -19,6 +19,7 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateChannelHandler> _logger;
 
     public CreateChannelHandler(
@@ -27,6 +28,7 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<CreateChannelHandler> logger)
     {
         _guildRepository = guildRepository;
@@ -34,6 +36,7 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -57,7 +60,13 @@ public sealed class CreateChannelHandler : IAuthenticatedHandler<CreateChannelIn
                 "Only guild admins can create channels");
         }
 
-        var channelResult = GuildChannel.Create(request.GuildId, request.Name, request.ChannelType, isDefault: false, request.Position);
+        var channelResult = GuildChannel.Create(
+            request.GuildId,
+            request.Name,
+            request.ChannelType,
+            isDefault: false,
+            request.Position,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (channelResult.IsFailure || channelResult.Value is null)
         {
             return ApplicationResponse<CreateChannelResponse>.Fail(

@@ -1,5 +1,6 @@
 using System.Text;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -57,8 +58,26 @@ public static class AuthenticationConfiguration
                 };
             });
 
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<TimeProvider>((options, timeProvider) =>
+            {
+                options.TokenValidationParameters.LifetimeValidator =
+                    (notBefore, expires, _, _) => IsLifetimeValid(notBefore, expires, timeProvider);
+            });
+
         services.AddAuthorization();
 
         return services;
+    }
+
+    private static bool IsLifetimeValid(
+        DateTime? notBefore,
+        DateTime? expires,
+        TimeProvider timeProvider)
+    {
+        return TokenLifetimeValidator.IsValid(
+            notBefore,
+            expires,
+            timeProvider.GetUtcNow().UtcDateTime);
     }
 }

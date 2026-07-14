@@ -8,10 +8,12 @@ namespace Harmonie.Infrastructure.Persistence.Notifications;
 public sealed class MessageNotificationOutboxRepository : IMessageNotificationOutboxRepository
 {
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public MessageNotificationOutboxRepository(DbSession dbSession)
+    public MessageNotificationOutboxRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task AddPendingAsync(
@@ -42,7 +44,7 @@ public sealed class MessageNotificationOutboxRepository : IMessageNotificationOu
                                NULL)
                            """;
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(
             sql,

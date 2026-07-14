@@ -13,15 +13,18 @@ public sealed class ReactionOrchestrator
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageReactionRepository _reactionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public ReactionOrchestrator(
         IMessageRepository messageRepository,
         IMessageReactionRepository reactionRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _reactionRepository = reactionRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<bool>> AddAsync<TContext>(
@@ -47,7 +50,11 @@ public sealed class ReactionOrchestrator
                 "Message was not found");
         }
 
-        var reaction = MessageReaction.Create(messageId, callerId, emoji);
+        var reaction = MessageReaction.Create(
+            messageId,
+            callerId,
+            emoji,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (reaction.IsFailure || reaction.Value is null)
         {
             return ApplicationResponse<bool>.Fail(

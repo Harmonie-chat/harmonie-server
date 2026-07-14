@@ -12,13 +12,16 @@ public sealed class LogoutHandler : IAuthenticatedHandler<LogoutRequest, LogoutR
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly TimeProvider _timeProvider;
 
     public LogoutHandler(
         IRefreshTokenRepository refreshTokenRepository,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        TimeProvider timeProvider)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _jwtTokenService = jwtTokenService;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<LogoutResponse>> HandleAsync(
@@ -30,7 +33,7 @@ public sealed class LogoutHandler : IAuthenticatedHandler<LogoutRequest, LogoutR
         var revoked = await _refreshTokenRepository.RevokeActiveAsync(
             currentUserId,
             refreshTokenHash,
-            DateTime.UtcNow,
+            _timeProvider.GetUtcNow().UtcDateTime,
             RefreshTokenRevocationReasons.Logout,
             cancellationToken);
 

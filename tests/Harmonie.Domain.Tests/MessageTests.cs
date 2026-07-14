@@ -21,7 +21,8 @@ public sealed class MessageTests
         var result = Message.Create(
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
-            contentResult.Value!);
+            contentResult.Value!,
+            TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -39,7 +40,8 @@ public sealed class MessageTests
         var result = Message.Create(
             new MessageScope.Conversation(ConversationId.New()),
             UserId.New(),
-            contentResult.Value!);
+            contentResult.Value!,
+            TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -57,12 +59,13 @@ public sealed class MessageTests
         var createResult = Message.Create(
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
-            contentResult.Value!);
+            contentResult.Value!,
+            TestTime.UtcNow);
         createResult.IsSuccess.Should().BeTrue();
         createResult.Value.Should().NotBeNull();
 
-        var firstDelete = createResult.Value!.Delete();
-        var secondDelete = createResult.Value.Delete();
+        var firstDelete = createResult.Value!.Delete(TestTime.UtcNow.AddMinutes(1));
+        var secondDelete = createResult.Value.Delete(TestTime.UtcNow.AddMinutes(2));
 
         firstDelete.IsSuccess.Should().BeTrue();
         secondDelete.IsFailure.Should().BeTrue();
@@ -84,7 +87,7 @@ public sealed class MessageTests
             authorUserId: UserId.New(),
             replyToMessageId: null,
             content: contentResult.Value!,
-            createdAtUtc: DateTime.UtcNow,
+            createdAtUtc: TestTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null);
 
@@ -108,7 +111,7 @@ public sealed class MessageTests
             authorUserId: UserId.New(),
             replyToMessageId: null,
             content: contentResult.Value!,
-            createdAtUtc: DateTime.UtcNow,
+            createdAtUtc: TestTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null);
 
@@ -125,7 +128,8 @@ public sealed class MessageTests
         var createResult = Message.Create(
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
-            contentResult.Value!);
+            contentResult.Value!,
+            TestTime.UtcNow);
         createResult.IsSuccess.Should().BeTrue();
 
         var message = createResult.Value!;
@@ -134,11 +138,11 @@ public sealed class MessageTests
         var newContentResult = MessageContent.Create("updated");
         newContentResult.IsSuccess.Should().BeTrue();
 
-        var updateResult = message.UpdateContent(newContentResult.Value!);
+        var updateResult = message.UpdateContent(newContentResult.Value!, TestTime.UtcNow.AddMinutes(1));
 
         updateResult.IsSuccess.Should().BeTrue();
         message.Content.Should().Be(newContentResult.Value);
-        message.UpdatedAtUtc.Should().NotBeNull();
+        message.UpdatedAtUtc.Should().Be(TestTime.UtcNow.AddMinutes(1));
     }
 
     [Fact]
@@ -153,7 +157,7 @@ public sealed class MessageTests
             authorUserId: UserId.New(),
             replyToMessageId: null,
             content: contentResult.Value!,
-            createdAtUtc: DateTime.UtcNow,
+            createdAtUtc: TestTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null);
 
@@ -166,7 +170,8 @@ public sealed class MessageTests
         var result = Message.Create(
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
-            content: null);
+            content: null,
+            createdAtUtc: TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -182,18 +187,19 @@ public sealed class MessageTests
         var createResult = Message.Create(
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
-            contentResult.Value!);
+            contentResult.Value!,
+            TestTime.UtcNow);
         createResult.IsSuccess.Should().BeTrue();
 
         var message = createResult.Value!;
         message.DeletedAtUtc.Should().BeNull();
         message.UpdatedAtUtc.Should().BeNull();
 
-        var deleteResult = message.Delete();
+        var deleteResult = message.Delete(TestTime.UtcNow.AddMinutes(1));
 
         deleteResult.IsSuccess.Should().BeTrue();
-        message.DeletedAtUtc.Should().NotBeNull();
-        message.UpdatedAtUtc.Should().NotBeNull();
+        message.DeletedAtUtc.Should().Be(TestTime.UtcNow.AddMinutes(1));
+        message.UpdatedAtUtc.Should().Be(TestTime.UtcNow.AddMinutes(1));
     }
 
     [Fact]
@@ -207,6 +213,7 @@ public sealed class MessageTests
             new MessageScope.Channel(GuildChannelId.New()),
             userId,
             content: null,
+            createdAtUtc: TestTime.UtcNow,
             mentionedUserIds: new[] { mentionA, mentionB });
 
         result.IsSuccess.Should().BeTrue();
@@ -220,6 +227,7 @@ public sealed class MessageTests
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             content: null,
+            createdAtUtc: TestTime.UtcNow,
             mentionedUserIds: null);
 
         result.IsSuccess.Should().BeTrue();
@@ -235,6 +243,7 @@ public sealed class MessageTests
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             content: null,
+            createdAtUtc: TestTime.UtcNow,
             mentionedUserIds: new[] { duplicateId, duplicateId });
 
         result.IsFailure.Should().BeTrue();
@@ -252,6 +261,7 @@ public sealed class MessageTests
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             content: null,
+            createdAtUtc: TestTime.UtcNow,
             mentionedUserIds: ids);
 
         result.IsFailure.Should().BeTrue();
@@ -269,6 +279,7 @@ public sealed class MessageTests
             new MessageScope.Channel(GuildChannelId.New()),
             UserId.New(),
             content: null,
+            createdAtUtc: TestTime.UtcNow,
             mentionedUserIds: ids);
 
         result.IsSuccess.Should().BeTrue();
@@ -286,7 +297,7 @@ public sealed class MessageTests
             UserId.New(),
             replyToMessageId: null,
             content: null,
-            DateTime.UtcNow,
+            TestTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null,
             mentionedUserIds: mutableList);

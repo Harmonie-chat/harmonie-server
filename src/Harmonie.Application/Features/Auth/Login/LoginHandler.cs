@@ -17,19 +17,22 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly TimeProvider _timeProvider;
 
     public LoginHandler(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<LoginResponse>> HandleAsync(
@@ -63,7 +66,7 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
                 "Invalid email/username or password");
 
         // Record login
-        user.RecordLogin();
+        user.RecordLogin(_timeProvider.GetUtcNow().UtcDateTime);
 
         // Generate tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(

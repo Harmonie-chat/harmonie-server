@@ -99,3 +99,4 @@ The Web Push payload intentionally excludes message content and presentation fie
 - Authentication: JWT bearer middleware
 - Authorization: membership checks in handlers and SignalR hub methods
 - Throttling: fixed-window limiter for message posting (`message-post` policy)
+- Time: hosts register `TimeProvider.System`; time-dependent services receive `TimeProvider`, while Domain methods receive explicit UTC timestamps and never resolve a clock service.

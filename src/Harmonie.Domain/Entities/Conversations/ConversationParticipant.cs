@@ -28,7 +28,8 @@ public sealed class ConversationParticipant
 
     public static Result<ConversationParticipant> Create(
         ConversationId conversationId,
-        UserId userId)
+        UserId userId,
+        DateTime joinedAtUtc)
     {
         if (conversationId is null)
             return Result.Failure<ConversationParticipant>("Conversation ID is required");
@@ -39,7 +40,7 @@ public sealed class ConversationParticipant
         return Result.Success(new ConversationParticipant(
             conversationId,
             userId,
-            DateTime.UtcNow,
+            joinedAtUtc,
             hiddenAtUtc: null));
     }
 
@@ -59,9 +60,9 @@ public sealed class ConversationParticipant
             hiddenAtUtc);
     }
 
-    public void Hide()
+    public void Hide(DateTime hiddenAtUtc)
     {
-        HiddenAtUtc = DateTime.UtcNow;
+        HiddenAtUtc = hiddenAtUtc;
     }
 
     public void Unhide()

@@ -29,7 +29,8 @@ public sealed class MessageReaction
     public static Result<MessageReaction> Create(
         MessageId messageId,
         UserId userId,
-        string emoji)
+        string emoji,
+        DateTime createdAtUtc)
     {
         if (messageId is null)
             return Result.Failure<MessageReaction>("Message ID is required");
@@ -44,7 +45,7 @@ public sealed class MessageReaction
             messageId,
             userId,
             emoji,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
     public static MessageReaction Rehydrate(

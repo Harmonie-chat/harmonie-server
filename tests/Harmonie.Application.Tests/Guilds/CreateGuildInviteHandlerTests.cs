@@ -39,7 +39,8 @@ public sealed class CreateGuildInviteHandlerTests
         _handler = new CreateGuildInviteHandler(
             _guildRepositoryMock.Object,
             _guildInviteRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
     }
 
     [Fact]

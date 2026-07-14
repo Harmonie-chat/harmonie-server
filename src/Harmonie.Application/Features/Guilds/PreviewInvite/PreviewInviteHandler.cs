@@ -6,11 +6,14 @@ namespace Harmonie.Application.Features.Guilds.PreviewInvite;
 public sealed class PreviewInviteHandler : IHandler<string, PreviewInviteResponse>
 {
     private readonly IGuildInviteRepository _guildInviteRepository;
+    private readonly TimeProvider _timeProvider;
 
     public PreviewInviteHandler(
-        IGuildInviteRepository guildInviteRepository)
+        IGuildInviteRepository guildInviteRepository,
+        TimeProvider timeProvider)
     {
         _guildInviteRepository = guildInviteRepository;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<PreviewInviteResponse>> HandleAsync(
@@ -25,7 +28,8 @@ public sealed class PreviewInviteHandler : IHandler<string, PreviewInviteRespons
                 "Invite was not found");
         }
 
-        if (preview.ExpiresAtUtc.HasValue && preview.ExpiresAtUtc.Value <= DateTime.UtcNow)
+        if (preview.ExpiresAtUtc.HasValue
+            && preview.ExpiresAtUtc.Value <= _timeProvider.GetUtcNow().UtcDateTime)
         {
             return ApplicationResponse<PreviewInviteResponse>.Fail(
                 ApplicationErrorCodes.Invite.Expired,

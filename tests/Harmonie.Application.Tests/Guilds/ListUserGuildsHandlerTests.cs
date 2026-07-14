@@ -50,13 +50,13 @@ public sealed class ListUserGuildsHandlerTests
         var guildOne = CreateMembership(
             "Guild Alpha",
             GuildRole.Admin,
-            DateTime.UtcNow.AddDays(-2),
+            TestClock.UtcNow.AddDays(-2),
             hasUnread: true,
             iconFileId: UploadedFileId.From(Guid.Parse("0be76be9-ae27-4961-a4a5-835e1f77387b")),
             iconColor: "#7C3AED",
             iconName: "sword",
             iconBg: "#1F2937");
-        var guildTwo = CreateMembership("Guild Beta", GuildRole.Member, DateTime.UtcNow.AddDays(-1), hasUnread: false);
+        var guildTwo = CreateMembership("Guild Beta", GuildRole.Member, TestClock.UtcNow.AddDays(-1), hasUnread: false);
 
         _guildMemberRepositoryMock
             .Setup(x => x.GetUserGuildMembershipsAsync(userId, It.IsAny<CancellationToken>()))

@@ -50,7 +50,8 @@ public sealed class PinConversationMessageHandlerTests
         _orchestrator = new PinOrchestrator(
             _messageRepositoryMock.Object,
             _pinnedMessageRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
 
         _handler = new PinMessageHandler(
             _conversationRepositoryMock.Object,

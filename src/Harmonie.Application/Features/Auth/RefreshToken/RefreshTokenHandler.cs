@@ -13,22 +13,25 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly TimeProvider _timeProvider;
 
     public RefreshTokenHandler(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _jwtTokenService = jwtTokenService;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<RefreshTokenResponse>> HandleAsync(
         RefreshTokenRequest request,
         CancellationToken cancellationToken = default)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var refreshTokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
         var session = await _refreshTokenRepository.GetByTokenHashAsync(refreshTokenHash, cancellationToken);
 

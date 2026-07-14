@@ -15,7 +15,7 @@ public sealed class GuildMemberTests
         var guildId = GuildId.New();
         var userId = UserId.New();
 
-        var result = GuildMember.Create(guildId, userId, GuildRole.Admin, invitedByUserId: null);
+        var result = GuildMember.Create(guildId, userId, GuildRole.Admin, invitedByUserId: null, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -32,7 +32,8 @@ public sealed class GuildMemberTests
             GuildId.New(),
             UserId.New(),
             GuildRole.Admin,
-            invitedByUserId: UserId.New());
+            invitedByUserId: UserId.New(),
+            TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Admin membership cannot have an inviter");
@@ -47,7 +48,8 @@ public sealed class GuildMemberTests
             GuildId.New(),
             UserId.New(),
             invalidRole,
-            invitedByUserId: null);
+            invitedByUserId: null,
+            TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Guild role is invalid");
@@ -62,7 +64,8 @@ public sealed class GuildMemberTests
             GuildId.New(),
             UserId.New(),
             GuildRole.Member,
-            invitedByUserId: inviterUserId);
+            invitedByUserId: inviterUserId,
+            TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -77,7 +80,7 @@ public sealed class GuildMemberTests
             GuildId.New(),
             UserId.New(),
             (GuildRole)999,
-            DateTime.UtcNow,
+            TestTime.UtcNow,
             invitedByUserId: null);
 
         act.Should().Throw<ArgumentOutOfRangeException>();

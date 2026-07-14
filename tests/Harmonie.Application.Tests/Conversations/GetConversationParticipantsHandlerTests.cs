@@ -62,10 +62,10 @@ public sealed class GetConversationParticipantsHandlerTests
         var userId = UserId.New();
         var otherUserId = UserId.New();
         var conversationId = ConversationId.New();
-        var now = DateTime.UtcNow;
+        var now = TestClock.UtcNow;
 
         var callerParticipant = ConversationParticipant.Rehydrate(
-            conversationId, userId, DateTime.UtcNow, hiddenAtUtc: null);
+            conversationId, userId, TestClock.UtcNow, hiddenAtUtc: null);
 
         var profiles = new[]
         {

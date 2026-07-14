@@ -50,7 +50,8 @@ public sealed class AddConversationReactionHandlerTests
         _orchestrator = new ReactionOrchestrator(
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
 
         _handler = new AddReactionHandler(
             _conversationRepositoryMock.Object,

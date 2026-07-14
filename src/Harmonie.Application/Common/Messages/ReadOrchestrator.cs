@@ -15,13 +15,16 @@ public sealed class ReadOrchestrator
 {
     private readonly IMessageRepository _messageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public ReadOrchestrator(
         IMessageRepository messageRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<bool>> AcknowledgeAsync<TContext>(
@@ -62,7 +65,11 @@ public sealed class ReadOrchestrator
         }
 
         // ── Create read state ───────────────────────────────────────────
-        var state = MessageReadState.Create(callerId, messageScope, resolvedMessageId);
+        var state = MessageReadState.Create(
+            callerId,
+            messageScope,
+            resolvedMessageId,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (state.IsFailure || state.Value is null)
         {
             return ApplicationResponse<bool>.Fail(

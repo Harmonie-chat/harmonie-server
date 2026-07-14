@@ -16,17 +16,20 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UpdateChannelHandler> _logger;
 
     public UpdateChannelHandler(
         IGuildChannelRepository guildChannelRepository,
         IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<UpdateChannelHandler> logger)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -58,6 +61,7 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
         }
 
         var channel = ctx.Channel;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (request.Name is not null)
         {
@@ -74,7 +78,7 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
                     "A channel with this name already exists in this guild");
             }
 
-            var nameResult = channel.UpdateName(request.Name);
+            var nameResult = channel.UpdateName(request.Name, nowUtc);
             if (nameResult.IsFailure)
             {
                 return ApplicationResponse<UpdateChannelResponse>.Fail(
@@ -85,7 +89,7 @@ public sealed class UpdateChannelHandler : IAuthenticatedHandler<UpdateChannelIn
 
         if (request.Position is not null)
         {
-            var positionResult = channel.UpdatePosition(request.Position.Value);
+            var positionResult = channel.UpdatePosition(request.Position.Value, nowUtc);
             if (positionResult.IsFailure)
             {
                 return ApplicationResponse<UpdateChannelResponse>.Fail(

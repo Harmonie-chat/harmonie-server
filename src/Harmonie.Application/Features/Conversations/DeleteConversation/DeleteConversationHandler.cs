@@ -18,6 +18,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
     private readonly IConversationParticipantRepository _participantRepository;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IConversationNotifier _conversationNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<DeleteConversationHandler> _logger;
 
     public DeleteConversationHandler(
@@ -25,12 +26,14 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
         IConversationParticipantRepository participantRepository,
         IRealtimeGroupManager realtimeGroupManager,
         IConversationNotifier conversationNotifier,
+        TimeProvider timeProvider,
         ILogger<DeleteConversationHandler> logger)
     {
         _conversationRepository = conversationRepository;
         _participantRepository = participantRepository;
         _realtimeGroupManager = realtimeGroupManager;
         _conversationNotifier = conversationNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -58,7 +61,7 @@ public sealed class DeleteConversationHandler : IAuthenticatedHandler<DeleteConv
 
         if (access.Conversation.Type == ConversationType.Direct)
         {
-            access.Participant.Hide();
+            access.Participant.Hide(_timeProvider.GetUtcNow().UtcDateTime);
             await _participantRepository.UpdateAsync(access.Participant, cancellationToken);
 
             return ApplicationResponse<bool>.Ok(true);

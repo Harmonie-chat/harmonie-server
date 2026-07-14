@@ -14,15 +14,18 @@ public sealed class RevokeInviteHandler : IAuthenticatedHandler<RevokeInviteInpu
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public RevokeInviteHandler(
         IGuildRepository guildRepository,
         IGuildInviteRepository guildInviteRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _guildRepository = guildRepository;
         _guildInviteRepository = guildInviteRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<bool>> HandleAsync(
@@ -52,7 +55,10 @@ public sealed class RevokeInviteHandler : IAuthenticatedHandler<RevokeInviteInpu
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
-        await _guildInviteRepository.RevokeAsync(request.InviteCode, DateTime.UtcNow, cancellationToken);
+        await _guildInviteRepository.RevokeAsync(
+            request.InviteCode,
+            _timeProvider.GetUtcNow().UtcDateTime,
+            cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return ApplicationResponse<bool>.Ok(true);

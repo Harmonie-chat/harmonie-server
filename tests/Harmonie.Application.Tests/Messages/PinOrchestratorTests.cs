@@ -38,7 +38,8 @@ public sealed class PinOrchestratorTests
         _orchestrator = new PinOrchestrator(
             _messageRepositoryMock.Object,
             _pinnedMessageRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
     }
 
     private static MessageScope ChannelScope() => new MessageScope.Channel(GuildChannelId.New());

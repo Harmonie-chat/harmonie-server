@@ -111,6 +111,6 @@ public sealed class GetGuildMembersHandlerTests
             AvatarBg: null,
             IsActive: true,
             Role: role,
-            JoinedAtUtc: DateTime.UtcNow.AddDays(-1));
+            JoinedAtUtc: TestClock.UtcNow.AddDays(-1));
     }
 }

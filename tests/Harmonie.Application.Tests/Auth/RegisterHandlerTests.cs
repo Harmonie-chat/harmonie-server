@@ -46,7 +46,8 @@ public sealed class RegisterHandlerTests
             _refreshTokenRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _passwordHasherMock.Object,
-            _jwtTokenServiceMock.Object);
+            _jwtTokenServiceMock.Object,
+            TestClock.Provider);
     }
 
     [Fact]
@@ -80,11 +81,11 @@ public sealed class RegisterHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddMinutes(15));
+            .Returns(TestClock.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddDays(30));
+            .Returns(TestClock.UtcNow.AddDays(30));
 
         // Act
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
@@ -155,11 +156,11 @@ public sealed class RegisterHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddMinutes(15));
+            .Returns(TestClock.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddDays(30));
+            .Returns(TestClock.UtcNow.AddDays(30));
 
         _refreshTokenRepositoryMock
             .Setup(x => x.StoreAsync(
@@ -238,11 +239,11 @@ public sealed class RegisterHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddMinutes(15));
+            .Returns(TestClock.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddDays(30));
+            .Returns(TestClock.UtcNow.AddDays(30));
 
         // Act
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
@@ -418,10 +419,10 @@ public sealed class RegisterHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddMinutes(15));
+            .Returns(TestClock.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(DateTime.UtcNow.AddDays(30));
+            .Returns(TestClock.UtcNow.AddDays(30));
     }
 }

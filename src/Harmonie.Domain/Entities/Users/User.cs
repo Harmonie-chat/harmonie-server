@@ -125,12 +125,12 @@ public sealed class User : Entity<UserId>
     public static Result<User> Create(
         Email email,
         Username username,
-        string passwordHash)
+        string passwordHash,
+        DateTime createdAtUtc)
     {
         if (string.IsNullOrWhiteSpace(passwordHash))
             return Result.Failure<User>("Password hash cannot be empty");
 
-        var now = DateTime.UtcNow;
         var user = new User(
             UserId.New(),
             email,
@@ -147,8 +147,8 @@ public sealed class User : Entity<UserId>
             language: null,
             status: UserStatus.Online,
             statusUpdatedAtUtc: null,
-            createdAtUtc: now,
-            updatedAtUtc: now);
+            createdAtUtc,
+            updatedAtUtc: createdAtUtc);
 
         return Result.Success(user);
     }
@@ -195,7 +195,7 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's email address
     /// </summary>
-    public Result UpdateEmail(Email newEmail)
+    public Result UpdateEmail(Email newEmail, DateTime updatedAtUtc)
     {
         if (Email == newEmail)
             return Result.Success();
@@ -203,7 +203,7 @@ public sealed class User : Entity<UserId>
         var oldEmail = Email;
         Email = newEmail;
         IsEmailVerified = false; // Require re-verification
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -211,14 +211,14 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's username
     /// </summary>
-    public Result UpdateUsername(Username newUsername)
+    public Result UpdateUsername(Username newUsername, DateTime updatedAtUtc)
     {
         if (Username == newUsername)
             return Result.Success();
 
         var oldUsername = Username;
         Username = newUsername;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -226,13 +226,13 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's password hash
     /// </summary>
-    public Result UpdatePassword(string newPasswordHash)
+    public Result UpdatePassword(string newPasswordHash, DateTime updatedAtUtc)
     {
         if (string.IsNullOrWhiteSpace(newPasswordHash))
             return Result.Failure("Password hash cannot be empty");
 
         PasswordHash = newPasswordHash;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -240,10 +240,10 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's avatar file
     /// </summary>
-    public Result UpdateAvatarFile(UploadedFileId? avatarFileId)
+    public Result UpdateAvatarFile(UploadedFileId? avatarFileId, DateTime updatedAtUtc)
     {
         AvatarFileId = avatarFileId;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -251,13 +251,13 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's display name
     /// </summary>
-    public Result UpdateDisplayName(string? displayName)
+    public Result UpdateDisplayName(string? displayName, DateTime updatedAtUtc)
     {
         if (displayName?.Length > 100)
             return Result.Failure("Display name is too long");
 
         DisplayName = displayName;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -265,13 +265,13 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's bio
     /// </summary>
-    public Result UpdateBio(string? bio)
+    public Result UpdateBio(string? bio, DateTime updatedAtUtc)
     {
         if (bio?.Length > 500)
             return Result.Failure("Bio is too long");
 
         Bio = bio;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -279,14 +279,14 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Update the user's avatar appearance (color, icon, background).
     /// </summary>
-    public Result UpdateAvatar(Appearance appearance)
+    public Result UpdateAvatar(Appearance appearance, DateTime updatedAtUtc)
     {
         Avatar = appearance;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
-    public Result UpdateTheme(string theme)
+    public Result UpdateTheme(string theme, DateTime updatedAtUtc)
     {
         if (string.IsNullOrWhiteSpace(theme))
             return Result.Failure("Theme cannot be empty");
@@ -295,41 +295,41 @@ public sealed class User : Entity<UserId>
             return Result.Failure("Theme is too long");
 
         Theme = theme;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
-    public Result UpdateLanguage(string? language)
+    public Result UpdateLanguage(string? language, DateTime updatedAtUtc)
     {
         if (language?.Length > 10)
             return Result.Failure("Language is too long");
 
         Language = language;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
-    public Result UpdateStatus(UserStatus status)
+    public Result UpdateStatus(UserStatus status, DateTime updatedAtUtc)
     {
         if (Status == status)
             return Result.Success();
 
         Status = status;
-        StatusUpdatedAtUtc = DateTime.UtcNow;
-        MarkAsUpdated();
+        StatusUpdatedAtUtc = updatedAtUtc;
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
     /// <summary>
     /// Verify the user's email address
     /// </summary>
-    public Result VerifyEmail()
+    public Result VerifyEmail(DateTime updatedAtUtc)
     {
         if (IsEmailVerified)
             return Result.Success();
 
         IsEmailVerified = true;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -337,24 +337,24 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Deactivate the user account
     /// </summary>
-    public Result Deactivate()
+    public Result Deactivate(DateTime updatedAtUtc)
     {
         if (!IsActive)
             return Result.Failure("User is already deactivated");
 
         IsActive = false;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
 
-    public Result Reactivate()
+    public Result Reactivate(DateTime updatedAtUtc)
     {
         if (IsActive)
             return Result.Failure("User is already active");
 
         IsActive = true;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -362,9 +362,9 @@ public sealed class User : Entity<UserId>
     /// <summary>
     /// Record a successful login
     /// </summary>
-    public void RecordLogin()
+    public void RecordLogin(DateTime loginAtUtc)
     {
-        LastLoginAtUtc = DateTime.UtcNow;
-        MarkAsUpdated();
+        LastLoginAtUtc = loginAtUtc;
+        MarkAsUpdated(loginAtUtc);
     }
 }

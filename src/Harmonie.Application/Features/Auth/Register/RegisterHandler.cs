@@ -19,19 +19,22 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly TimeProvider _timeProvider;
 
     public RegisterHandler(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<RegisterResponse>> HandleAsync(
@@ -80,10 +83,12 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var passwordHash = _passwordHasher.HashPassword(emailResult.Value, request.Password);
 
         // Create user entity
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var userResult = User.Create(
             emailResult.Value,
             usernameResult.Value,
-            passwordHash);
+            passwordHash,
+            nowUtc);
 
         if (userResult.IsFailure || userResult.Value is null)
             return ApplicationResponse<RegisterResponse>.Fail(
@@ -105,13 +110,13 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
                         ApplicationErrorCodes.Validation.Invalid,
                         appearanceResult.Error ?? "Avatar appearance is invalid"));
 
-            user.UpdateAvatar(appearanceResult.Value);
+            user.UpdateAvatar(appearanceResult.Value, nowUtc);
         }
 
         // Apply optional theme
         if (request.Theme is not null)
         {
-            var themeResult = user.UpdateTheme(request.Theme);
+            var themeResult = user.UpdateTheme(request.Theme, nowUtc);
             if (themeResult.IsFailure)
                 return ApplicationResponse<RegisterResponse>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,

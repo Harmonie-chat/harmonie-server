@@ -53,7 +53,8 @@ public sealed class RemoveChannelReactionHandlerTests
         _orchestrator = new ReactionOrchestrator(
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestClock.Provider);
 
         _handler = new RemoveReactionHandler(
             _guildChannelRepositoryMock.Object,

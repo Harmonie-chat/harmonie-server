@@ -189,7 +189,8 @@ public sealed class SearchUsersEndpointTests : IClassFixture<HarmonieWebApplicat
         var user = await userRepository.GetByIdAsync(parsedUserId);
         user.Should().NotBeNull();
 
-        var deactivateResult = user!.Deactivate();
+        var timeProvider = scope.ServiceProvider.GetRequiredService<TimeProvider>();
+        var deactivateResult = user!.Deactivate(timeProvider.GetUtcNow().UtcDateTime);
         deactivateResult.IsFailure.Should().BeFalse();
 
         await userRepository.UpdateAsync(user);

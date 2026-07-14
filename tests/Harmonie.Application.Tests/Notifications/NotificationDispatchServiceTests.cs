@@ -36,7 +36,7 @@ public sealed class NotificationDispatchServiceTests
 
         SetupContextAndDevices(context, webPushDevice, fcmDevice);
 
-        await service.DispatchAsync(CreateJob(attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(attempts: 1), TestClock.UtcNow, TestContext.Current.CancellationToken);
 
         webPushAdapter.SentDeviceIds.Should().ContainSingle().Which.Should().Be(webPushDevice.Id);
         fcmAdapter.SentDeviceIds.Should().ContainSingle().Which.Should().Be(fcmDevice.Id);
@@ -60,7 +60,7 @@ public sealed class NotificationDispatchServiceTests
 
         SetupContextAndDevices(CreateContext(recipientId), invalidDevice);
 
-        await service.DispatchAsync(CreateJob(attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(attempts: 1), TestClock.UtcNow, TestContext.Current.CancellationToken);
 
         _deviceRepositoryMock.Verify(
             x => x.DeleteManyAsync(
@@ -145,8 +145,8 @@ public sealed class NotificationDispatchServiceTests
 
         SetupContextAndDevices(CreateContext(recipientId), succeededDevice, retryingDevice);
 
-        await service.DispatchAsync(CreateJob(jobId, attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
-        await service.DispatchAsync(CreateJob(jobId, attempts: 2), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(jobId, attempts: 1), TestClock.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(jobId, attempts: 2), TestClock.UtcNow, TestContext.Current.CancellationToken);
 
         adapter.SentDeviceIds.Count(deviceId => deviceId == succeededDevice.Id).Should().Be(1);
         adapter.SentDeviceIds.Count(deviceId => deviceId == retryingDevice.Id).Should().Be(2);
@@ -164,7 +164,7 @@ public sealed class NotificationDispatchServiceTests
 
         SetupContextAndDevices(CreateContext(recipientId), device);
 
-        await service.DispatchAsync(CreateJob(attempts: 1), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        await service.DispatchAsync(CreateJob(attempts: 1), TestClock.UtcNow, TestContext.Current.CancellationToken);
 
         _outboxRepositoryMock.Verify(
             x => x.MarkProcessedAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
@@ -259,10 +259,10 @@ public sealed class NotificationDispatchServiceTests
             MessageId.New(),
             MessageNotificationOutboxStatuses.Processing,
             attempts,
-            DateTime.UtcNow,
-            DateTime.UtcNow.AddMinutes(5),
+            TestClock.UtcNow,
+            TestClock.UtcNow.AddMinutes(5),
             null,
-            DateTime.UtcNow,
+            TestClock.UtcNow,
             null);
     }
 

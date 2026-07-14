@@ -12,10 +12,12 @@ namespace Harmonie.Infrastructure.Persistence.Conversations;
 public sealed class ConversationRepository : IConversationRepository
 {
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public ConversationRepository(DbSession dbSession)
+    public ConversationRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task<Conversation?> GetByIdAsync(
@@ -80,7 +82,7 @@ public sealed class ConversationRepository : IConversationRepository
         // The lookup primary key (user1_id, user2_id) is the concurrency guard:
         // when two requests race past the select above, only one insert wins.
         var newConversationId = ConversationId.New();
-        var createdAtUtc = DateTime.UtcNow;
+        var createdAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         const string insertConversationSql = """
                                               INSERT INTO conversations (id, type, name, created_at_utc)
@@ -159,7 +161,7 @@ public sealed class ConversationRepository : IConversationRepository
         CancellationToken cancellationToken = default)
     {
         var conversationId = ConversationId.New();
-        var createdAtUtc = DateTime.UtcNow;
+        var createdAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
 
