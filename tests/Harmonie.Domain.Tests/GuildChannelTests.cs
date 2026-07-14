@@ -13,11 +13,11 @@ public sealed class GuildChannelTests
     {
         var channel = CreateChannel();
 
-        var result = channel.UpdateName("updated-name", TestTime.UtcNow);
+        var result = channel.UpdateName("updated-name", TestClock.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         channel.Name.Should().Be("updated-name");
-        channel.UpdatedAtUtc.Should().Be(TestTime.UtcNow);
+        channel.UpdatedAtUtc.Should().Be(TestClock.UtcNow);
     }
 
     [Fact]
@@ -25,11 +25,11 @@ public sealed class GuildChannelTests
     {
         var channel = CreateChannel();
 
-        var result = channel.UpdatePosition(4, TestTime.UtcNow);
+        var result = channel.UpdatePosition(4, TestClock.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         channel.Position.Should().Be(4);
-        channel.UpdatedAtUtc.Should().Be(TestTime.UtcNow);
+        channel.UpdatedAtUtc.Should().Be(TestClock.UtcNow);
     }
 
     private static GuildChannel CreateChannel()
@@ -40,7 +40,7 @@ public sealed class GuildChannelTests
             GuildChannelType.Text,
             isDefault: true,
             position: 0,
-            createdAtUtc: TestTime.UtcNow);
+            createdAtUtc: TestClock.UtcNow);
 
         if (channelResult.IsFailure || channelResult.Value is null)
             throw new InvalidOperationException("Failed to create guild channel for tests.");

@@ -41,9 +41,10 @@ public sealed class WorkerDependencyInjectionTests
             })
             .Build();
         var services = new ServiceCollection();
+        var timeProvider = TestClock.Provider;
 
         services.AddLogging();
-        services.AddSingleton(TestClock.Provider);
+        services.AddSingleton(timeProvider);
         services.AddWorkerServices(configuration);
 
         await using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -52,7 +53,7 @@ public sealed class WorkerDependencyInjectionTests
             ValidateScopes = true
         });
 
-        serviceProvider.GetRequiredService<TimeProvider>().Should().BeSameAs(TestClock.Provider);
+        serviceProvider.GetRequiredService<TimeProvider>().Should().BeSameAs(timeProvider);
 
         await using var scope = serviceProvider.CreateAsyncScope();
         scope.ServiceProvider.GetRequiredService<INotificationDispatchService>().Should().NotBeNull();

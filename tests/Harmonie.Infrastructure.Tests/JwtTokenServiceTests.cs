@@ -10,22 +10,20 @@ namespace Harmonie.Infrastructure.Tests;
 
 public sealed class JwtTokenServiceTests
 {
-    private static readonly DateTimeOffset InitialUtcNow = new(2026, 7, 14, 12, 0, 0, TimeSpan.Zero);
-
     [Fact]
     public void ExpirationMethods_ShouldUseInjectedTimeProvider()
     {
-        var timeProvider = new MutableTimeProvider(InitialUtcNow);
+        var timeProvider = TestClock.Create();
         var service = CreateService(timeProvider);
 
-        service.GetAccessTokenExpirationUtc().Should().Be(InitialUtcNow.UtcDateTime.AddMinutes(15));
-        service.GetRefreshTokenExpirationUtc().Should().Be(InitialUtcNow.UtcDateTime.AddDays(30));
+        service.GetAccessTokenExpirationUtc().Should().Be(TestClock.UtcNow.AddMinutes(15));
+        service.GetRefreshTokenExpirationUtc().Should().Be(TestClock.UtcNow.AddDays(30));
     }
 
     [Fact]
     public void ValidateAccessToken_ShouldUseInjectedTimeProviderForLifetime()
     {
-        var timeProvider = new MutableTimeProvider(InitialUtcNow);
+        var timeProvider = TestClock.Create();
         var service = CreateService(timeProvider);
         var userId = UserId.New();
         var email = Email.Create("clock@harmonie.chat").Value!;
@@ -35,7 +33,7 @@ public sealed class JwtTokenServiceTests
         service.ValidateAccessToken(token, out var validatedUserId).Should().BeTrue();
         validatedUserId.Should().Be(userId);
 
-        timeProvider.SetUtcNow(InitialUtcNow.AddMinutes(16));
+        timeProvider.Advance(TimeSpan.FromMinutes(16));
 
         service.ValidateAccessToken(token, out validatedUserId).Should().BeFalse();
         validatedUserId.Should().BeNull();
@@ -58,15 +56,4 @@ public sealed class JwtTokenServiceTests
             NullLogger<JwtTokenService>.Instance);
     }
 
-    private sealed class MutableTimeProvider(DateTimeOffset utcNow) : TimeProvider
-    {
-        private DateTimeOffset _utcNow = utcNow;
-
-        public override DateTimeOffset GetUtcNow() => _utcNow;
-
-        public void SetUtcNow(DateTimeOffset value)
-        {
-            _utcNow = value;
-        }
-    }
 }

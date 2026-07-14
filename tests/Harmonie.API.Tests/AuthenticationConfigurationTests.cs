@@ -13,8 +13,8 @@ public sealed class AuthenticationConfigurationTests
     [Fact]
     public void JwtLifetimeValidator_ShouldUseRegisteredTimeProvider()
     {
-        var nowUtc = new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero);
-        var timeProvider = new FixedTimeProvider(nowUtc);
+        var timeProvider = TestClock.Create();
+        var nowUtc = timeProvider.GetUtcNow();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -46,8 +46,4 @@ public sealed class AuthenticationConfigurationTests
             options.TokenValidationParameters).Should().BeFalse();
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => utcNow;
-    }
 }

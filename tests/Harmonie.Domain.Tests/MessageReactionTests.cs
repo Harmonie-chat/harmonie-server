@@ -14,20 +14,20 @@ public sealed class MessageReactionTests
         var messageId = MessageId.New();
         var userId = UserId.New();
 
-        var result = MessageReaction.Create(messageId, userId, "👍", TestTime.UtcNow);
+        var result = MessageReaction.Create(messageId, userId, "👍", TestClock.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value!.MessageId.Should().Be(messageId);
         result.Value.UserId.Should().Be(userId);
         result.Value.Emoji.Should().Be("👍");
-        result.Value.CreatedAtUtc.Should().Be(TestTime.UtcNow);
+        result.Value.CreatedAtUtc.Should().Be(TestClock.UtcNow);
     }
 
     [Fact]
     public void Create_WithNullMessageId_ShouldFail()
     {
-        var result = MessageReaction.Create(null!, UserId.New(), "👍", TestTime.UtcNow);
+        var result = MessageReaction.Create(null!, UserId.New(), "👍", TestClock.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Message ID is required");
@@ -36,7 +36,7 @@ public sealed class MessageReactionTests
     [Fact]
     public void Create_WithNullUserId_ShouldFail()
     {
-        var result = MessageReaction.Create(MessageId.New(), null!, "👍", TestTime.UtcNow);
+        var result = MessageReaction.Create(MessageId.New(), null!, "👍", TestClock.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("User ID is required");
@@ -48,7 +48,7 @@ public sealed class MessageReactionTests
     [InlineData("  ")]
     public void Create_WithInvalidEmoji_ShouldFail(string? emoji)
     {
-        var result = MessageReaction.Create(MessageId.New(), UserId.New(), emoji!, TestTime.UtcNow);
+        var result = MessageReaction.Create(MessageId.New(), UserId.New(), emoji!, TestClock.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Emoji is required");
@@ -57,7 +57,7 @@ public sealed class MessageReactionTests
     [Fact]
     public void Rehydrate_WithNullMessageId_ShouldThrow()
     {
-        var act = () => MessageReaction.Rehydrate(null!, UserId.New(), "👍", TestTime.UtcNow);
+        var act = () => MessageReaction.Rehydrate(null!, UserId.New(), "👍", TestClock.UtcNow);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -65,7 +65,7 @@ public sealed class MessageReactionTests
     [Fact]
     public void Rehydrate_WithNullUserId_ShouldThrow()
     {
-        var act = () => MessageReaction.Rehydrate(MessageId.New(), null!, "👍", TestTime.UtcNow);
+        var act = () => MessageReaction.Rehydrate(MessageId.New(), null!, "👍", TestClock.UtcNow);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -73,7 +73,7 @@ public sealed class MessageReactionTests
     [Fact]
     public void Rehydrate_WithEmptyEmoji_ShouldThrow()
     {
-        var act = () => MessageReaction.Rehydrate(MessageId.New(), UserId.New(), "", TestTime.UtcNow);
+        var act = () => MessageReaction.Rehydrate(MessageId.New(), UserId.New(), "", TestClock.UtcNow);
 
         act.Should().Throw<ArgumentException>();
     }

@@ -200,13 +200,8 @@ public sealed class NotificationCleanupProcessorTests
         return new NotificationCleanupProcessor(
             cleanupRepository,
             Options.Create(options),
-            new FixedTimeProvider(nowUtc ?? new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero)),
+            new FakeTimeProvider(nowUtc ?? new DateTimeOffset(TestClock.UtcNow)),
             logger ?? NullLogger<NotificationCleanupProcessor>.Instance);
-    }
-
-    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
     private sealed class RecordingLogger<T> : ILogger<T>
