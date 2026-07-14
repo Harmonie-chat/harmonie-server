@@ -20,8 +20,14 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(PushNotificationOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        services.AddOptions<NotificationCleanupOptions>()
+            .Bind(configuration.GetSection(NotificationCleanupOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.AddScoped<IPushNotificationBatchProcessor, PushNotificationBatchProcessor>();
+        services.AddScoped<INotificationCleanupProcessor, NotificationCleanupProcessor>();
         services.AddHostedService<PushNotificationWorker>();
+        services.AddHostedService<NotificationCleanupWorker>();
 
         return services;
     }

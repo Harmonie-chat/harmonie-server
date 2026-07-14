@@ -29,6 +29,12 @@ public sealed class WorkerDependencyInjectionTests
                 ["PushNotifications:MaxConcurrentJobs"] = "4",
                 ["PushNotifications:MaxAttempts"] = "5",
                 ["PushNotifications:RetryBaseDelaySeconds"] = "30",
+                ["NotificationCleanup:Enabled"] = "false",
+                ["NotificationCleanup:PollIntervalHours"] = "24",
+                ["NotificationCleanup:BatchSize"] = "500",
+                ["NotificationCleanup:ProcessedOutboxRetentionDays"] = "7",
+                ["NotificationCleanup:FailedOutboxRetentionDays"] = "30",
+                ["NotificationCleanup:ExpiredDeviceRetentionDays"] = "7",
                 ["VAPID_PUBLIC_KEY"] = string.Empty,
                 ["VAPID_PRIVATE_KEY"] = string.Empty,
                 ["VAPID_SUBJECT"] = "mailto:contact@harmonie.app"
@@ -48,7 +54,9 @@ public sealed class WorkerDependencyInjectionTests
         await using var scope = serviceProvider.CreateAsyncScope();
         scope.ServiceProvider.GetRequiredService<INotificationDispatchService>().Should().NotBeNull();
         scope.ServiceProvider.GetRequiredService<IPushNotificationBatchProcessor>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<INotificationCleanupProcessor>().Should().NotBeNull();
         serviceProvider.GetServices<IHostedService>().Should().ContainSingle(service => service is PushNotificationWorker);
+        serviceProvider.GetServices<IHostedService>().Should().ContainSingle(service => service is NotificationCleanupWorker);
         scope.ServiceProvider.GetService<IUserPresenceNotifier>().Should().BeNull();
         scope.ServiceProvider.GetService<IObjectStorageService>().Should().BeNull();
         scope.ServiceProvider.GetService<ILiveKitWebhookReceiver>().Should().BeNull();
