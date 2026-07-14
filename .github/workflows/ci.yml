@@ -147,7 +147,9 @@ jobs:
         exit 1
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: |
+        dotnet restore
+        dotnet tool restore
 
     - name: Build
       run: dotnet build --no-restore --configuration Release
@@ -184,6 +186,39 @@ jobs:
         name: Test Results
         path: 'TestResults/*.trx'
         reporter: dotnet-trx
+        use-actions-summary: false
+
+    - name: Generate coverage summary
+      run: |
+        dotnet tool run reportgenerator \
+          '-reports:TestResults/*.cobertura.xml' \
+          '-targetdir:TestResults/CoverageSummary' \
+          '-reporttypes:MarkdownAssembliesSummary'
+        cat TestResults/CoverageSummary/Summary.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Publish coverage summary
+      uses: actions/github-script@v9
+      with:
+        script: |
+          const fs = require("fs");
+          const summary = fs.readFileSync(
+            "TestResults/CoverageSummary/Summary.md",
+            "utf8"
+          );
+          const headSha = context.payload.pull_request?.head?.sha ?? context.sha;
+
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head_sha: headSha,
+            name: "Code Coverage",
+            status: "completed",
+            conclusion: "success",
+            output: {
+              title: "Code Coverage",
+              summary
+            }
+          });
 
     - name: Stop containers
       if: always()
@@ -195,6 +230,8 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: coverage-reports
-        path: TestResults/*.cobertura.xml
+        path: |
+          TestResults/*.cobertura.xml
+          TestResults/CoverageSummary/Summary.md
         if-no-files-found: error
         retention-days: 14
