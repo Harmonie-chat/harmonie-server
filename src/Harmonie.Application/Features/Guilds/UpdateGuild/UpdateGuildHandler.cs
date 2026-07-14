@@ -34,6 +34,7 @@ public sealed class UpdateGuildHandler
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IGuildNotifier _guildNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UpdateGuildHandler> _logger;
 
     public UpdateGuildHandler(
@@ -41,12 +42,14 @@ public sealed class UpdateGuildHandler
         UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         IGuildNotifier guildNotifier,
+        TimeProvider timeProvider,
         ILogger<UpdateGuildHandler> logger)
     {
         _guildRepository = guildRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _guildNotifier = guildNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -75,6 +78,7 @@ public sealed class UpdateGuildHandler
 
         var guild = ctx.Guild;
         var previousIconFileId = guild.IconFileId;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (input.NameIsSet)
         {
@@ -86,7 +90,7 @@ public sealed class UpdateGuildHandler
                     guildNameResult.Error ?? "Guild name is invalid");
             }
 
-            var updateResult = guild.UpdateName(guildNameResult.Value);
+            var updateResult = guild.UpdateName(guildNameResult.Value, nowUtc);
             if (updateResult.IsFailure)
                 return BuildValidationFailure(nameof(input.Name), updateResult);
         }
@@ -94,7 +98,7 @@ public sealed class UpdateGuildHandler
         if (input.IconFileIdIsSet)
         {
             var iconFileId = input.IconFileId.HasValue ? UploadedFileId.From(input.IconFileId.Value) : null;
-            var iconFileResult = guild.UpdateIconFile(iconFileId);
+            var iconFileResult = guild.UpdateIconFile(iconFileId, nowUtc);
             if (iconFileResult.IsFailure)
                 return BuildValidationFailure(nameof(input.IconFileId), iconFileResult);
         }
@@ -109,7 +113,7 @@ public sealed class UpdateGuildHandler
             if (newAppearanceResult.IsFailure || newAppearanceResult.Value is null)
                 return BuildValidationFailure("Icon", newAppearanceResult.Error ?? "Icon appearance is invalid");
 
-            guild.UpdateIcon(newAppearanceResult.Value);
+            guild.UpdateIcon(newAppearanceResult.Value, nowUtc);
         }
 
         var anyFieldSet = input.NameIsSet

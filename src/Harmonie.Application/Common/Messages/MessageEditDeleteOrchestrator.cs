@@ -23,19 +23,22 @@ public sealed class MessageEditDeleteOrchestrator
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
+    private readonly TimeProvider _timeProvider;
 
     public MessageEditDeleteOrchestrator(
         IMessageRepository messageRepository,
         IMessageAttachmentRepository messageAttachmentRepository,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        UploadedFileCleanupService uploadedFileCleanupService)
+        UploadedFileCleanupService uploadedFileCleanupService,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _messageAttachmentRepository = messageAttachmentRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _uploadedFileCleanupService = uploadedFileCleanupService;
+        _timeProvider = timeProvider;
     }
 
     /// <remarks>
@@ -82,7 +85,8 @@ public sealed class MessageEditDeleteOrchestrator
         }
 
         // ── Update content ──────────────────────────────────────────────
-        var updateResult = message.UpdateContent(contentResult.Value);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        var updateResult = message.UpdateContent(contentResult.Value, nowUtc);
         if (updateResult.IsFailure)
         {
             return ApplicationResponse<MessageEditResult>.Fail(
@@ -122,7 +126,7 @@ public sealed class MessageEditDeleteOrchestrator
                 validatedIds = ((MentionValidationResult.Success)validated).Value;
             }
 
-            var replaceResult = message.ReplaceMentions(validatedIds);
+            var replaceResult = message.ReplaceMentions(validatedIds, nowUtc);
             if (replaceResult.IsFailure)
             {
                 return ApplicationResponse<MessageEditResult>.Fail(
@@ -198,7 +202,7 @@ public sealed class MessageEditDeleteOrchestrator
         }
 
         // ── Soft delete ─────────────────────────────────────────────────
-        var deleteResult = message.Delete();
+        var deleteResult = message.Delete(_timeProvider.GetUtcNow().UtcDateTime);
         if (deleteResult.IsFailure)
         {
             return ApplicationResponse<bool>.Fail(

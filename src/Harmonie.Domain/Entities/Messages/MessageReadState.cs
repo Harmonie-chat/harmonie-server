@@ -31,7 +31,8 @@ public sealed class MessageReadState
     public static Result<MessageReadState> Create(
         UserId userId,
         MessageScope scope,
-        MessageId lastReadMessageId)
+        MessageId lastReadMessageId,
+        DateTime readAtUtc)
     {
         if (userId is null)
             return Result.Failure<MessageReadState>("User ID is required");
@@ -43,7 +44,7 @@ public sealed class MessageReadState
             return Result.Failure<MessageReadState>("Last read message ID is required");
 
         return Result.Success(new MessageReadState(
-            userId, scope, lastReadMessageId, DateTime.UtcNow));
+            userId, scope, lastReadMessageId, readAtUtc));
     }
 
     public static MessageReadState Rehydrate(
@@ -59,9 +60,9 @@ public sealed class MessageReadState
         return new MessageReadState(userId, scope, lastReadMessageId, readAtUtc);
     }
 
-    public void Acknowledge(MessageId messageId)
+    public void Acknowledge(MessageId messageId, DateTime readAtUtc)
     {
         LastReadMessageId = messageId;
-        ReadAtUtc = DateTime.UtcNow;
+        ReadAtUtc = readAtUtc;
     }
 }

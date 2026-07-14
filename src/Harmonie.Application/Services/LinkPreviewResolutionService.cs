@@ -23,13 +23,16 @@ public sealed class LinkPreviewResolutionService
     private const int MaxUrlsPerMessage = 5;
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<LinkPreviewResolutionService> _logger;
 
     public LinkPreviewResolutionService(
         IServiceScopeFactory serviceScopeFactory,
+        TimeProvider timeProvider,
         ILogger<LinkPreviewResolutionService> logger)
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -205,7 +208,7 @@ public sealed class LinkPreviewResolutionService
         return previews;
     }
 
-    private static async Task<LinkPreviewDto?> ResolveSingleUrlAsync(
+    private async Task<LinkPreviewDto?> ResolveSingleUrlAsync(
         MessageId messageId,
         Uri url,
         ILinkPreviewRepository repo,
@@ -226,7 +229,7 @@ public sealed class LinkPreviewResolutionService
                     cached.Description,
                     cached.ImageUrl,
                     cached.SiteName,
-                    DateTime.UtcNow),
+                    _timeProvider.GetUtcNow().UtcDateTime),
                 cancellationToken);
             return MapToDto(urlText, cached.Title, cached.Description, cached.ImageUrl, cached.SiteName);
         }
@@ -243,7 +246,7 @@ public sealed class LinkPreviewResolutionService
             metadata.Description,
             metadata.ImageUrl,
             metadata.SiteName,
-            DateTime.UtcNow);
+            _timeProvider.GetUtcNow().UtcDateTime);
 
         await repo.AddAsync(preview, cancellationToken);
 

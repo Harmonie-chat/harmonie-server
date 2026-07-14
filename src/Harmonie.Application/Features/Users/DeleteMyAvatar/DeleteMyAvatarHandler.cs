@@ -15,6 +15,7 @@ public sealed class DeleteMyAvatarHandler : IAuthenticatedHandler<Unit, bool>
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserProfileNotifier _userProfileNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<DeleteMyAvatarHandler> _logger;
 
     public DeleteMyAvatarHandler(
@@ -22,12 +23,14 @@ public sealed class DeleteMyAvatarHandler : IAuthenticatedHandler<Unit, bool>
         UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         IUserProfileNotifier userProfileNotifier,
+        TimeProvider timeProvider,
         ILogger<DeleteMyAvatarHandler> logger)
     {
         _userRepository = userRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _userProfileNotifier = userProfileNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -52,7 +55,9 @@ public sealed class DeleteMyAvatarHandler : IAuthenticatedHandler<Unit, bool>
                 "User avatar was not found");
         }
 
-        var avatarUpdateResult = user.UpdateAvatarFile(null);
+        var avatarUpdateResult = user.UpdateAvatarFile(
+            null,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (avatarUpdateResult.IsFailure)
         {
             return ApplicationResponse<bool>.Fail(

@@ -124,7 +124,7 @@ public sealed class ListBansHandlerTests
                 null,
                 "Spamming",
                 ownerId,
-                DateTime.UtcNow)
+                TestTime.UtcNow)
         };
 
         _guildBanRepositoryMock

@@ -52,7 +52,8 @@ public sealed class AddChannelReactionHandlerTests
         _orchestrator = new ReactionOrchestrator(
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
 
         _handler = new AddReactionHandler(
             _guildChannelRepositoryMock.Object,

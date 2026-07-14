@@ -2,6 +2,7 @@ using Harmonie.Application.Common;
 using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Services;
 using Harmonie.Domain.Common;
@@ -22,20 +23,26 @@ public sealed class MessageSendOrchestrator
     private readonly IMessageAttachmentRepository _messageAttachmentRepository;
     private readonly MessageAttachmentResolver _attachmentResolver;
     private readonly IUserRepository _userRepository;
+    private readonly IMessageNotificationOutboxRepository _messageNotificationOutboxRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public MessageSendOrchestrator(
         IMessageRepository messageRepository,
         IMessageAttachmentRepository messageAttachmentRepository,
         MessageAttachmentResolver attachmentResolver,
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IMessageNotificationOutboxRepository messageNotificationOutboxRepository,
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _messageAttachmentRepository = messageAttachmentRepository;
         _attachmentResolver = attachmentResolver;
         _userRepository = userRepository;
+        _messageNotificationOutboxRepository = messageNotificationOutboxRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     /// <remarks>
@@ -137,10 +144,12 @@ public sealed class MessageSendOrchestrator
         }
 
         // ── Domain message creation ─────────────────────────────────────
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var messageResult = Message.Create(
             messageScope,
             callerId,
             content,
+            nowUtc,
             replyToTargetId,
             mentionUserIds);
         if (messageResult.IsFailure || messageResult.Value is null)
@@ -179,6 +188,7 @@ public sealed class MessageSendOrchestrator
         if (mentionUserIds is { Length: > 0 })
             await _messageRepository.AddMentionsAsync(messageResult.Value.Id, mentionUserIds, ct);
         await scope.ApplyInTransactionSideEffectsAsync(context, ct);
+        await _messageNotificationOutboxRepository.AddPendingAsync(messageResult.Value.Id, nowUtc, ct);
         await transaction.CommitAsync(ct);
 
         // ── Reply preview DTO ───────────────────────────────────────────

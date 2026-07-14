@@ -9,13 +9,19 @@ public sealed class InMemoryVoiceParticipantCache : IVoiceParticipantCache
 {
     private static readonly TimeSpan ParticipantTtl = TimeSpan.FromHours(1);
 
+    private readonly TimeProvider _timeProvider;
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, CachedEntry>> _channels = new();
     private readonly ConcurrentDictionary<(Guid ChannelId, Guid UserId), ConcurrentDictionary<string, byte>> _screenShareTrackSids = new();
+
+    public InMemoryVoiceParticipantCache(TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
+    }
 
     public Task AddOrUpdateAsync(GuildChannelId channelId, CachedVoiceParticipant participant, CancellationToken cancellationToken = default)
     {
         var channel = _channels.GetOrAdd(channelId.Value, _ => new ConcurrentDictionary<Guid, CachedEntry>());
-        channel[participant.UserId.Value] = new CachedEntry(participant, DateTime.UtcNow + ParticipantTtl);
+        channel[participant.UserId.Value] = new CachedEntry(participant, _timeProvider.GetUtcNow().UtcDateTime + ParticipantTtl);
         return Task.CompletedTask;
     }
 
@@ -32,7 +38,7 @@ public sealed class InMemoryVoiceParticipantCache : IVoiceParticipantCache
         if (!_channels.TryGetValue(channelId.Value, out var channel))
             return Task.FromResult<IReadOnlyList<CachedVoiceParticipant>>(Array.Empty<CachedVoiceParticipant>());
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var result = channel.Values
             .Where(e => e.ExpiresAt > now)
             .Select(e =>

@@ -38,7 +38,10 @@ public sealed class AcknowledgeChannelReadHandlerTests
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
-        _orchestrator = new ReadOrchestrator(_messageRepositoryMock.Object, _unitOfWorkMock.Object);
+        _orchestrator = new ReadOrchestrator(
+            _messageRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
 
         _handler = new AcknowledgeReadHandler(
             _guildChannelRepositoryMock.Object,

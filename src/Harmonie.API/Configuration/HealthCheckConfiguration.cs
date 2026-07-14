@@ -30,10 +30,11 @@ public static class HealthCheckConfiguration
     {
         httpContext.Response.ContentType = "application/json";
 
+        var timeProvider = httpContext.RequestServices.GetRequiredService<TimeProvider>();
         var payload = new
         {
             status = report.Status.ToString(),
-            timestamp = DateTime.UtcNow,
+            timestamp = timeProvider.GetUtcNow().UtcDateTime,
             checks = report.Entries.ToDictionary(
                 entry => entry.Key,
                 entry => new

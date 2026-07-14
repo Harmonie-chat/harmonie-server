@@ -102,7 +102,7 @@ public sealed class PinnedMessageFetchOrchestratorTests
     [Fact]
     public async Task FetchAsync_ShouldEncodeNextCursor()
     {
-        var cursor = new PinnedMessagesCursor(DateTime.UtcNow, Guid.NewGuid());
+        var cursor = new PinnedMessagesCursor(TestTime.UtcNow, Guid.NewGuid());
         var page = new PinnedMessagesPage(
             Items: Array.Empty<PinnedMessageSummary>(),
             NextCursor: cursor,

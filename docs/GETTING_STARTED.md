@@ -76,7 +76,58 @@ be backed by an S3-compatible service.
 - Health: `GET /health`
 - OpenAPI: browse Scalar API reference at `/scalar` (Development only)
 
-## 5. Run Tests
+## 5. Run Background Workers
+
+The worker host is a separate executable in the same solution. It currently provides the runtime host for background notification work and can be run independently from the API.
+
+PowerShell:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project src/Harmonie.Workers
+```
+
+Bash:
+
+```bash
+DOTNET_ENVIRONMENT=Development dotnet run --project src/Harmonie.Workers
+```
+
+With compose, the worker service is optional and behind the `workers` profile:
+
+```bash
+podman compose --profile workers up -d harmonie-workers
+```
+
+Push notification dispatch runs in this worker host. The API only registers Web Push subscriptions and creates notification outbox jobs when messages are sent. The worker claims pending jobs and sends notifications through the configured delivery adapters.
+
+Development Web Push configuration is provided through `VAPID_*` environment variables in compose. For local API docs, Scalar exposes the Web Push endpoints:
+
+- `GET /api/notifications/web-push-public-key` returns the VAPID public key clients use with `PushManager.subscribe()`.
+- `PUT /api/notifications/push-subscriptions` registers the resulting browser subscription.
+
+Current backend notification behavior:
+- conversation messages notify participants except the author;
+- guild channel messages notify channel candidate members except the author;
+- payloads are minimal `message.created` business data, without message content or UI presentation fields;
+- retries are tracked per device, so a partial Web Push failure does not resend to devices that already succeeded.
+
+Notification cleanup is configured and enabled by default in the worker host. Adjust the retention periods for operational debugging, or set `Enabled` to `false` to disable it:
+
+```json
+"NotificationCleanup": {
+  "Enabled": true,
+  "PollIntervalSeconds": 1800,
+  "BatchSize": 500,
+  "ProcessedOutboxRetentionDays": 7,
+  "FailedOutboxRetentionDays": 30,
+  "ExpiredDeviceRetentionDays": 7
+}
+```
+
+The worker deletes terminal outbox jobs and expired notification devices in small, multi-instance-safe batches. Failed jobs use a longer default retention period for troubleshooting.
+
+## 6. Run Tests
 
 ```bash
 dotnet test

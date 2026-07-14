@@ -76,6 +76,7 @@ services:
       - Uploads__MaxFileSizeBytes=26214400
       - ObjectStorage__LocalBasePath=/app/uploads
       - ObjectStorage__LocalBaseUrl=http://192.168.1.67:55401/files
+      - VAPID_PUBLIC_KEY=
     ports:
       - "55401:80"
     volumes:
@@ -87,6 +88,28 @@ services:
         condition: service_completed_successfully
       livekit:
         condition: service_started
+    networks:
+      - harmonie-network
+
+  # Harmonie background workers (optional)
+  harmonie-workers:
+    profiles: ["workers"]
+    build:
+      context: .
+      dockerfile: src/Harmonie.Workers/Dockerfile
+    container_name: harmonie-workers
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=harmonie;Username=harmonie_user;Password=harmonie_password
+      - PushNotifications__Enabled=false
+      - VAPID_PUBLIC_KEY=
+      - VAPID_PRIVATE_KEY=
+      - VAPID_SUBJECT=mailto:contact@harmonie.app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      harmonie-migrations:
+        condition: service_completed_successfully
     networks:
       - harmonie-network
 

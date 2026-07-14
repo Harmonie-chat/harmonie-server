@@ -40,6 +40,7 @@ public sealed class MessageLinkPreview
     public static Result<MessageLinkPreview> Create(
         MessageId messageId,
         string url,
+        DateTime fetchedAtUtc,
         string? title = null,
         string? description = null,
         string? imageUrl = null,
@@ -58,7 +59,7 @@ public sealed class MessageLinkPreview
             description,
             imageUrl,
             siteName,
-            DateTime.UtcNow));
+            fetchedAtUtc));
     }
 
     public static MessageLinkPreview Rehydrate(

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Harmonie.Application.Common.Auth;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Domain.ValueObjects.Users;
 using Harmonie.Infrastructure.Configuration;
@@ -13,13 +14,16 @@ namespace Harmonie.Infrastructure.Authentication;
 public sealed class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _jwtSettings;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<JwtTokenService> _logger;
 
     public JwtTokenService(
         IOptions<JwtSettings> jwtSettings,
+        TimeProvider timeProvider,
         ILogger<JwtTokenService> logger)
     {
         _jwtSettings = jwtSettings.Value;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
     
@@ -62,11 +66,23 @@ public sealed class JwtTokenService : IJwtTokenService
     }
 
     public DateTime GetAccessTokenExpirationUtc() =>
-        DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
     public DateTime GetRefreshTokenExpirationUtc() =>
-        DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+        _timeProvider.GetUtcNow().UtcDateTime.AddDays(_jwtSettings.RefreshTokenExpirationDays);
     
+    private bool ValidateLifetime(
+        DateTime? notBefore,
+        DateTime? expires,
+        SecurityToken token,
+        TokenValidationParameters validationParameters)
+    {
+        return TokenLifetimeValidator.IsValid(
+            notBefore,
+            expires,
+            _timeProvider.GetUtcNow().UtcDateTime);
+    }
+
     public bool ValidateAccessToken(string token, out UserId? userId)
     {
         userId = null;
@@ -83,7 +99,8 @@ public sealed class JwtTokenService : IJwtTokenService
                 ValidateAudience = true,
                 ValidAudience = _jwtSettings.Audience,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                LifetimeValidator = ValidateLifetime
             }, out var validatedToken);
             var jwtToken = (JwtSecurityToken)validatedToken;
             var userIdClaim = jwtToken.Claims.First(x => x.Type == JwtRegisteredClaimNames.Sub).Value;

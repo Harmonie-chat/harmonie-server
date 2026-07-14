@@ -99,8 +99,8 @@ public sealed class GetMessagesHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var first = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "First", createdAtUtc: DateTime.UtcNow.AddMinutes(-2));
-        var second = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "Second", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var first = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "First", createdAtUtc: TestTime.UtcNow.AddMinutes(-2));
+        var second = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "Second", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
         var nextCursor = new MessageCursor(first.CreatedAtUtc, first.Id);
 
         _channelMessageRepositoryMock
@@ -143,7 +143,7 @@ public sealed class GetMessagesHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "Check https://example.com", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "Check https://example.com", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
 
         var previews = new Dictionary<Guid, IReadOnlyList<LinkPreviewDto>>
         {
@@ -191,7 +191,7 @@ public sealed class GetMessagesHandlerTests
             .Setup(x => x.GetWithCallerRoleAsync(channel.Id, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChannelAccessContext(channel, GuildRole.Member));
 
-        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "no reply", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var message = ApplicationTestBuilders.CreateChannelMessage(channel.Id, userId, content: "no reply", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
 
         _channelMessageRepositoryMock
             .Setup(x => x.GetChannelPageAsync(
@@ -230,7 +230,7 @@ public sealed class GetMessagesHandlerTests
 
         var message = ApplicationTestBuilders.CreateChannelMessage(
             channel.Id, userId, content: "replying",
-            createdAtUtc: DateTime.UtcNow.AddMinutes(-1),
+            createdAtUtc: TestTime.UtcNow.AddMinutes(-1),
             replyToMessageId: targetMessageId);
 
         var replyPreviews = new Dictionary<Guid, ReplyPreviewDto>

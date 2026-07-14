@@ -16,15 +16,18 @@ public sealed class PinOrchestrator
     private readonly IMessageRepository _messageRepository;
     private readonly IPinnedMessageRepository _pinnedMessageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public PinOrchestrator(
         IMessageRepository messageRepository,
         IPinnedMessageRepository pinnedMessageRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _pinnedMessageRepository = pinnedMessageRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<bool>> PinAsync<TContext>(
@@ -47,7 +50,10 @@ public sealed class PinOrchestrator
         var (context, _) = (FetchMessageResult<TContext>.Found)fetched;
 
         // ── Create pin ──────────────────────────────────────────────────
-        var pinnedMessage = PinnedMessage.Create(messageId, callerId);
+        var pinnedMessage = PinnedMessage.Create(
+            messageId,
+            callerId,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (pinnedMessage.IsFailure || pinnedMessage.Value is null)
         {
             return ApplicationResponse<bool>.Fail(
@@ -91,7 +97,12 @@ public sealed class PinOrchestrator
         await transaction.CommitAsync(ct);
 
         // ── Notify ──────────────────────────────────────────────────────
-        await scope.NotifyPinRemovedAsync(context, messageId, callerId, DateTime.UtcNow, ct);
+        await scope.NotifyPinRemovedAsync(
+            context,
+            messageId,
+            callerId,
+            _timeProvider.GetUtcNow().UtcDateTime,
+            ct);
 
         return ApplicationResponse<bool>.Ok(true);
     }

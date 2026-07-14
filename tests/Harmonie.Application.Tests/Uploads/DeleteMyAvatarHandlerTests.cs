@@ -56,6 +56,7 @@ public sealed class DeleteMyAvatarHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             Mock.Of<IUserProfileNotifier>(),
+            TestTime.CreateProvider(),
             NullLogger<DeleteMyAvatarHandler>.Instance);
     }
 
@@ -104,7 +105,7 @@ public sealed class DeleteMyAvatarHandlerTests
     {
         var avatarFileId = UploadedFileId.From(Guid.Parse("7d839916-c19a-45db-a0e2-cf7ea8ad31fb"));
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateAvatarFile(avatarFileId);
+        user.UpdateAvatarFile(avatarFileId, TestTime.UtcNow);
         var uploadedFile = ApplicationTestBuilders.CreateUploadedFile(id: avatarFileId, uploaderUserId: user.Id, fileName: "avatar-old.png", contentType: "image/png", sizeBytes: 123, storageKey: "avatars/old-avatar.png", purpose: UploadPurpose.Avatar);
         var sequence = new MockSequence();
 

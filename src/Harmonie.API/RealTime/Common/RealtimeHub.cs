@@ -26,19 +26,22 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
     private readonly IConversationRepository _conversationRepository;
     private readonly IConnectionTracker _connectionTracker;
     private readonly IRealtimeGroupManager _realtimeGroupManager;
+    private readonly TimeProvider _timeProvider;
 
     public RealtimeHub(
         IGuildChannelRepository guildChannelRepository,
         IGuildMemberRepository guildMemberRepository,
         IConversationRepository conversationRepository,
         IConnectionTracker connectionTracker,
-        IRealtimeGroupManager realtimeGroupManager)
+        IRealtimeGroupManager realtimeGroupManager,
+        TimeProvider timeProvider)
     {
         _guildChannelRepository = guildChannelRepository;
         _guildMemberRepository = guildMemberRepository;
         _conversationRepository = conversationRepository;
         _connectionTracker = connectionTracker;
         _realtimeGroupManager = realtimeGroupManager;
+        _timeProvider = timeProvider;
     }
 
     public override async Task OnConnectedAsync()
@@ -96,7 +99,7 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
             Username: ctx.CallerUsername ?? string.Empty,
             DisplayName: ctx.CallerDisplayName,
             ChannelId: channelId,
-            Timestamp: DateTime.UtcNow);
+            Timestamp: _timeProvider.GetUtcNow().UtcDateTime);
 
         await Clients.GroupExcept(
             GetChannelGroupName(parsedChannelId),
@@ -135,7 +138,7 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
             ConversationId: conversationId,
             ConversationName: access.Conversation.Name,
             ConversationType: access.Conversation.Type.ToString(),
-            Timestamp: DateTime.UtcNow);
+            Timestamp: _timeProvider.GetUtcNow().UtcDateTime);
 
         await Clients.GroupExcept(
             GetConversationGroupName(parsedConversationId),
@@ -152,9 +155,9 @@ public sealed class RealtimeHub : Hub<IRealtimeClient>
     internal static string GetConversationGroupName(ConversationId conversationId)
         => $"conversation:{conversationId}";
 
-    private static bool TryPassThrottle(string throttleKey)
+    private bool TryPassThrottle(string throttleKey)
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (_typingThrottles.TryGetValue(throttleKey, out var lastSent)
             && now - lastSent < TypingThrottleInterval)

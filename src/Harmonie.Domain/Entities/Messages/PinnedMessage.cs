@@ -24,7 +24,8 @@ public sealed class PinnedMessage
 
     public static Result<PinnedMessage> Create(
         MessageId messageId,
-        UserId pinnedByUserId)
+        UserId pinnedByUserId,
+        DateTime pinnedAtUtc)
     {
         if (messageId is null)
             return Result.Failure<PinnedMessage>("Message ID is required");
@@ -35,7 +36,7 @@ public sealed class PinnedMessage
         return Result.Success(new PinnedMessage(
             messageId,
             pinnedByUserId,
-            DateTime.UtcNow));
+            pinnedAtUtc));
     }
 
     public static PinnedMessage Rehydrate(

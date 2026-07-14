@@ -43,6 +43,7 @@ public sealed class UpdateMyProfileHandlerTests
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
             _userProfileNotifierMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<UpdateMyProfileHandler>.Instance);
     }
 
@@ -50,10 +51,10 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenUserExistsAndRequestIsPartial_ShouldUpdateOnlyProvidedField()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateDisplayName("Initial Name");
-        user.UpdateBio("Initial bio");
+        user.UpdateDisplayName("Initial Name", TestTime.UtcNow);
+        user.UpdateBio("Initial bio", TestTime.UtcNow);
         var avatarFileId = UploadedFileId.New();
-        user.UpdateAvatarFile(avatarFileId);
+        user.UpdateAvatarFile(avatarFileId, TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -85,9 +86,9 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenFieldIsExplicitlyNull_ShouldResetToNull()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateDisplayName("Alice");
-        user.UpdateBio("Existing bio");
-        user.UpdateAvatarFile(UploadedFileId.New());
+        user.UpdateDisplayName("Alice", TestTime.UtcNow);
+        user.UpdateBio("Existing bio", TestTime.UtcNow);
+        user.UpdateAvatarFile(UploadedFileId.New(), TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -199,7 +200,7 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenLanguageIsExplicitlyNull_ShouldClearLanguage()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateLanguage("fr");
+        user.UpdateLanguage("fr", TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -251,7 +252,9 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenAvatarAppearanceIsPartial_ShouldOnlyUpdateProvidedSubFields()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateAvatar(Appearance.Create("#INITIAL", "heart", "#000000").Value!);
+        user.UpdateAvatar(
+            Appearance.Create("#INITIAL", "heart", "#000000").Value!,
+            TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {

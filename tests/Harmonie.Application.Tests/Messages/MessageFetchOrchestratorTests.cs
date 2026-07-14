@@ -108,7 +108,7 @@ public sealed class MessageFetchOrchestratorTests
     {
         var channelId = GuildChannelId.New();
         var message = ApplicationTestBuilders.CreateChannelMessage(channelId, UserId.New(), "hello");
-        var cursor = new MessageCursor(DateTime.UtcNow, message.Id);
+        var cursor = new MessageCursor(TestTime.UtcNow, message.Id);
         var page = new MessagePage(
             Items: [message],
             NextCursor: cursor,

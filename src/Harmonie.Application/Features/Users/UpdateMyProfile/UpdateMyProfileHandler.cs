@@ -16,17 +16,20 @@ public sealed class UpdateMyProfileHandler
     private readonly IUserRepository _userRepository;
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUserProfileNotifier _userProfileNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UpdateMyProfileHandler> _logger;
 
     public UpdateMyProfileHandler(
         IUserRepository userRepository,
         UploadedFileCleanupService uploadedFileCleanupService,
         IUserProfileNotifier userProfileNotifier,
+        TimeProvider timeProvider,
         ILogger<UpdateMyProfileHandler> logger)
     {
         _userRepository = userRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _userProfileNotifier = userProfileNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -44,17 +47,18 @@ public sealed class UpdateMyProfileHandler
         }
 
         var previousAvatarFileId = user.AvatarFileId;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (request.DisplayNameIsSet)
         {
-            var result = user.UpdateDisplayName(request.DisplayName);
+            var result = user.UpdateDisplayName(request.DisplayName, nowUtc);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.DisplayName), result);
         }
 
         if (request.BioIsSet)
         {
-            var result = user.UpdateBio(request.Bio);
+            var result = user.UpdateBio(request.Bio, nowUtc);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.Bio), result);
         }
@@ -62,7 +66,7 @@ public sealed class UpdateMyProfileHandler
         if (request.AvatarFileIdIsSet)
         {
             var avatarFileId = request.AvatarFileId.HasValue ? UploadedFileId.From(request.AvatarFileId.Value) : null;
-            var result = user.UpdateAvatarFile(avatarFileId);
+            var result = user.UpdateAvatarFile(avatarFileId, nowUtc);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.AvatarFileId), result);
         }
@@ -77,7 +81,7 @@ public sealed class UpdateMyProfileHandler
             if (newAppearanceResult.IsFailure || newAppearanceResult.Value is null)
                 return BuildValidationFailure("Avatar", newAppearanceResult.Error ?? "Avatar appearance is invalid");
 
-            user.UpdateAvatar(newAppearanceResult.Value);
+            user.UpdateAvatar(newAppearanceResult.Value, nowUtc);
         }
 
         if (request.ThemeIsSet)
@@ -89,14 +93,14 @@ public sealed class UpdateMyProfileHandler
                     "Theme cannot be null");
             }
 
-            var result = user.UpdateTheme(request.Theme);
+            var result = user.UpdateTheme(request.Theme, nowUtc);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.Theme), result);
         }
 
         if (request.LanguageIsSet)
         {
-            var result = user.UpdateLanguage(request.Language);
+            var result = user.UpdateLanguage(request.Language, nowUtc);
             if (result.IsFailure)
                 return BuildValidationFailure(nameof(request.Language), result);
         }

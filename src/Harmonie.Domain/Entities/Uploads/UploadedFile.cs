@@ -45,7 +45,8 @@ public sealed class UploadedFile : Entity<UploadedFileId>
         string? contentType,
         long sizeBytes,
         string? storageKey,
-        UploadPurpose purpose)
+        UploadPurpose purpose,
+        DateTime createdAtUtc)
     {
         if (uploaderUserId is null)
             return Result.Failure<UploadedFile>("Uploader user ID is required");
@@ -85,7 +86,7 @@ public sealed class UploadedFile : Entity<UploadedFileId>
             sizeBytes,
             normalizedStorageKey,
             purpose,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
     public static UploadedFile Rehydrate(

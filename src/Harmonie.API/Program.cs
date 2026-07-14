@@ -7,6 +7,7 @@ using Harmonie.API.SignalRDoc.Extensions;
 using Harmonie.Application;
 using Harmonie.Application.Features.Uploads.UploadFile;
 using Harmonie.Infrastructure;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -22,6 +23,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Services
+builder.Services.TryAddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection("Cors"));
@@ -43,6 +45,7 @@ var app = builder.Build();
 // Middleware
 if (app.Environment.IsDevelopment())
 {
+    app.MapNotificationDocumentationEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference();
     app.MapSignalRAsyncApiDoc();
@@ -67,9 +70,9 @@ app.MapConversationEndpoints();
 app.MapUserEndpoints();
 app.MapUploadEndpoints();
 app.MapVoiceEndpoints();
-// Close realtime connections when the access token expires so a stale session
-// (logout, ban, expired token) stops receiving events; clients reconnect with
-// a fresh token via their accessTokenFactory.
+app.MapNotificationEndpoints();
+// Close realtime connections when the access token expires so clients can
+// reconnect with a fresh token via their accessTokenFactory.
 app.MapHub<RealtimeHub>("/hubs/realtime", options => options.CloseOnAuthenticationExpiration = true);
 
 app.Run();

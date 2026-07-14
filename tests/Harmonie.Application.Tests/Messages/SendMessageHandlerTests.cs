@@ -7,6 +7,7 @@ using Harmonie.Application.Interfaces.Channels;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Guilds;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
@@ -40,6 +41,7 @@ public sealed class SendMessageHandlerTests
     private readonly Mock<ILinkPreviewFetcher> _linkPreviewFetcherMock;
     private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
     private readonly Mock<IMessageEventPublisher> _textChannelNotifierMock;
+    private readonly Mock<IMessageNotificationOutboxRepository> _messageNotificationOutboxRepositoryMock;
     private readonly MessageSendOrchestrator _orchestrator;
     private readonly SendMessageHandler _handler;
 
@@ -55,12 +57,19 @@ public sealed class SendMessageHandlerTests
         _linkPreviewRepositoryMock = new Mock<ILinkPreviewRepository>();
         _linkPreviewFetcherMock = new Mock<ILinkPreviewFetcher>();
         _textChannelNotifierMock = new Mock<IMessageEventPublisher>();
+        _messageNotificationOutboxRepositoryMock = new Mock<IMessageNotificationOutboxRepository>();
 
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
 
         _textChannelNotifierMock
             .Setup(x => x.PublishCreatedAsync(
                 It.IsAny<MessageCreatedEventEnvelope>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _messageNotificationOutboxRepositoryMock
+            .Setup(x => x.AddPendingAsync(
+                It.IsAny<MessageId>(),
+                It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -85,7 +94,9 @@ public sealed class SendMessageHandlerTests
             _messageAttachmentRepositoryMock.Object,
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _userRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _messageNotificationOutboxRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
 
         _handler = new SendMessageHandler(
             _guildChannelRepositoryMock.Object,
@@ -93,6 +104,7 @@ public sealed class SendMessageHandlerTests
             _textChannelNotifierMock.Object,
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
+                TestTime.CreateProvider(),
                 NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<ChannelSendMessageScope>.Instance,
             _orchestrator);
@@ -561,7 +573,7 @@ public sealed class SendMessageHandlerTests
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var userId = UserId.New();
         var targetMessageId = MessageId.New();
-        var deletedAt = DateTime.UtcNow.AddHours(-1);
+        var deletedAt = TestTime.UtcNow.AddHours(-1);
         var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
 
         _guildChannelRepositoryMock

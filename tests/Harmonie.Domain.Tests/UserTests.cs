@@ -18,7 +18,7 @@ public sealed class UserTests
         var passwordHash = "hashed_password";
 
         // Act
-        var result = User.Create(email, username, passwordHash);
+        var result = User.Create(email, username, passwordHash, TestTime.UtcNow);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -29,6 +29,8 @@ public sealed class UserTests
         result.Value.IsEmailVerified.Should().BeFalse();
         result.Value.Theme.Should().Be("default");
         result.Value.Language.Should().BeNull();
+        result.Value.CreatedAtUtc.Should().Be(TestTime.UtcNow);
+        result.Value.UpdatedAtUtc.Should().Be(TestTime.UtcNow);
     }
 
     [Fact]
@@ -38,12 +40,13 @@ public sealed class UserTests
         var user = User.Create(
             Email.Create("old@harmonie.chat").Value!,
             Username.Create("testuser").Value!,
-            "hash").Value!;
-        user.VerifyEmail();
+            "hash",
+            TestTime.UtcNow).Value!;
+        user.VerifyEmail(TestTime.UtcNow);
         var newEmail = Email.Create("new@harmonie.chat").Value!;
 
         // Act
-        user.UpdateEmail(newEmail);
+        user.UpdateEmail(newEmail, TestTime.UtcNow);
 
         // Assert
         user.Email.Should().Be(newEmail);
@@ -57,11 +60,12 @@ public sealed class UserTests
         var user = User.Create(
             Email.Create("user-display@harmonie.chat").Value!,
             Username.Create("displayuser").Value!,
-            "hash").Value!;
-        user.UpdateDisplayName("Alice");
+            "hash",
+            TestTime.UtcNow).Value!;
+        user.UpdateDisplayName("Alice", TestTime.UtcNow);
 
         // Act
-        var result = user.UpdateDisplayName(null);
+        var result = user.UpdateDisplayName(null, TestTime.UtcNow);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -75,11 +79,12 @@ public sealed class UserTests
         var user = User.Create(
             Email.Create("user-bio@harmonie.chat").Value!,
             Username.Create("biouser").Value!,
-            "hash").Value!;
+            "hash",
+            TestTime.UtcNow).Value!;
         var tooLongBio = new string('b', 501);
 
         // Act
-        var result = user.UpdateBio(tooLongBio);
+        var result = user.UpdateBio(tooLongBio, TestTime.UtcNow);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -92,10 +97,11 @@ public sealed class UserTests
         var user = User.Create(
             Email.Create("user-avatar@harmonie.chat").Value!,
             Username.Create("avataruser").Value!,
-            "hash").Value!;
+            "hash",
+            TestTime.UtcNow).Value!;
         var avatarFileId = UploadedFileId.New();
 
-        var result = user.UpdateAvatarFile(avatarFileId);
+        var result = user.UpdateAvatarFile(avatarFileId, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.AvatarFileId.Should().Be(avatarFileId);
@@ -106,7 +112,7 @@ public sealed class UserTests
     {
         var user = CreateUser();
 
-        var result = user.UpdateTheme("dark");
+        var result = user.UpdateTheme("dark", TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.Theme.Should().Be("dark");
@@ -117,7 +123,7 @@ public sealed class UserTests
     {
         var user = CreateUser();
 
-        var result = user.UpdateTheme("");
+        var result = user.UpdateTheme("", TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Theme cannot be empty");
@@ -128,7 +134,7 @@ public sealed class UserTests
     {
         var user = CreateUser();
 
-        var result = user.UpdateTheme(new string('t', 51));
+        var result = user.UpdateTheme(new string('t', 51), TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Theme is too long");
@@ -138,9 +144,9 @@ public sealed class UserTests
     public void UpdateLanguage_WithNull_ShouldClear()
     {
         var user = CreateUser();
-        user.UpdateLanguage("fr");
+        user.UpdateLanguage("fr", TestTime.UtcNow);
 
-        var result = user.UpdateLanguage(null);
+        var result = user.UpdateLanguage(null, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.Language.Should().BeNull();
@@ -151,7 +157,7 @@ public sealed class UserTests
     {
         var user = CreateUser();
 
-        var result = user.UpdateLanguage("toolongvalue");
+        var result = user.UpdateLanguage("toolongvalue", TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Language is too long");
@@ -163,7 +169,7 @@ public sealed class UserTests
         var user = CreateUser();
         var appearance = Appearance.Create("#FFF4D6", "star", "#000").Value!;
 
-        var result = user.UpdateAvatar(appearance);
+        var result = user.UpdateAvatar(appearance, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.Avatar.Color.Should().Be("#FFF4D6");
@@ -175,9 +181,9 @@ public sealed class UserTests
     public void UpdateAvatar_WithEmpty_ShouldClear()
     {
         var user = CreateUser();
-        user.UpdateAvatar(Appearance.Create("#FFF4D6", null, null).Value!);
+        user.UpdateAvatar(Appearance.Create("#FFF4D6", null, null).Value!, TestTime.UtcNow);
 
-        var result = user.UpdateAvatar(Appearance.Empty);
+        var result = user.UpdateAvatar(Appearance.Empty, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.Avatar.HasValue.Should().BeFalse();
@@ -192,11 +198,11 @@ public sealed class UserTests
         var user = CreateUser();
         var userStatus = UserStatus.Create(status).Value!;
 
-        var result = user.UpdateStatus(userStatus);
+        var result = user.UpdateStatus(userStatus, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.Status.Value.Should().Be(status);
-        user.StatusUpdatedAtUtc.Should().NotBeNull();
+        user.StatusUpdatedAtUtc.Should().Be(TestTime.UtcNow);
     }
 
     [Fact]
@@ -214,7 +220,7 @@ public sealed class UserTests
         var user = CreateUser();
         var updatedAtBefore = user.StatusUpdatedAtUtc;
 
-        var result = user.UpdateStatus(UserStatus.Online);
+        var result = user.UpdateStatus(UserStatus.Online, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         user.StatusUpdatedAtUtc.Should().Be(updatedAtBefore);
@@ -239,7 +245,7 @@ public sealed class UserTests
             language: null,
             status: UserStatus.Idle,
             statusUpdatedAtUtc: null,
-            createdAtUtc: DateTime.UtcNow,
+            createdAtUtc: TestTime.UtcNow,
             updatedAtUtc: null);
 
         user.Status.Should().Be(UserStatus.Idle);
@@ -250,10 +256,10 @@ public sealed class UserTests
     public void UpdateStatus_FromIdleToOnline_ShouldUpdateTimestamp()
     {
         var user = CreateUser();
-        user.UpdateStatus(UserStatus.Idle);
+        user.UpdateStatus(UserStatus.Idle, TestTime.UtcNow);
         var idleTimestamp = user.StatusUpdatedAtUtc;
 
-        user.UpdateStatus(UserStatus.Online);
+        user.UpdateStatus(UserStatus.Online, TestTime.UtcNow.AddMinutes(1));
 
         user.Status.Should().Be(UserStatus.Online);
         user.StatusUpdatedAtUtc.Should().NotBeNull();
@@ -265,6 +271,7 @@ public sealed class UserTests
         return User.Create(
             Email.Create("test@harmonie.chat").Value!,
             Username.Create("testuser").Value!,
-            "hash").Value!;
+            "hash",
+            TestTime.UtcNow).Value!;
     }
 }

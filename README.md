@@ -61,6 +61,7 @@ src/
   Harmonie.Application/      # Vertical slices (feature endpoints/handlers/validators)
   Harmonie.Domain/           # Entities, value objects, domain rules
   Harmonie.Infrastructure/   # Dapper repositories, JWT service, hashing
+  Harmonie.Workers/          # Independent background worker host
 tests/
   Harmonie.Domain.Tests/
   Harmonie.Application.Tests/

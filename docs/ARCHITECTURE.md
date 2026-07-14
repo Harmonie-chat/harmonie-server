@@ -43,6 +43,35 @@ Responsibilities:
 - Dapper-based repositories
 - JWT generation/validation and password hashing
 - Options/configuration objects
+- Modular DI registration so API and worker hosts can opt into only the infrastructure they need
+
+## Workers (`src/Harmonie.Workers`)
+
+Responsibilities:
+- Independent background worker host
+- Long-running/background orchestration that should not share the HTTP API process
+- Reuses Application services and Infrastructure adapters without depending on `Harmonie.API`
+
+Current worker jobs:
+- Push notification dispatch from `message_notification_outbox`
+
+## Push Notifications
+
+Push notifications are asynchronous and transport-agnostic at the Application boundary:
+
+1. Message creation writes the message and a `message_notification_outbox` row in the same transaction.
+2. `Harmonie.Workers` claims pending outbox jobs with a lock/retry policy.
+3. `MessageNotificationPolicy` selects users to notify without knowing the delivery platform.
+4. `NotificationDispatchService` loads active notification devices for selected users and records per-device delivery state in `message_notification_deliveries`.
+5. Platform adapters deliver the minimal business payload only to pending/retryable device deliveries. Succeeded device deliveries are not retried, which prevents duplicate pushes after partial failures. Web Push is the first adapter; Android FCM and iOS APNs can be added behind the same device/policy model later.
+
+Initial message notification policy:
+- Direct conversation messages: notify participants except the author.
+- Group conversation messages: notify participants except the author.
+- Guild channel messages: notify channel candidate members except the author.
+- Guild channel mention-only notification preferences can be added later without changing the delivery adapters.
+
+The Web Push payload intentionally excludes message content and presentation fields. Clients/service workers own notification text, routing, i18n, icons, badges, and tags.
 
 ## Data and Migration Strategy
 
@@ -70,3 +99,4 @@ Responsibilities:
 - Authentication: JWT bearer middleware
 - Authorization: membership checks in handlers and SignalR hub methods
 - Throttling: fixed-window limiter for message posting (`message-post` policy)
+- Time: hosts register `TimeProvider.System`; time-dependent services receive `TimeProvider`, while Domain methods receive explicit UTC timestamps and never resolve a clock service. Production access to static system clocks is rejected by the banned API rules in `build/analyzers/BannedSymbols.txt`; tests use the shared `tests/Common/TestTime.cs` helper backed by `FakeTimeProvider`.

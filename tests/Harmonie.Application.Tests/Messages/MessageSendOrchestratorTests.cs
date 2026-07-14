@@ -4,6 +4,7 @@ using Harmonie.Application.Common.Messages;
 using Harmonie.Application.Features.Channels.SendMessage;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Messages;
+using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Interfaces.Uploads;
 using Harmonie.Application.Interfaces.Users;
 using Harmonie.Application.Tests.Common;
@@ -30,6 +31,7 @@ public sealed class MessageSendOrchestratorTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IUnitOfWorkTransaction> _transactionMock;
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IMessageNotificationOutboxRepository> _messageNotificationOutboxRepositoryMock;
     private readonly MessageSendOrchestrator _orchestrator;
 
     public MessageSendOrchestratorTests()
@@ -40,13 +42,22 @@ public sealed class MessageSendOrchestratorTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionMock = _unitOfWorkMock.SetupTransactionMock();
         _userRepositoryMock = new Mock<IUserRepository>();
+        _messageNotificationOutboxRepositoryMock = new Mock<IMessageNotificationOutboxRepository>();
+        _messageNotificationOutboxRepositoryMock
+            .Setup(x => x.AddPendingAsync(
+                It.IsAny<MessageId>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _orchestrator = new MessageSendOrchestrator(
             _messageRepositoryMock.Object,
             _messageAttachmentRepositoryMock.Object,
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _userRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _messageNotificationOutboxRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
     }
 
     private static MessageScope AnyScope() => new MessageScope.Channel(GuildChannelId.New());
@@ -157,6 +168,13 @@ public sealed class MessageSendOrchestratorTests
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be(ApplicationErrorCodes.Message.ContentEmpty);
+
+        _messageNotificationOutboxRepositoryMock.Verify(
+            x => x.AddPendingAsync(
+                It.IsAny<MessageId>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // ── 5. Happy path: side effects, notify, link previews called in order ──
@@ -193,6 +211,14 @@ public sealed class MessageSendOrchestratorTests
             .Setup(x => x.AddAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        _messageNotificationOutboxRepositoryMock
+            .Setup(x => x.AddPendingAsync(
+                It.IsAny<MessageId>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("outbox"))
+            .Returns(Task.CompletedTask);
+
         _transactionMock
             .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
             .Callback(() => callOrder.Add("commit"))
@@ -210,7 +236,14 @@ public sealed class MessageSendOrchestratorTests
         _transactionMock.Verify(
             x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
 
-        callOrder.Should().Equal("sideEffects", "commit", "notify", "linkPreviews");
+        _messageNotificationOutboxRepositoryMock.Verify(
+            x => x.AddPendingAsync(
+                It.IsAny<MessageId>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        callOrder.Should().Equal("sideEffects", "outbox", "commit", "notify", "linkPreviews");
     }
 
     // ── 6. Link previews only triggered when URLs present ────────────────

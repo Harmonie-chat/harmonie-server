@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Harmonie.Domain.Entities.Messages;
+using Harmonie.Domain.Tests;
 using Harmonie.Domain.ValueObjects.Messages;
 using Xunit;
 
@@ -14,6 +15,7 @@ public sealed class MessageLinkPreviewTests
         var result = MessageLinkPreview.Create(
             messageId,
             "https://example.com",
+            TestTime.UtcNow,
             "Example Title",
             "Example Description",
             "https://example.com/image.png",
@@ -27,13 +29,13 @@ public sealed class MessageLinkPreviewTests
         result.Value.Description.Should().Be("Example Description");
         result.Value.ImageUrl.Should().Be("https://example.com/image.png");
         result.Value.SiteName.Should().Be("Example Site");
-        result.Value.FetchedAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        result.Value.FetchedAtUtc.Should().Be(TestTime.UtcNow);
     }
 
     [Fact]
     public void Create_WithNullMessageId_ShouldFail()
     {
-        var result = MessageLinkPreview.Create(null!, "https://example.com");
+        var result = MessageLinkPreview.Create(null!, "https://example.com", TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Message ID");
@@ -42,7 +44,7 @@ public sealed class MessageLinkPreviewTests
     [Fact]
     public void Create_WithEmptyUrl_ShouldFail()
     {
-        var result = MessageLinkPreview.Create(MessageId.New(), "");
+        var result = MessageLinkPreview.Create(MessageId.New(), "", TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("URL");
@@ -51,7 +53,7 @@ public sealed class MessageLinkPreviewTests
     [Fact]
     public void Create_WithWhitespaceUrl_ShouldFail()
     {
-        var result = MessageLinkPreview.Create(MessageId.New(), "   ");
+        var result = MessageLinkPreview.Create(MessageId.New(), "   ", TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("URL");
@@ -60,7 +62,7 @@ public sealed class MessageLinkPreviewTests
     [Fact]
     public void Create_WithOnlyUrl_ShouldSucceed()
     {
-        var result = MessageLinkPreview.Create(MessageId.New(), "https://example.com");
+        var result = MessageLinkPreview.Create(MessageId.New(), "https://example.com", TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -101,7 +103,7 @@ public sealed class MessageLinkPreviewTests
             null!,
             "https://example.com",
             null, null, null, null,
-            DateTime.UtcNow);
+            TestTime.UtcNow);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -113,7 +115,7 @@ public sealed class MessageLinkPreviewTests
             MessageId.New(),
             null!,
             null, null, null, null,
-            DateTime.UtcNow);
+            TestTime.UtcNow);
 
         act.Should().Throw<ArgumentException>();
     }

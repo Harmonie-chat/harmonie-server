@@ -16,6 +16,7 @@ public sealed class LinkPreviewResolutionServiceParseUrlsTests
         var scopeFactoryMock = new Mock<IServiceScopeFactory>();
         _service = new LinkPreviewResolutionService(
             scopeFactoryMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<LinkPreviewResolutionService>.Instance);
     }
 

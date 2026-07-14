@@ -41,7 +41,8 @@ public sealed class GuildInvite : Entity<GuildInviteId>
         GuildId guildId,
         UserId creatorId,
         int? maxUses,
-        int? expiresInHours)
+        int? expiresInHours,
+        DateTime createdAtUtc)
     {
         if (maxUses is <= 0)
             return Result<GuildInvite>.Failure("Max uses must be greater than 0 if provided");
@@ -49,9 +50,8 @@ public sealed class GuildInvite : Entity<GuildInviteId>
         if (expiresInHours is <= 0)
             return Result<GuildInvite>.Failure("Expiration hours must be greater than 0 if provided");
 
-        var now = DateTime.UtcNow;
         DateTime? expiresAtUtc = expiresInHours.HasValue
-            ? now.AddHours(expiresInHours.Value)
+            ? createdAtUtc.AddHours(expiresInHours.Value)
             : null;
 
         var invite = new GuildInvite(
@@ -62,7 +62,7 @@ public sealed class GuildInvite : Entity<GuildInviteId>
             maxUses,
             usesCount: 0,
             expiresAtUtc,
-            createdAtUtc: now);
+            createdAtUtc);
 
         return Result<GuildInvite>.Success(invite);
     }
