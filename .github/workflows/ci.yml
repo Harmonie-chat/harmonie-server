@@ -160,7 +160,20 @@ jobs:
         ASPNETCORE_ENVIRONMENT: Development
 
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal --configuration Release -- --report-trx --coverage --coverage-output-format cobertura --results-directory "${{ github.workspace }}/TestResults"
+      run: |
+        for project in tests/*/*.csproj; do
+          project_name="$(basename "$project" .csproj)"
+          dotnet test "$project" \
+            --no-build \
+            --verbosity normal \
+            --configuration Release \
+            -- \
+            --report-trx \
+            --coverage \
+            --coverage-output "${{ github.workspace }}/TestResults/${project_name}.cobertura.xml" \
+            --coverage-output-format cobertura \
+            --results-directory "${{ github.workspace }}/TestResults"
+        done
       env:
         ASPNETCORE_ENVIRONMENT: Development
         ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=harmonie_test;Username=harmonie_user;Password=harmonie_password"
