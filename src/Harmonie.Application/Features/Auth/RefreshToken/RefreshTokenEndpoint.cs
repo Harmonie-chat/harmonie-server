@@ -1,5 +1,6 @@
 using FluentValidation;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,11 +35,32 @@ public static class RefreshTokenEndpoint
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var validationError = await request.ValidateAsync(validator, cancellationToken);
-        if (validationError is not null)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult(httpContext);
+        var cookieRefreshToken = RefreshTokenCookie.Read(httpContext);
+        var effectiveRequest = string.IsNullOrWhiteSpace(request.RefreshToken)
+            && !string.IsNullOrWhiteSpace(cookieRefreshToken)
+                ? new RefreshTokenRequest(cookieRefreshToken)
+                : request;
 
-        var response = await handler.HandleAsync(request, cancellationToken);
+        var validationError = await effectiveRequest.ValidateAsync(validator, cancellationToken);
+        if (validationError is not null)
+        {
+            RefreshTokenCookie.Delete(httpContext);
+            return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult(httpContext);
+        }
+
+        var response = await handler.HandleAsync(effectiveRequest, cancellationToken);
+        if (response.Success)
+        {
+            RefreshTokenCookie.Write(
+                httpContext,
+                response.Data.RefreshToken,
+                response.Data.RefreshTokenExpiresAt);
+        }
+        else
+        {
+            RefreshTokenCookie.Delete(httpContext);
+        }
+
         return response.ToHttpResult(httpContext);
     }
 }

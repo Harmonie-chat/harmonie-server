@@ -88,7 +88,8 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
         var payload = new RefreshTokenResponse(
             AccessToken: accessToken,
             RefreshToken: newRefreshToken,
-            ExpiresAt: accessTokenExpiresAt);
+            ExpiresAt: accessTokenExpiresAt,
+            RefreshTokenExpiresAt: refreshTokenExpiresAt);
 
         return ApplicationResponse<RefreshTokenResponse>.Ok(payload);
     }

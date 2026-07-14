@@ -1,5 +1,6 @@
 using FluentValidation;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,13 +35,21 @@ public static class LogoutEndpoint
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var validationError = await request.ValidateAsync(validator, cancellationToken);
+        var cookieRefreshToken = RefreshTokenCookie.Read(httpContext);
+        var effectiveRequest = string.IsNullOrWhiteSpace(request.RefreshToken)
+            && !string.IsNullOrWhiteSpace(cookieRefreshToken)
+                ? new LogoutRequest(cookieRefreshToken)
+                : request;
+
+        RefreshTokenCookie.Delete(httpContext);
+
+        var validationError = await effectiveRequest.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<LogoutResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
 
-        var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(effectiveRequest, currentUserId, cancellationToken);
         if (!response.Success)
             return response.ToHttpResult(httpContext);
 
