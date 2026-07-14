@@ -117,7 +117,7 @@ Notification cleanup is configured in the worker host. It is disabled by default
 ```json
 "NotificationCleanup": {
   "Enabled": true,
-  "PollIntervalHours": 24,
+  "PollIntervalSeconds": 86400,
   "BatchSize": 500,
   "ProcessedOutboxRetentionDays": 7,
   "FailedOutboxRetentionDays": 30,

@@ -30,7 +30,7 @@ public sealed class WorkerDependencyInjectionTests
                 ["PushNotifications:MaxAttempts"] = "5",
                 ["PushNotifications:RetryBaseDelaySeconds"] = "30",
                 ["NotificationCleanup:Enabled"] = "false",
-                ["NotificationCleanup:PollIntervalHours"] = "24",
+                ["NotificationCleanup:PollIntervalSeconds"] = "86400",
                 ["NotificationCleanup:BatchSize"] = "500",
                 ["NotificationCleanup:ProcessedOutboxRetentionDays"] = "7",
                 ["NotificationCleanup:FailedOutboxRetentionDays"] = "30",

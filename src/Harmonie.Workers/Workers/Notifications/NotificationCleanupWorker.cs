@@ -32,7 +32,7 @@ public sealed class NotificationCleanupWorker : BackgroundService
 
         _logger.LogInformation("Notification cleanup worker started.");
 
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(_options.PollIntervalHours));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(_options.PollIntervalSeconds));
         while (!stoppingToken.IsCancellationRequested)
         {
             await ProcessAsync(stoppingToken);

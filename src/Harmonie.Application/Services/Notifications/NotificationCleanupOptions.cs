@@ -8,8 +8,8 @@ public sealed class NotificationCleanupOptions
 
     public bool Enabled { get; set; }
 
-    [Range(1, 168)]
-    public int PollIntervalHours { get; set; } = 24;
+    [Range(1, 86_400)]
+    public int PollIntervalSeconds { get; set; } = 86_400;
 
     [Range(1, 5_000)]
     public int BatchSize { get; set; } = 500;

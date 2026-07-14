@@ -35,7 +35,7 @@ public sealed class NotificationCleanupWorkerTests
             Options.Create(new NotificationCleanupOptions
             {
                 Enabled = true,
-                PollIntervalHours = 24,
+                PollIntervalSeconds = 86_400,
                 BatchSize = 1,
                 ProcessedOutboxRetentionDays = 1,
                 FailedOutboxRetentionDays = 1,
