@@ -4,6 +4,7 @@ using Harmonie.Infrastructure;
 using Harmonie.Workers.Workers.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Harmonie.Workers;
 
@@ -13,6 +14,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddNotificationApplicationServices();
         services.AddPersistence(configuration);
         services.AddNotificationDeliveryInfrastructure(configuration);
@@ -20,8 +22,14 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(PushNotificationOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        services.AddOptions<NotificationCleanupOptions>()
+            .Bind(configuration.GetSection(NotificationCleanupOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.AddScoped<IPushNotificationBatchProcessor, PushNotificationBatchProcessor>();
+        services.AddScoped<INotificationCleanupProcessor, NotificationCleanupProcessor>();
         services.AddHostedService<PushNotificationWorker>();
+        services.AddHostedService<NotificationCleanupWorker>();
 
         return services;
     }
