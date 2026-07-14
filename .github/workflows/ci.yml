@@ -98,7 +98,6 @@ jobs:
     permissions:
       contents: read
       checks: write
-      id-token: write
 
     services:
       postgres:
@@ -193,15 +192,9 @@ jobs:
         docker rm harmonie-livekit || true
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v7
+      uses: actions/upload-artifact@v7
       with:
-        files: >-
-          ./TestResults/Harmonie.API.IntegrationTests.cobertura.xml,
-          ./TestResults/Harmonie.API.Tests.cobertura.xml,
-          ./TestResults/Harmonie.Application.Tests.cobertura.xml,
-          ./TestResults/Harmonie.Domain.Tests.cobertura.xml,
-          ./TestResults/Harmonie.Infrastructure.Tests.cobertura.xml,
-          ./TestResults/Harmonie.Workers.Tests.cobertura.xml
-        disable_search: true
-        fail_ci_if_error: true
-        use_oidc: true
+        name: coverage-reports
+        path: TestResults/*.cobertura.xml
+        if-no-files-found: error
+        retention-days: 14
