@@ -173,7 +173,8 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
             RefreshToken: refreshToken,
             ExpiresAt: accessTokenExpiresAt,
             Avatar: avatar,
-            Theme: user.Theme
+            Theme: user.Theme,
+            RefreshTokenExpiresAt: refreshTokenExpiresAt
         );
 
         return ApplicationResponse<RegisterResponse>.Ok(payload);

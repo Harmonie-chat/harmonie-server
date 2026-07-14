@@ -94,7 +94,8 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
             Username: user.Username,
             AccessToken: accessToken,
             RefreshToken: refreshToken,
-            ExpiresAt: accessTokenExpiresAt
+            ExpiresAt: accessTokenExpiresAt,
+            RefreshTokenExpiresAt: refreshTokenExpiresAt
         );
 
         return ApplicationResponse<LoginResponse>.Ok(payload);

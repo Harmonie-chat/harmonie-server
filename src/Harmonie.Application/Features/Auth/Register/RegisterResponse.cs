@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Harmonie.Application.Features.Users;
 
 namespace Harmonie.Application.Features.Auth.Register;
@@ -13,4 +14,5 @@ public sealed record RegisterResponse(
     string RefreshToken,
     DateTime ExpiresAt,
     AvatarAppearanceDto? Avatar,
-    string Theme);
+    string Theme,
+    [property: JsonIgnore] DateTime RefreshTokenExpiresAt);

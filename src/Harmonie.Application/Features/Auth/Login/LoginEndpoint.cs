@@ -1,5 +1,6 @@
 using FluentValidation;
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -42,6 +43,13 @@ public static class LoginEndpoint
             return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var response = await handler.HandleAsync(request, cancellationToken);
+        if (response.Success)
+        {
+            RefreshTokenCookie.Write(
+                httpContext,
+                response.Data.RefreshToken,
+                response.Data.RefreshTokenExpiresAt);
+        }
 
         return response.ToHttpResult(httpContext);
     }
