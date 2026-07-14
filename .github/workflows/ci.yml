@@ -195,6 +195,13 @@ jobs:
     - name: Upload coverage reports
       uses: codecov/codecov-action@v7
       with:
-        directory: ./TestResults
+        files: >-
+          ./TestResults/Harmonie.API.IntegrationTests.cobertura.xml,
+          ./TestResults/Harmonie.API.Tests.cobertura.xml,
+          ./TestResults/Harmonie.Application.Tests.cobertura.xml,
+          ./TestResults/Harmonie.Domain.Tests.cobertura.xml,
+          ./TestResults/Harmonie.Infrastructure.Tests.cobertura.xml,
+          ./TestResults/Harmonie.Workers.Tests.cobertura.xml
+        disable_search: true
         fail_ci_if_error: true
         use_oidc: true
