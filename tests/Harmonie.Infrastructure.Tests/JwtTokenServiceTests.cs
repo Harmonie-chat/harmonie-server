@@ -13,17 +13,17 @@ public sealed class JwtTokenServiceTests
     [Fact]
     public void ExpirationMethods_ShouldUseInjectedTimeProvider()
     {
-        var timeProvider = TestClock.Create();
+        var timeProvider = TestTime.CreateProvider();
         var service = CreateService(timeProvider);
 
-        service.GetAccessTokenExpirationUtc().Should().Be(TestClock.UtcNow.AddMinutes(15));
-        service.GetRefreshTokenExpirationUtc().Should().Be(TestClock.UtcNow.AddDays(30));
+        service.GetAccessTokenExpirationUtc().Should().Be(TestTime.UtcNow.AddMinutes(15));
+        service.GetRefreshTokenExpirationUtc().Should().Be(TestTime.UtcNow.AddDays(30));
     }
 
     [Fact]
     public void ValidateAccessToken_ShouldUseInjectedTimeProviderForLifetime()
     {
-        var timeProvider = TestClock.Create();
+        var timeProvider = TestTime.CreateProvider();
         var service = CreateService(timeProvider);
         var userId = UserId.New();
         var email = Email.Create("clock@harmonie.chat").Value!;

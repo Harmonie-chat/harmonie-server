@@ -43,7 +43,7 @@ public sealed class UpdateMyProfileHandlerTests
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
             _userProfileNotifierMock.Object,
-            TestClock.Create(),
+            TestTime.CreateProvider(),
             NullLogger<UpdateMyProfileHandler>.Instance);
     }
 
@@ -51,10 +51,10 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenUserExistsAndRequestIsPartial_ShouldUpdateOnlyProvidedField()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateDisplayName("Initial Name", TestClock.UtcNow);
-        user.UpdateBio("Initial bio", TestClock.UtcNow);
+        user.UpdateDisplayName("Initial Name", TestTime.UtcNow);
+        user.UpdateBio("Initial bio", TestTime.UtcNow);
         var avatarFileId = UploadedFileId.New();
-        user.UpdateAvatarFile(avatarFileId, TestClock.UtcNow);
+        user.UpdateAvatarFile(avatarFileId, TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -86,9 +86,9 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenFieldIsExplicitlyNull_ShouldResetToNull()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateDisplayName("Alice", TestClock.UtcNow);
-        user.UpdateBio("Existing bio", TestClock.UtcNow);
-        user.UpdateAvatarFile(UploadedFileId.New(), TestClock.UtcNow);
+        user.UpdateDisplayName("Alice", TestTime.UtcNow);
+        user.UpdateBio("Existing bio", TestTime.UtcNow);
+        user.UpdateAvatarFile(UploadedFileId.New(), TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -200,7 +200,7 @@ public sealed class UpdateMyProfileHandlerTests
     public async Task HandleAsync_WhenLanguageIsExplicitlyNull_ShouldClearLanguage()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateLanguage("fr", TestClock.UtcNow);
+        user.UpdateLanguage("fr", TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {
@@ -254,7 +254,7 @@ public sealed class UpdateMyProfileHandlerTests
         var user = ApplicationTestBuilders.CreateUser();
         user.UpdateAvatar(
             Appearance.Create("#INITIAL", "heart", "#000000").Value!,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         var request = new UpdateMyProfileRequest
         {

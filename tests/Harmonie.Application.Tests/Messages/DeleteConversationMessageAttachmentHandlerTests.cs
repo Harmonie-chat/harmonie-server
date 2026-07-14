@@ -58,7 +58,7 @@ public sealed class DeleteConversationMessageAttachmentHandlerTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new DeleteMessageAttachmentHandler(
             _conversationRepositoryMock.Object,

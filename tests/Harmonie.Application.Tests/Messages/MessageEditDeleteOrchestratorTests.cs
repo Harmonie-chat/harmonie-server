@@ -63,7 +63,7 @@ public sealed class MessageEditDeleteOrchestratorTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService,
-            TestClock.Create());
+            TestTime.CreateProvider());
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────

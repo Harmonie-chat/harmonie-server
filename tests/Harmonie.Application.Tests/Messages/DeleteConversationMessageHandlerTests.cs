@@ -60,7 +60,7 @@ public sealed class DeleteConversationMessageHandlerTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new DeleteMessageHandler(
             _conversationRepositoryMock.Object,

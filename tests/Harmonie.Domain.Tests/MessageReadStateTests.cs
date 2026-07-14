@@ -17,7 +17,7 @@ public sealed class MessageReadStateTests
         var channelId = GuildChannelId.New();
         var messageId = MessageId.New();
 
-        var result = MessageReadState.Create(userId, new MessageScope.Channel(channelId), messageId, TestClock.UtcNow);
+        var result = MessageReadState.Create(userId, new MessageScope.Channel(channelId), messageId, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -25,7 +25,7 @@ public sealed class MessageReadStateTests
         result.Value.Scope.Should().BeOfType<MessageScope.Channel>();
         ((MessageScope.Channel)result.Value.Scope).ChannelId.Should().Be(channelId);
         result.Value.LastReadMessageId.Should().Be(messageId);
-        result.Value.ReadAtUtc.Should().Be(TestClock.UtcNow);
+        result.Value.ReadAtUtc.Should().Be(TestTime.UtcNow);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class MessageReadStateTests
         var conversationId = ConversationId.New();
         var messageId = MessageId.New();
 
-        var result = MessageReadState.Create(userId, new MessageScope.Conversation(conversationId), messageId, TestClock.UtcNow);
+        var result = MessageReadState.Create(userId, new MessageScope.Conversation(conversationId), messageId, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -48,33 +48,33 @@ public sealed class MessageReadStateTests
     [Fact]
     public void Create_WithNullUserId_ShouldFail()
     {
-        var result = MessageReadState.Create(null!, new MessageScope.Channel(GuildChannelId.New()), MessageId.New(), TestClock.UtcNow);
+        var result = MessageReadState.Create(null!, new MessageScope.Channel(GuildChannelId.New()), MessageId.New(), TestTime.UtcNow);
         result.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Create_WithNullScope_ShouldFail()
     {
-        var result = MessageReadState.Create(UserId.New(), null!, MessageId.New(), TestClock.UtcNow);
+        var result = MessageReadState.Create(UserId.New(), null!, MessageId.New(), TestTime.UtcNow);
         result.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Acknowledge_ShouldUpdateFields()
     {
-        var state = MessageReadState.Rehydrate(UserId.New(), new MessageScope.Channel(GuildChannelId.New()), MessageId.New(), TestClock.UtcNow.AddMinutes(-5));
+        var state = MessageReadState.Rehydrate(UserId.New(), new MessageScope.Channel(GuildChannelId.New()), MessageId.New(), TestTime.UtcNow.AddMinutes(-5));
         var newMessageId = MessageId.New();
 
-        state.Acknowledge(newMessageId, TestClock.UtcNow);
+        state.Acknowledge(newMessageId, TestTime.UtcNow);
 
         state.LastReadMessageId.Should().Be(newMessageId);
-        state.ReadAtUtc.Should().Be(TestClock.UtcNow);
+        state.ReadAtUtc.Should().Be(TestTime.UtcNow);
     }
 
     [Fact]
     public void Rehydrate_WithNullScope_ShouldThrow()
     {
-        var act = () => MessageReadState.Rehydrate(UserId.New(), null!, MessageId.New(), TestClock.UtcNow);
+        var act = () => MessageReadState.Rehydrate(UserId.New(), null!, MessageId.New(), TestTime.UtcNow);
         act.Should().Throw<ArgumentNullException>();
     }
 }

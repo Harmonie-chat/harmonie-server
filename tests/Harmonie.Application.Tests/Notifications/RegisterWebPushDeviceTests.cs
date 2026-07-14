@@ -20,7 +20,7 @@ public sealed class RegisterWebPushDeviceTests
     public async Task Handler_WithValidWebPushSubscription_ShouldUpsertWebPushDevice()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        var expirationTime = new DateTimeOffset(TestClock.UtcNow).AddDays(30).ToUnixTimeMilliseconds();
+        var expirationTime = new DateTimeOffset(TestTime.UtcNow).AddDays(30).ToUnixTimeMilliseconds();
         var request = CreateRequest(expirationTime);
         var handler = CreateHandler();
 

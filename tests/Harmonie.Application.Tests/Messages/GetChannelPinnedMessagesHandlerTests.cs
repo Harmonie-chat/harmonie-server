@@ -114,7 +114,7 @@ public sealed class GetChannelPinnedMessagesHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var callerId = UserId.New();
-        var now = TestClock.UtcNow;
+        var now = TestTime.UtcNow;
 
         var summaries = new[]
         {

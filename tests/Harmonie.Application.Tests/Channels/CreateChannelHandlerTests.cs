@@ -51,7 +51,7 @@ public sealed class CreateChannelHandlerTests
             new Mock<IRealtimeGroupManager>().Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create(),
+            TestTime.CreateProvider(),
             NullLogger<CreateChannelHandler>.Instance);
     }
 

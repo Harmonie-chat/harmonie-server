@@ -96,7 +96,7 @@ public sealed class SendMessageHandlerTests
             _userRepositoryMock.Object,
             _messageNotificationOutboxRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new SendMessageHandler(
             _guildChannelRepositoryMock.Object,
@@ -104,7 +104,7 @@ public sealed class SendMessageHandlerTests
             _textChannelNotifierMock.Object,
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
-                TestClock.Create(),
+                TestTime.CreateProvider(),
                 NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<ChannelSendMessageScope>.Instance,
             _orchestrator);
@@ -573,7 +573,7 @@ public sealed class SendMessageHandlerTests
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Text);
         var userId = UserId.New();
         var targetMessageId = MessageId.New();
-        var deletedAt = TestClock.UtcNow.AddHours(-1);
+        var deletedAt = TestTime.UtcNow.AddHours(-1);
         var request = new SendMessageRequest("hello", ReplyToMessageId: targetMessageId.Value);
 
         _guildChannelRepositoryMock

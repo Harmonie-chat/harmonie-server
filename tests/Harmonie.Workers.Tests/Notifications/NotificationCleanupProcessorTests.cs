@@ -200,7 +200,7 @@ public sealed class NotificationCleanupProcessorTests
         return new NotificationCleanupProcessor(
             cleanupRepository,
             Options.Create(options),
-            new FakeTimeProvider(nowUtc ?? new DateTimeOffset(TestClock.UtcNow)),
+            new FakeTimeProvider(nowUtc ?? new DateTimeOffset(TestTime.UtcNow)),
             logger ?? NullLogger<NotificationCleanupProcessor>.Instance);
     }
 

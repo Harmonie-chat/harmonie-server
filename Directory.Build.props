@@ -4,6 +4,6 @@
   </PropertyGroup>
   <ItemGroup Condition="'$(IsTestProject)' != 'true'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
-    <AdditionalFiles Include="$(MSBuildThisFileDirectory)eng/analyzers/BannedSymbols.txt" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/analyzers/BannedSymbols.txt" />
   </ItemGroup>
 </Project>

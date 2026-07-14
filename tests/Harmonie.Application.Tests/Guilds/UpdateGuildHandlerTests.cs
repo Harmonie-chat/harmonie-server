@@ -48,7 +48,7 @@ public sealed class UpdateGuildHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
-            TestClock.Create(),
+            TestTime.CreateProvider(),
             NullLogger<UpdateGuildHandler>.Instance);
     }
 
@@ -140,7 +140,7 @@ public sealed class UpdateGuildHandlerTests
         var guild = ApplicationTestBuilders.CreateGuild();
         guild.UpdateIcon(
             Appearance.Create("#INITIAL", "shield", "#000000").Value!,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         var ownerId = guild.OwnerUserId;
 

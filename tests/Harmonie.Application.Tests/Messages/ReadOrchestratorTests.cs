@@ -33,7 +33,7 @@ public sealed class ReadOrchestratorTests
         _orchestrator = new ReadOrchestrator(
             _messageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
     }
 
     private static MessageScope ChannelScope() => new MessageScope.Channel(GuildChannelId.New());

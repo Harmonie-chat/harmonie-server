@@ -65,7 +65,7 @@ public sealed class DeleteMessageHandlerTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new DeleteMessageHandler(
             _guildChannelRepositoryMock.Object,

@@ -9,7 +9,7 @@
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Common/TestClock.cs" Link="Common/TestClock.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Common/TestTime.cs" Link="Common/TestTime.cs" />
     <Using Include="Harmonie.Testing" />
     <Using Include="Microsoft.Extensions.Time.Testing" />
   </ItemGroup>

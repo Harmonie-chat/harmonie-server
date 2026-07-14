@@ -51,7 +51,7 @@ public sealed class AddConversationReactionHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new AddReactionHandler(
             _conversationRepositoryMock.Object,

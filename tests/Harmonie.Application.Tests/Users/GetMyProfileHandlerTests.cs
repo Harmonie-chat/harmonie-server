@@ -28,10 +28,10 @@ public sealed class GetMyProfileHandlerTests
     public async Task HandleAsync_WhenUserExists_ShouldReturnProfile()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateDisplayName("Alice", TestClock.UtcNow);
-        user.UpdateBio("Hello Harmonie", TestClock.UtcNow);
+        user.UpdateDisplayName("Alice", TestTime.UtcNow);
+        user.UpdateBio("Hello Harmonie", TestTime.UtcNow);
         var avatarFileId = UploadedFileId.New();
-        user.UpdateAvatarFile(avatarFileId, TestClock.UtcNow);
+        user.UpdateAvatarFile(avatarFileId, TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -75,7 +75,7 @@ public sealed class GetMyProfileHandlerTests
         var user = ApplicationTestBuilders.CreateUser();
         user.UpdateAvatar(
             Appearance.Create("#FFF4D6", "star", "#1F2937").Value!,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -95,8 +95,8 @@ public sealed class GetMyProfileHandlerTests
     public async Task HandleAsync_WhenUserHasThemeAndLanguage_ShouldReturnThem()
     {
         var user = ApplicationTestBuilders.CreateUser();
-        user.UpdateTheme("dark", TestClock.UtcNow);
-        user.UpdateLanguage("fr", TestClock.UtcNow);
+        user.UpdateTheme("dark", TestTime.UtcNow);
+        user.UpdateLanguage("fr", TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))

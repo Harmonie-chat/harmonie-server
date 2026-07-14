@@ -76,7 +76,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     "channel:ignored",
                     null,
                     null,
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -104,7 +104,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     "guild:not-a-channel",
                     UserId.New().ToString(),
                     "alice",
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         var response = await _handler.HandleAsync(request, TestContext.Current.CancellationToken);
 
@@ -127,7 +127,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
             AvatarColor: "#ff0000",
             AvatarIcon: "star",
             AvatarBg: "#000000");
-        var occurredAtUtc = TestClock.UtcNow;
+        var occurredAtUtc = TestTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
 
         _webhookReceiverMock
@@ -174,7 +174,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
-        var occurredAtUtc = TestClock.UtcNow;
+        var occurredAtUtc = TestTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
 
         _webhookReceiverMock
@@ -217,7 +217,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
-        var occurredAtUtc = TestClock.UtcNow;
+        var occurredAtUtc = TestTime.UtcNow;
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
 
         _webhookReceiverMock
@@ -277,7 +277,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
@@ -305,7 +305,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
-        var occurredAtUtc = TestClock.UtcNow;
+        var occurredAtUtc = TestTime.UtcNow;
         var trackSid = "TR_screen123";
         var request = new HandleLiveKitWebhookRequest("{\"event\":\"track_published\"}", "Bearer token");
 
@@ -368,7 +368,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     new LiveKitTrackInfo(trackSid, "SCREEN_SHARE", "VIDEO", false, 1920, 1080))));
 
         _guildChannelRepositoryMock
@@ -402,7 +402,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     new LiveKitTrackInfo("TR_cam123", "CAMERA", "VIDEO", false, 1280, 720))));
 
         _guildChannelRepositoryMock
@@ -426,7 +426,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
     {
         var channel = ApplicationTestBuilders.CreateChannel(GuildChannelType.Voice);
         var participantUserId = UserId.New();
-        var occurredAtUtc = TestClock.UtcNow;
+        var occurredAtUtc = TestTime.UtcNow;
         var trackSid = "TR_screen789";
         var request = new HandleLiveKitWebhookRequest("{\"event\":\"track_unpublished\"}", "Bearer token");
 
@@ -485,7 +485,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     new LiveKitTrackInfo(trackSid, "SCREEN_SHARE", "VIDEO", false, 1920, 1080))));
 
         _guildChannelRepositoryMock
@@ -524,7 +524,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
@@ -552,7 +552,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         _guildChannelRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(channel.Id, participantUserId, It.IsAny<CancellationToken>()))
@@ -582,7 +582,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"channel:{channel.Id}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     Track: null)));
 
         _guildChannelRepositoryMock
@@ -613,12 +613,12 @@ public sealed class HandleLiveKitWebhookHandlerTests
         var conversationId = ConversationId.New();
         var participantUserId = UserId.New();
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
-        var occurredAt = TestClock.UtcNow;
+        var occurredAt = TestTime.UtcNow;
         var conversation = Harmonie.Domain.Entities.Conversations.Conversation.Rehydrate(
             conversationId,
             Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
             null,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         _webhookReceiverMock
             .Setup(x => x.Receive(request.RawBody, request.AuthorizationHeader!))
@@ -663,12 +663,12 @@ public sealed class HandleLiveKitWebhookHandlerTests
         var conversationId = ConversationId.New();
         var participantUserId = UserId.New();
         var request = new HandleLiveKitWebhookRequest("{}", "Bearer token");
-        var occurredAt = TestClock.UtcNow;
+        var occurredAt = TestTime.UtcNow;
         var conversation = Harmonie.Domain.Entities.Conversations.Conversation.Rehydrate(
             conversationId,
             Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
             null,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         _webhookReceiverMock
             .Setup(x => x.Receive(request.RawBody, request.AuthorizationHeader!))
@@ -721,7 +721,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
             conversationId,
             Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
             null,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         _webhookReceiverMock
             .Setup(x => x.Receive(request.RawBody, request.AuthorizationHeader!))
@@ -731,7 +731,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"conversation:{conversationId}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     new LiveKitTrackInfo(trackSid, "SCREEN_SHARE", "VIDEO", false, 1920, 1080))));
 
         _conversationRepositoryMock
@@ -764,7 +764,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
             conversationId,
             Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
             null,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
         _webhookReceiverMock
             .Setup(x => x.Receive(request.RawBody, request.AuthorizationHeader!))
@@ -774,7 +774,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"conversation:{conversationId}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow,
+                    TestTime.UtcNow,
                     new LiveKitTrackInfo(trackSid, "SCREEN_SHARE", "VIDEO", false, 1920, 1080))));
 
         _conversationRepositoryMock
@@ -811,7 +811,7 @@ public sealed class HandleLiveKitWebhookHandlerTests
                     $"conversation:{conversationId}",
                     participantUserId.ToString(),
                     "alice",
-                    TestClock.UtcNow)));
+                    TestTime.UtcNow)));
 
         _conversationRepositoryMock
             .Setup(x => x.GetWithParticipantAsync(conversationId, participantUserId, It.IsAny<CancellationToken>()))

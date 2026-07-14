@@ -159,7 +159,7 @@ public sealed class DeleteChannelHandlerTests
             GuildChannelType.Text,
             isDefault: isDefault,
             position: 0,
-            createdAtUtc: TestClock.UtcNow);
+            createdAtUtc: TestTime.UtcNow);
 
         if (result.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");

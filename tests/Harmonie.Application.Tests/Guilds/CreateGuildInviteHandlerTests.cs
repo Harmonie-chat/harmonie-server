@@ -40,7 +40,7 @@ public sealed class CreateGuildInviteHandlerTests
             _guildRepositoryMock.Object,
             _guildInviteRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
     }
 
     [Fact]

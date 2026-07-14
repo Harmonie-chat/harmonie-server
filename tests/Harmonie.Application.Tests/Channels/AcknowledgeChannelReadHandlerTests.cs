@@ -41,7 +41,7 @@ public sealed class AcknowledgeChannelReadHandlerTests
         _orchestrator = new ReadOrchestrator(
             _messageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
 
         _handler = new AcknowledgeReadHandler(
             _guildChannelRepositoryMock.Object,

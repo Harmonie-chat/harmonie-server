@@ -46,7 +46,7 @@ public sealed class BanMemberHandlerTests
             new Mock<IRealtimeGroupManager>().Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Create(),
+            TestTime.CreateProvider(),
             NullLogger<BanMemberHandler>.Instance);
     }
 

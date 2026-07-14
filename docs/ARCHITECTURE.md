@@ -99,4 +99,4 @@ The Web Push payload intentionally excludes message content and presentation fie
 - Authentication: JWT bearer middleware
 - Authorization: membership checks in handlers and SignalR hub methods
 - Throttling: fixed-window limiter for message posting (`message-post` policy)
-- Time: hosts register `TimeProvider.System`; time-dependent services receive `TimeProvider`, while Domain methods receive explicit UTC timestamps and never resolve a clock service. Production access to static system clocks is rejected by the banned API rules in `eng/analyzers/BannedSymbols.txt`; tests use the shared `tests/Common/TestClock.cs` helper backed by `FakeTimeProvider`.
+- Time: hosts register `TimeProvider.System`; time-dependent services receive `TimeProvider`, while Domain methods receive explicit UTC timestamps and never resolve a clock service. Production access to static system clocks is rejected by the banned API rules in `build/analyzers/BannedSymbols.txt`; tests use the shared `tests/Common/TestTime.cs` helper backed by `FakeTimeProvider`.

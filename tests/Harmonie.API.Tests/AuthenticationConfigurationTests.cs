@@ -13,7 +13,7 @@ public sealed class AuthenticationConfigurationTests
     [Fact]
     public void JwtLifetimeValidator_ShouldUseRegisteredTimeProvider()
     {
-        var timeProvider = TestClock.Create();
+        var timeProvider = TestTime.CreateProvider();
         var nowUtc = timeProvider.GetUtcNow();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

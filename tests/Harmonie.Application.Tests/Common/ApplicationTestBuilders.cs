@@ -28,7 +28,7 @@ internal static class ApplicationTestBuilders
 
         if (userId is null)
         {
-            var userResult = User.Create(emailResult.Value, usernameResult.Value, "hashed_password", TestClock.UtcNow);
+            var userResult = User.Create(emailResult.Value, usernameResult.Value, "hashed_password", TestTime.UtcNow);
             if (userResult.IsFailure || userResult.Value is null)
                 throw new InvalidOperationException("Failed to create user for tests.");
             return userResult.Value;
@@ -50,8 +50,8 @@ internal static class ApplicationTestBuilders
             language: null,
             status: UserStatus.Online,
             statusUpdatedAtUtc: null,
-            createdAtUtc: TestClock.UtcNow,
-            updatedAtUtc: TestClock.UtcNow);
+            createdAtUtc: TestTime.UtcNow,
+            updatedAtUtc: TestTime.UtcNow);
     }
 
     public static Guild CreateGuild(UserId? ownerId = null, GuildId? guildId = null, UploadedFileId? iconFileId = null)
@@ -64,8 +64,8 @@ internal static class ApplicationTestBuilders
             guildId ?? GuildId.New(),
             nameResult.Value,
             ownerId ?? UserId.New(),
-            createdAtUtc: TestClock.UtcNow,
-            updatedAtUtc: TestClock.UtcNow,
+            createdAtUtc: TestTime.UtcNow,
+            updatedAtUtc: TestTime.UtcNow,
             iconFileId: iconFileId);
     }
 
@@ -80,7 +80,7 @@ internal static class ApplicationTestBuilders
             type,
             isDefault: false,
             position: 0,
-            createdAtUtc: TestClock.UtcNow);
+            createdAtUtc: TestTime.UtcNow);
 
         if (result.IsFailure || result.Value is null)
             throw new InvalidOperationException("Failed to create channel for tests.");
@@ -106,7 +106,7 @@ internal static class ApplicationTestBuilders
             authorUserId: authorId,
             replyToMessageId: replyToMessageId,
             content: contentResult.Value,
-            createdAtUtc: createdAtUtc ?? TestClock.UtcNow,
+            createdAtUtc: createdAtUtc ?? TestTime.UtcNow,
             updatedAtUtc: null,
             deletedAtUtc: null);
     }
@@ -129,7 +129,7 @@ internal static class ApplicationTestBuilders
             authorUserId: authorUserId,
             replyToMessageId: replyToMessageId,
             content: contentResult.Value,
-            createdAtUtc: createdAtUtc ?? TestClock.UtcNow.AddMinutes(-1),
+            createdAtUtc: createdAtUtc ?? TestTime.UtcNow.AddMinutes(-1),
             updatedAtUtc: null,
             deletedAtUtc: null);
     }
@@ -139,17 +139,17 @@ internal static class ApplicationTestBuilders
             ConversationId.New(),
             Harmonie.Domain.Entities.Conversations.ConversationType.Direct,
             null,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
     public static ConversationParticipant CreateConversationParticipant(ConversationId conversationId, UserId userId)
-        => ConversationParticipant.Rehydrate(conversationId, userId, TestClock.UtcNow, hiddenAtUtc: null);
+        => ConversationParticipant.Rehydrate(conversationId, userId, TestTime.UtcNow, hiddenAtUtc: null);
 
     public static Conversation CreateGroupConversation(string? name)
         => Conversation.Rehydrate(
             ConversationId.New(),
             Harmonie.Domain.Entities.Conversations.ConversationType.Group,
             name,
-            TestClock.UtcNow);
+            TestTime.UtcNow);
 
     public static UploadedFile CreateUploadedFile(
         UserId? uploaderUserId = null,
@@ -168,6 +168,6 @@ internal static class ApplicationTestBuilders
             sizeBytes,
             storageKey ?? $"uploads/{Guid.NewGuid():N}.bin",
             purpose,
-            TestClock.UtcNow.AddMinutes(-10));
+            TestTime.UtcNow.AddMinutes(-10));
     }
 }

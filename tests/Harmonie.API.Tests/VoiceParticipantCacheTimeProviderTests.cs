@@ -14,7 +14,7 @@ public sealed class VoiceParticipantCacheTimeProviderTests
     [Fact]
     public async Task GuildCache_ShouldExpireParticipantUsingInjectedTimeProvider()
     {
-        var timeProvider = TestClock.Create();
+        var timeProvider = TestTime.CreateProvider();
         var cache = new InMemoryVoiceParticipantCache(timeProvider);
         var channelId = GuildChannelId.New();
         var participant = CreateParticipant();
@@ -30,7 +30,7 @@ public sealed class VoiceParticipantCacheTimeProviderTests
     [Fact]
     public async Task ConversationCache_ShouldExpireParticipantUsingInjectedTimeProvider()
     {
-        var timeProvider = TestClock.Create();
+        var timeProvider = TestTime.CreateProvider();
         var cache = new InMemoryConversationVoiceParticipantCache(timeProvider);
         var conversationId = ConversationId.New();
         var participant = CreateParticipant();

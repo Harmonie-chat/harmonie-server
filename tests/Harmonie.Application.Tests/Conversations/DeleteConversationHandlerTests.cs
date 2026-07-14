@@ -46,7 +46,7 @@ public sealed class DeleteConversationHandlerTests
             _participantRepositoryMock.Object,
             _realtimeGroupManagerMock.Object,
             _conversationNotifierMock.Object,
-            TestClock.Create(),
+            TestTime.CreateProvider(),
             NullLogger<DeleteConversationHandler>.Instance);
     }
 

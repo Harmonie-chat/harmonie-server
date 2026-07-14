@@ -14,7 +14,7 @@ public sealed class ConversationTests
         var user1 = UserId.New();
         var user2 = UserId.New();
 
-        var result = Conversation.CreateDirect(user1, user2, TestClock.UtcNow);
+        var result = Conversation.CreateDirect(user1, user2, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -27,7 +27,7 @@ public sealed class ConversationTests
     {
         var userId = UserId.New();
 
-        var result = Conversation.CreateDirect(userId, userId, TestClock.UtcNow);
+        var result = Conversation.CreateDirect(userId, userId, TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().NotBeNullOrWhiteSpace();
@@ -38,7 +38,7 @@ public sealed class ConversationTests
     {
         var participants = new[] { UserId.New(), UserId.New(), UserId.New() };
 
-        var result = Conversation.CreateGroup("My Group", participants, TestClock.UtcNow);
+        var result = Conversation.CreateGroup("My Group", participants, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -51,7 +51,7 @@ public sealed class ConversationTests
     {
         var participants = new[] { UserId.New(), UserId.New() };
 
-        var result = Conversation.CreateGroup(null, participants, TestClock.UtcNow);
+        var result = Conversation.CreateGroup(null, participants, TestTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().BeNull();
@@ -62,7 +62,7 @@ public sealed class ConversationTests
     {
         var participants = new[] { UserId.New() };
 
-        var result = Conversation.CreateGroup("Only one", participants, TestClock.UtcNow);
+        var result = Conversation.CreateGroup("Only one", participants, TestTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().NotBeNullOrWhiteSpace();
@@ -71,7 +71,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WhenDirectConversation_ShouldFail()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Direct, null, TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Direct, null, TestTime.UtcNow);
 
         var result = conversation.UpdateName("Should Fail");
 
@@ -82,7 +82,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithValidName_ShouldSucceed()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName("New Name");
 
@@ -93,7 +93,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithNull_ShouldSucceed()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName(null);
 
@@ -104,7 +104,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithEmptyString_ShouldFail()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName("");
 
@@ -115,7 +115,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithWhitespaceOnly_ShouldFail()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName("   ");
 
@@ -126,7 +126,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithNameExceedingMaxLength_ShouldFail()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName(new string('a', 101));
 
@@ -137,7 +137,7 @@ public sealed class ConversationTests
     [Fact]
     public void UpdateName_WithNameAtMaxLength_ShouldSucceed()
     {
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestClock.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Original", TestTime.UtcNow);
 
         var result = conversation.UpdateName(new string('a', 100));
 

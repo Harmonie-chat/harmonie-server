@@ -40,7 +40,7 @@ public sealed class ReorderChannelsHandlerTests
             _guildChannelRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public sealed class ReorderChannelsHandlerTests
 
     private static GuildChannel CreateChannel(GuildId guildId, string name, int position)
     {
-        var result = GuildChannel.Create(guildId, name, GuildChannelType.Text, isDefault: false, position, TestClock.UtcNow);
+        var result = GuildChannel.Create(guildId, name, GuildChannelType.Text, isDefault: false, position, TestTime.UtcNow);
         if (result.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");
 

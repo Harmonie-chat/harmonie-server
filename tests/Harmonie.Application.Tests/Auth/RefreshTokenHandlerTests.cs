@@ -32,7 +32,7 @@ public sealed class RefreshTokenHandlerTests
             _userRepositoryMock.Object,
             _refreshTokenRepositoryMock.Object,
             _jwtTokenServiceMock.Object,
-            TestClock.Create());
+            TestTime.CreateProvider());
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed class RefreshTokenHandlerTests
         var session = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: user.Id,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
             RevokedAtUtc: null,
             RevocationReason: null,
             ReplacedByTokenId: null);
@@ -62,11 +62,11 @@ public sealed class RefreshTokenHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(TestClock.UtcNow.AddMinutes(15));
+            .Returns(TestTime.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(TestClock.UtcNow.AddDays(30));
+            .Returns(TestTime.UtcNow.AddDays(30));
 
         _refreshTokenRepositoryMock
             .Setup(x => x.GetByTokenHashAsync("old_hash", It.IsAny<CancellationToken>()))
@@ -147,7 +147,7 @@ public sealed class RefreshTokenHandlerTests
         var expiredSession = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: userId,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(-1),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(-1),
             RevokedAtUtc: null,
             RevocationReason: null,
             ReplacedByTokenId: null);
@@ -180,8 +180,8 @@ public sealed class RefreshTokenHandlerTests
         var revokedSession = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: userId,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
-            RevokedAtUtc: TestClock.UtcNow.AddMinutes(-1),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: TestTime.UtcNow.AddMinutes(-1),
             RevocationReason: RefreshTokenRevocationReasons.Rotated,
             ReplacedByTokenId: Guid.NewGuid());
 
@@ -234,15 +234,15 @@ public sealed class RefreshTokenHandlerTests
         var originalSession = new RefreshTokenSession(
             Id: tokenId,
             UserId: user.Id,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
             RevokedAtUtc: null,
             RevocationReason: null,
             ReplacedByTokenId: null);
         var revokedSession = new RefreshTokenSession(
             Id: tokenId,
             UserId: user.Id,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
-            RevokedAtUtc: TestClock.UtcNow,
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: TestTime.UtcNow,
             RevocationReason: RefreshTokenRevocationReasons.Rotated,
             ReplacedByTokenId: Guid.NewGuid());
 
@@ -269,11 +269,11 @@ public sealed class RefreshTokenHandlerTests
 
         _jwtTokenServiceMock
             .Setup(x => x.GetAccessTokenExpirationUtc())
-            .Returns(TestClock.UtcNow.AddMinutes(15));
+            .Returns(TestTime.UtcNow.AddMinutes(15));
 
         _jwtTokenServiceMock
             .Setup(x => x.GetRefreshTokenExpirationUtc())
-            .Returns(TestClock.UtcNow.AddDays(30));
+            .Returns(TestTime.UtcNow.AddDays(30));
 
         _refreshTokenRepositoryMock
             .Setup(x => x.RotateAsync(
@@ -325,8 +325,8 @@ public sealed class RefreshTokenHandlerTests
         var revokedSession = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: userId,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
-            RevokedAtUtc: TestClock.UtcNow.AddMinutes(-1),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: TestTime.UtcNow.AddMinutes(-1),
             RevocationReason: RefreshTokenRevocationReasons.Rotated,
             ReplacedByTokenId: null);
 
@@ -386,8 +386,8 @@ public sealed class RefreshTokenHandlerTests
         var revokedSession = new RefreshTokenSession(
             Id: Guid.NewGuid(),
             UserId: userId,
-            ExpiresAtUtc: TestClock.UtcNow.AddMinutes(10),
-            RevokedAtUtc: TestClock.UtcNow.AddMinutes(-1),
+            ExpiresAtUtc: TestTime.UtcNow.AddMinutes(10),
+            RevokedAtUtc: TestTime.UtcNow.AddMinutes(-1),
             RevocationReason: RefreshTokenRevocationReasons.ReuseDetected,
             ReplacedByTokenId: null);
 
