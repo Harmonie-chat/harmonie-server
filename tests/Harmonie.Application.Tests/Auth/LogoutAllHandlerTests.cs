@@ -22,7 +22,7 @@ public sealed class LogoutAllHandlerTests
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _handler = new LogoutAllHandler(
             _refreshTokenRepositoryMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

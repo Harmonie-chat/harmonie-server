@@ -48,7 +48,7 @@ public sealed class UpdateGuildHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<UpdateGuildHandler>.Instance);
     }
 

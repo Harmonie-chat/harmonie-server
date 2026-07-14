@@ -41,10 +41,10 @@ public sealed class WorkerDependencyInjectionTests
             })
             .Build();
         var services = new ServiceCollection();
-        var timeProvider = TestClock.Provider;
+        var timeProvider = TestClock.Create();
 
         services.AddLogging();
-        services.AddSingleton(timeProvider);
+        services.AddSingleton<TimeProvider>(timeProvider);
         services.AddWorkerServices(configuration);
 
         await using var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions

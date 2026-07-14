@@ -39,7 +39,7 @@ public sealed class UploadFileHandlerTests
             _uploadedFileRepositoryMock.Object,
             _objectStorageServiceMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<UploadFileHandler>.Instance);
     }
 

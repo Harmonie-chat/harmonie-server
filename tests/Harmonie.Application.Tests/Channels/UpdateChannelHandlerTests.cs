@@ -47,7 +47,7 @@ public sealed class UpdateChannelHandlerTests
             _guildChannelRepositoryMock.Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<UpdateChannelHandler>.Instance);
     }
 

@@ -32,7 +32,7 @@ public sealed class RefreshTokenHandlerTests
             _userRepositoryMock.Object,
             _refreshTokenRepositoryMock.Object,
             _jwtTokenServiceMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

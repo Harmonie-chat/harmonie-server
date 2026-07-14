@@ -47,7 +47,7 @@ public sealed class RegisterHandlerTests
             _unitOfWorkMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenServiceMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

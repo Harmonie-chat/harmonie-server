@@ -54,7 +54,7 @@ public sealed class RemoveChannelReactionHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new RemoveReactionHandler(
             _guildChannelRepositoryMock.Object,

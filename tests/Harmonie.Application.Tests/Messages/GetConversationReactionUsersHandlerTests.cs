@@ -38,7 +38,7 @@ public sealed class GetConversationReactionUsersHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new GetReactionUsersHandler(
             _conversationRepositoryMock.Object,

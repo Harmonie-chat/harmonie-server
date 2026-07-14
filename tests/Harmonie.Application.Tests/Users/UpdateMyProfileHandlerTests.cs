@@ -43,7 +43,7 @@ public sealed class UpdateMyProfileHandlerTests
                 _objectStorageServiceMock.Object,
                 NullLogger<UploadedFileCleanupService>.Instance),
             _userProfileNotifierMock.Object,
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<UpdateMyProfileHandler>.Instance);
     }
 

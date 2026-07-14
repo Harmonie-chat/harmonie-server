@@ -9,7 +9,5 @@ internal static class TestClock
 
     public static DateTime UtcNow => FixedUtcNow.UtcDateTime;
 
-    public static TimeProvider Provider => Create();
-
     public static FakeTimeProvider Create() => new(FixedUtcNow);
 }

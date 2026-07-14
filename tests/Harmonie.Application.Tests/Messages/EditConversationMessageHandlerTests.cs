@@ -69,7 +69,7 @@ public sealed class EditConversationMessageHandlerTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             uploadedFileCleanupService,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new EditMessageHandler(
             _conversationRepositoryMock.Object,

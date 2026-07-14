@@ -29,7 +29,7 @@ public sealed class UpdateUserStatusHandlerTests
             _userRepositoryMock.Object,
             _guildMemberRepositoryMock.Object,
             _userPresenceNotifierMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

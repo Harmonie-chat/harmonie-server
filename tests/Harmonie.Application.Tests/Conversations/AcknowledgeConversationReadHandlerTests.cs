@@ -39,7 +39,7 @@ public sealed class AcknowledgeConversationReadHandlerTests
         _orchestrator = new ReadOrchestrator(
             _messageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new AcknowledgeReadHandler(
             _conversationRepositoryMock.Object,

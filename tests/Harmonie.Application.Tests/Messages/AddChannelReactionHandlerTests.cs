@@ -53,7 +53,7 @@ public sealed class AddChannelReactionHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new AddReactionHandler(
             _guildChannelRepositoryMock.Object,

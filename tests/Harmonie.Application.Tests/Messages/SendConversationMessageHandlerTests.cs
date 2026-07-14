@@ -93,7 +93,7 @@ public sealed class SendConversationMessageHandlerTests
             _userRepositoryMock.Object,
             _messageNotificationOutboxRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new SendMessageHandler(
             _conversationRepositoryMock.Object,
@@ -101,7 +101,7 @@ public sealed class SendConversationMessageHandlerTests
             _directMessageNotifierMock.Object,
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
-                TestClock.Provider,
+                TestClock.Create(),
                 NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<ConversationSendMessageScope>.Instance,
             _orchestrator);

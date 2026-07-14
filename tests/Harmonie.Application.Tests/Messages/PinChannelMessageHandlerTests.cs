@@ -53,7 +53,7 @@ public sealed class PinChannelMessageHandlerTests
             _messageRepositoryMock.Object,
             _pinnedMessageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new PinMessageHandler(
             _guildChannelRepositoryMock.Object,

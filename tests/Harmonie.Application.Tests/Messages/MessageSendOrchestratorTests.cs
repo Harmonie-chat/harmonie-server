@@ -57,7 +57,7 @@ public sealed class MessageSendOrchestratorTests
             _userRepositoryMock.Object,
             _messageNotificationOutboxRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     private static MessageScope AnyScope() => new MessageScope.Channel(GuildChannelId.New());

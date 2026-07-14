@@ -42,7 +42,7 @@ public sealed class LoginHandlerTests
             _unitOfWorkMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenServiceMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

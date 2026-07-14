@@ -51,7 +51,7 @@ public sealed class UnpinConversationMessageHandlerTests
             _messageRepositoryMock.Object,
             _pinnedMessageRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new UnpinMessageHandler(
             _conversationRepositoryMock.Object,

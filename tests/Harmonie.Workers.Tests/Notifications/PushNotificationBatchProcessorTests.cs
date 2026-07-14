@@ -81,7 +81,7 @@ public sealed class PushNotificationBatchProcessorTests
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             outboxRepository,
             Options.Create(options),
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<PushNotificationBatchProcessor>.Instance);
     }
 

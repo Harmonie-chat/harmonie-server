@@ -56,7 +56,7 @@ public sealed class DeleteMyAvatarHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             Mock.Of<IUserProfileNotifier>(),
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<DeleteMyAvatarHandler>.Instance);
     }
 

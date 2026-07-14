@@ -40,7 +40,7 @@ public sealed class ReorderChannelsHandlerTests
             _guildChannelRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]

@@ -50,7 +50,7 @@ public sealed class RemoveConversationReactionHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new RemoveReactionHandler(
             _conversationRepositoryMock.Object,

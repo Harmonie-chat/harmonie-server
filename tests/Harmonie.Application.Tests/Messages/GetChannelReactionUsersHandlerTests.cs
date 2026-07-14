@@ -39,7 +39,7 @@ public sealed class GetChannelReactionUsersHandlerTests
             _messageRepositoryMock.Object,
             _reactionRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
 
         _handler = new GetReactionUsersHandler(
             _guildChannelRepositoryMock.Object,

@@ -58,7 +58,7 @@ public sealed class AcceptInviteHandlerTests
             new Mock<IGuildNotifier>().Object,
             new Mock<IUserRepository>().Object,
             _unitOfWorkMock.Object,
-            TestClock.Provider,
+            TestClock.Create(),
             NullLogger<AcceptInviteHandler>.Instance);
     }
 

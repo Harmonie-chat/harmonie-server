@@ -21,7 +21,7 @@ public sealed class PreviewInviteHandlerTests
 
         _handler = new PreviewInviteHandler(
             _guildInviteRepositoryMock.Object,
-            TestClock.Provider);
+            TestClock.Create());
     }
 
     [Fact]
