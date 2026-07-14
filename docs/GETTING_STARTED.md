@@ -112,12 +112,12 @@ Current backend notification behavior:
 - payloads are minimal `message.created` business data, without message content or UI presentation fields;
 - retries are tracked per device, so a partial Web Push failure does not resend to devices that already succeeded.
 
-Notification cleanup is configured in the worker host. It is disabled by default; enable it explicitly in production after selecting retention periods appropriate for operational debugging:
+Notification cleanup is configured and enabled by default in the worker host. Adjust the retention periods for operational debugging, or set `Enabled` to `false` to disable it:
 
 ```json
 "NotificationCleanup": {
   "Enabled": true,
-  "PollIntervalSeconds": 86400,
+  "PollIntervalSeconds": 1800,
   "BatchSize": 500,
   "ProcessedOutboxRetentionDays": 7,
   "FailedOutboxRetentionDays": 30,
