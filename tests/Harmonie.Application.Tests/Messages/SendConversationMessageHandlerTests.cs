@@ -92,7 +92,8 @@ public sealed class SendConversationMessageHandlerTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _userRepositoryMock.Object,
             _messageNotificationOutboxRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
 
         _handler = new SendMessageHandler(
             _conversationRepositoryMock.Object,
@@ -100,6 +101,7 @@ public sealed class SendConversationMessageHandlerTests
             _directMessageNotifierMock.Object,
             new LinkPreviewResolutionService(
                 _serviceScopeFactoryMock.Object,
+                TestTime.CreateProvider(),
                 NullLogger<LinkPreviewResolutionService>.Instance),
             NullLogger<ConversationSendMessageScope>.Instance,
             _orchestrator);
@@ -468,7 +470,7 @@ public sealed class SendConversationMessageHandlerTests
         var currentUserId = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(currentUserId, UserId.New());
         var targetMessageId = MessageId.New();
-        var deletedAt = DateTime.UtcNow.AddHours(-1);
+        var deletedAt = TestTime.UtcNow.AddHours(-1);
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithAllParticipantsAsync(conversation.Id, currentUserId, It.IsAny<CancellationToken>()))
@@ -537,7 +539,7 @@ public sealed class SendConversationMessageHandlerTests
 
         var senderParticipant = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, sender);
         var hiddenParticipant = ConversationParticipant.Rehydrate(
-            conversation.Id, receiver, DateTime.UtcNow.AddDays(-1), hiddenAtUtc: DateTime.UtcNow.AddHours(-1));
+            conversation.Id, receiver, TestTime.UtcNow.AddDays(-1), hiddenAtUtc: TestTime.UtcNow.AddHours(-1));
 
         _conversationRepositoryMock
             .Setup(x => x.GetByIdWithAllParticipantsAsync(conversation.Id, sender, It.IsAny<CancellationToken>()))

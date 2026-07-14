@@ -99,7 +99,7 @@ public sealed class GetConversationPinnedMessagesHandlerTests
         var participant = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(participant, UserId.New());
         var participantObj = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participant);
-        var now = DateTime.UtcNow;
+        var now = TestTime.UtcNow;
 
         var summaries = new[]
         {

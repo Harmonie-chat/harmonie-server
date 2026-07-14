@@ -35,7 +35,8 @@ public sealed class GuildMember
         GuildId guildId,
         UserId userId,
         GuildRole role,
-        UserId? invitedByUserId)
+        UserId? invitedByUserId,
+        DateTime joinedAtUtc)
     {
         if (guildId is null)
             return Result.Failure<GuildMember>("Guild ID is required");
@@ -53,7 +54,7 @@ public sealed class GuildMember
             guildId,
             userId,
             role,
-            DateTime.UtcNow,
+            joinedAtUtc,
             invitedByUserId));
     }
 

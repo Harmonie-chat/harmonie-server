@@ -11,23 +11,26 @@ public sealed class PushNotificationBatchProcessor : IPushNotificationBatchProce
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMessageNotificationOutboxRepository _outboxRepository;
     private readonly PushNotificationOptions _options;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<PushNotificationBatchProcessor> _logger;
 
     public PushNotificationBatchProcessor(
         IServiceScopeFactory scopeFactory,
         IMessageNotificationOutboxRepository outboxRepository,
         IOptions<PushNotificationOptions> options,
+        TimeProvider timeProvider,
         ILogger<PushNotificationBatchProcessor> logger)
     {
         _scopeFactory = scopeFactory;
         _outboxRepository = outboxRepository;
         _options = options.Value;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
     public async Task ProcessBatchAsync(CancellationToken cancellationToken = default)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var jobs = await _outboxRepository.ClaimPendingAsync(
             _options.BatchSize,
             nowUtc,
@@ -51,7 +54,7 @@ public sealed class PushNotificationBatchProcessor : IPushNotificationBatchProce
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var dispatchService = scope.ServiceProvider.GetRequiredService<INotificationDispatchService>();
-            await dispatchService.DispatchAsync(job, DateTime.UtcNow, ct);
+            await dispatchService.DispatchAsync(job, _timeProvider.GetUtcNow().UtcDateTime, ct);
         });
     }
 }

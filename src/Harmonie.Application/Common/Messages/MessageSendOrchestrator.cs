@@ -25,6 +25,7 @@ public sealed class MessageSendOrchestrator
     private readonly IUserRepository _userRepository;
     private readonly IMessageNotificationOutboxRepository _messageNotificationOutboxRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public MessageSendOrchestrator(
         IMessageRepository messageRepository,
@@ -32,7 +33,8 @@ public sealed class MessageSendOrchestrator
         MessageAttachmentResolver attachmentResolver,
         IUserRepository userRepository,
         IMessageNotificationOutboxRepository messageNotificationOutboxRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _messageRepository = messageRepository;
         _messageAttachmentRepository = messageAttachmentRepository;
@@ -40,6 +42,7 @@ public sealed class MessageSendOrchestrator
         _userRepository = userRepository;
         _messageNotificationOutboxRepository = messageNotificationOutboxRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     /// <remarks>
@@ -141,10 +144,12 @@ public sealed class MessageSendOrchestrator
         }
 
         // ── Domain message creation ─────────────────────────────────────
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var messageResult = Message.Create(
             messageScope,
             callerId,
             content,
+            nowUtc,
             replyToTargetId,
             mentionUserIds);
         if (messageResult.IsFailure || messageResult.Value is null)
@@ -183,7 +188,7 @@ public sealed class MessageSendOrchestrator
         if (mentionUserIds is { Length: > 0 })
             await _messageRepository.AddMentionsAsync(messageResult.Value.Id, mentionUserIds, ct);
         await scope.ApplyInTransactionSideEffectsAsync(context, ct);
-        await _messageNotificationOutboxRepository.AddPendingAsync(messageResult.Value.Id, DateTime.UtcNow, ct);
+        await _messageNotificationOutboxRepository.AddPendingAsync(messageResult.Value.Id, nowUtc, ct);
         await transaction.CommitAsync(ct);
 
         // ── Reply preview DTO ───────────────────────────────────────────

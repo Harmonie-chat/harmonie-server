@@ -40,7 +40,8 @@ public sealed class GuildChannel : Entity<GuildChannelId>
         string? name,
         GuildChannelType type,
         bool isDefault,
-        int position)
+        int position,
+        DateTime createdAtUtc)
     {
         if (guildId is null)
             return Result.Failure<GuildChannel>("Guild ID is required");
@@ -65,10 +66,10 @@ public sealed class GuildChannel : Entity<GuildChannelId>
             type,
             isDefault,
             position,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
-    public Result UpdateName(string? name)
+    public Result UpdateName(string? name, DateTime updatedAtUtc)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result.Failure("Channel name is required");
@@ -78,17 +79,17 @@ public sealed class GuildChannel : Entity<GuildChannelId>
             return Result.Failure("Channel name cannot exceed 100 characters");
 
         Name = normalized;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
-    public Result UpdatePosition(int position)
+    public Result UpdatePosition(int position, DateTime updatedAtUtc)
     {
         if (position < 0)
             return Result.Failure("Channel position cannot be negative");
 
         Position = position;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 

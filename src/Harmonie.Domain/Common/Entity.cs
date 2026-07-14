@@ -9,9 +9,9 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
     public DateTime? UpdatedAtUtc { get; protected set; }
 
-    protected void MarkAsUpdated()
+    protected void MarkAsUpdated(DateTime updatedAtUtc)
     {
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = updatedAtUtc;
     }
 
     #region Equality

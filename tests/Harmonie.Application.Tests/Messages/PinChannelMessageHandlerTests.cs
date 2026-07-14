@@ -52,7 +52,8 @@ public sealed class PinChannelMessageHandlerTests
         _orchestrator = new PinOrchestrator(
             _messageRepositoryMock.Object,
             _pinnedMessageRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
 
         _handler = new PinMessageHandler(
             _guildChannelRepositoryMock.Object,

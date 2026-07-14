@@ -81,6 +81,7 @@ public sealed class PushNotificationBatchProcessorTests
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             outboxRepository,
             Options.Create(options),
+            TestTime.CreateProvider(),
             NullLogger<PushNotificationBatchProcessor>.Instance);
     }
 
@@ -111,10 +112,10 @@ public sealed class PushNotificationBatchProcessorTests
             MessageId.New(),
             MessageNotificationOutboxStatuses.Processing,
             1,
-            DateTime.UtcNow,
-            DateTime.UtcNow.AddMinutes(5),
+            TestTime.UtcNow,
+            TestTime.UtcNow.AddMinutes(5),
             null,
-            DateTime.UtcNow,
+            TestTime.UtcNow,
             null);
     }
 

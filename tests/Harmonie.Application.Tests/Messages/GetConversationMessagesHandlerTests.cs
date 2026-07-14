@@ -95,8 +95,8 @@ public sealed class GetConversationMessagesHandlerTests
         var participantOne = UserId.New();
         var participantTwo = UserId.New();
         var conversation = ApplicationTestBuilders.CreateConversation(participantOne, participantTwo);
-        var first = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "First", createdAtUtc: DateTime.UtcNow.AddMinutes(-2));
-        var second = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Second", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var first = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "First", createdAtUtc: TestTime.UtcNow.AddMinutes(-2));
+        var second = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Second", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
         var nextCursor = new MessageCursor(first.CreatedAtUtc, first.Id);
 
         _conversationRepositoryMock
@@ -143,7 +143,7 @@ public sealed class GetConversationMessagesHandlerTests
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
 
-        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Check https://example.com", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantTwo, content: "Check https://example.com", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
 
         var previews = new Dictionary<Guid, IReadOnlyList<LinkPreviewDto>>
         {
@@ -190,7 +190,7 @@ public sealed class GetConversationMessagesHandlerTests
             .Setup(x => x.GetByIdWithParticipantCheckAsync(conversation.Id, participantOne, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ConversationAccess(conversation, Participant: ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, participantOne)));
 
-        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "no reply", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var message = ApplicationTestBuilders.CreateConversationMessage(conversation.Id, participantOne, content: "no reply", createdAtUtc: TestTime.UtcNow.AddMinutes(-1));
 
         _directMessageRepositoryMock
             .Setup(x => x.GetConversationPageAsync(
@@ -230,7 +230,7 @@ public sealed class GetConversationMessagesHandlerTests
 
         var message = ApplicationTestBuilders.CreateConversationMessage(
             conversation.Id, participantOne, content: "replying",
-            createdAtUtc: DateTime.UtcNow.AddMinutes(-1),
+            createdAtUtc: TestTime.UtcNow.AddMinutes(-1),
             replyToMessageId: targetMessageId);
 
         var replyPreviews = new Dictionary<Guid, ReplyPreviewDto>

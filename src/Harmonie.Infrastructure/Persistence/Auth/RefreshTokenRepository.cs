@@ -11,10 +11,12 @@ namespace Harmonie.Infrastructure.Persistence.Auth;
 public sealed class RefreshTokenRepository : IRefreshTokenRepository
 {
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public RefreshTokenRepository(DbSession dbSession)
+    public RefreshTokenRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task StoreAsync(
@@ -49,7 +51,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
                 Id = Guid.NewGuid(),
                 UserId = userId.Value,
                 TokenHash = tokenHash,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
                 ExpiresAtUtc = expiresAtUtc
             },
             transaction: _dbSession.Transaction,

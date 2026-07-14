@@ -9,13 +9,19 @@ public sealed class InMemoryConversationVoiceParticipantCache : IConversationVoi
 {
     private static readonly TimeSpan ParticipantTtl = TimeSpan.FromHours(1);
 
+    private readonly TimeProvider _timeProvider;
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, CachedEntry>> _conversations = new();
     private readonly ConcurrentDictionary<(Guid ConversationId, Guid UserId), ConcurrentDictionary<string, byte>> _screenShareTrackSids = new();
+
+    public InMemoryConversationVoiceParticipantCache(TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
+    }
 
     public Task AddOrUpdateAsync(ConversationId conversationId, CachedVoiceParticipant participant, CancellationToken cancellationToken = default)
     {
         var conversation = _conversations.GetOrAdd(conversationId.Value, _ => new ConcurrentDictionary<Guid, CachedEntry>());
-        conversation[participant.UserId.Value] = new CachedEntry(participant, DateTime.UtcNow + ParticipantTtl);
+        conversation[participant.UserId.Value] = new CachedEntry(participant, _timeProvider.GetUtcNow().UtcDateTime + ParticipantTtl);
         return Task.CompletedTask;
     }
 
@@ -32,7 +38,7 @@ public sealed class InMemoryConversationVoiceParticipantCache : IConversationVoi
         if (!_conversations.TryGetValue(conversationId.Value, out var conversation))
             return Task.FromResult<IReadOnlyList<CachedVoiceParticipant>>(Array.Empty<CachedVoiceParticipant>());
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var result = conversation.Values
             .Where(e => e.ExpiresAt > now)
             .Select(e =>

@@ -17,17 +17,20 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
     private readonly IGuildChannelRepository _guildChannelRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IGuildNotifier _guildNotifier;
+    private readonly TimeProvider _timeProvider;
 
     public ReorderChannelsHandler(
         IGuildRepository guildRepository,
         IGuildChannelRepository guildChannelRepository,
         IUnitOfWork unitOfWork,
-        IGuildNotifier guildNotifier)
+        IGuildNotifier guildNotifier,
+        TimeProvider timeProvider)
     {
         _guildRepository = guildRepository;
         _guildChannelRepository = guildChannelRepository;
         _unitOfWork = unitOfWork;
         _guildNotifier = guildNotifier;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<ReorderChannelsResponse>> HandleAsync(
@@ -86,12 +89,13 @@ public sealed class ReorderChannelsHandler : IAuthenticatedHandler<ReorderChanne
         }
 
         await using var transaction = await _unitOfWork.BeginAsync(cancellationToken);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         foreach (var (id, position) in parsedItems)
         {
             var channel = channelMap[id];
 
-            var result = channel.UpdatePosition(position);
+            var result = channel.UpdatePosition(position, nowUtc);
             if (result.IsFailure)
             {
                 return ApplicationResponse<ReorderChannelsResponse>.Fail(

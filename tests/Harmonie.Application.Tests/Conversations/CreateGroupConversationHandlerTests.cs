@@ -92,7 +92,7 @@ public sealed class CreateGroupConversationHandlerTests
     {
         var caller = UserId.New();
         var participantB = UserId.New();
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Team Chat", DateTime.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, "Team Chat", TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetManyByIdsAsync(It.IsAny<IReadOnlyList<UserId>>(), It.IsAny<CancellationToken>()))
@@ -134,7 +134,7 @@ public sealed class CreateGroupConversationHandlerTests
     {
         var caller = UserId.New();
         var participantB = UserId.New();
-        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, null, DateTime.UtcNow);
+        var conversation = Conversation.Rehydrate(ConversationId.New(), ConversationType.Group, null, TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetManyByIdsAsync(It.IsAny<IReadOnlyList<UserId>>(), It.IsAny<CancellationToken>()))

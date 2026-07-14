@@ -40,10 +40,12 @@ public sealed class UserRepository : IUserRepository
                                          """;
 
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public UserRepository(DbSession dbSession)
+    public UserRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task<User?> GetByIdAsync(UserId userId, CancellationToken ct = default)
@@ -316,7 +318,7 @@ public sealed class UserRepository : IUserRepository
         var conn = await _dbSession.GetOpenConnectionAsync(ct);
         var cmd = new CommandDefinition(
             sql,
-            new { Id = userId.Value, DeletedAt = DateTime.UtcNow },
+            new { Id = userId.Value, DeletedAt = _timeProvider.GetUtcNow().UtcDateTime },
             transaction: _dbSession.Transaction,
             cancellationToken: ct);
         await conn.ExecuteAsync(cmd);

@@ -27,6 +27,7 @@ public sealed class UploadMyAvatarHandler
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserProfileNotifier _userProfileNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UploadMyAvatarHandler> _logger;
 
     public UploadMyAvatarHandler(
@@ -36,6 +37,7 @@ public sealed class UploadMyAvatarHandler
         UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         IUserProfileNotifier userProfileNotifier,
+        TimeProvider timeProvider,
         ILogger<UploadMyAvatarHandler> logger)
     {
         _userRepository = userRepository;
@@ -44,6 +46,7 @@ public sealed class UploadMyAvatarHandler
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _userProfileNotifier = userProfileNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -61,6 +64,7 @@ public sealed class UploadMyAvatarHandler
         }
 
         using var resizedStream = await ResizeImageAsync(request.Content, request.ContentType, cancellationToken);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var storageKey = BuildStorageKey(currentUserId, request.FileName);
         var previousAvatarFileId = user.AvatarFileId;
 
@@ -70,7 +74,8 @@ public sealed class UploadMyAvatarHandler
             request.ContentType,
             resizedStream.Length,
             storageKey,
-            UploadPurpose.Avatar);
+            UploadPurpose.Avatar,
+            nowUtc);
 
         if (uploadedFileResult.IsFailure || uploadedFileResult.Value is null)
         {
@@ -94,7 +99,7 @@ public sealed class UploadMyAvatarHandler
                 uploadResult.FailureReason ?? "Object storage upload failed");
         }
 
-        var avatarUpdateResult = user.UpdateAvatarFile(uploadedFileResult.Value.Id);
+        var avatarUpdateResult = user.UpdateAvatarFile(uploadedFileResult.Value.Id, nowUtc);
         if (avatarUpdateResult.IsFailure)
         {
             await DeleteStoredObjectSafelyAsync(storageKey, cancellationToken);

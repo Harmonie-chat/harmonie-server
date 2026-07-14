@@ -19,6 +19,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<AcceptInviteHandler> _logger;
 
     public AcceptInviteHandler(
@@ -30,6 +31,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         IGuildNotifier guildNotifier,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<AcceptInviteHandler> logger)
     {
         _guildInviteRepository = guildInviteRepository;
@@ -40,6 +42,7 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
         _guildNotifier = guildNotifier;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -56,7 +59,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
                 "Invite was not found");
         }
 
-        if (invite.ExpiresAtUtc.HasValue && invite.ExpiresAtUtc.Value <= DateTime.UtcNow)
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        if (invite.ExpiresAtUtc.HasValue && invite.ExpiresAtUtc.Value <= nowUtc)
         {
             return ApplicationResponse<AcceptInviteResponse>.Fail(
                 ApplicationErrorCodes.Invite.Expired,
@@ -93,7 +97,8 @@ public sealed class AcceptInviteHandler : IAuthenticatedHandler<string, AcceptIn
             invite.GuildId,
             currentUserId,
             GuildRole.Member,
-            invitedByUserId: invite.CreatorId);
+            invitedByUserId: invite.CreatorId,
+            joinedAtUtc: nowUtc);
         if (memberResult.IsFailure || memberResult.Value is null)
         {
             return ApplicationResponse<AcceptInviteResponse>.Fail(

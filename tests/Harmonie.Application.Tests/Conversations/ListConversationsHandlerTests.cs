@@ -52,8 +52,8 @@ public sealed class ListConversationsHandlerTests
         usernameAlice.Value.Should().NotBeNull();
         usernameBob.Value.Should().NotBeNull();
 
-        var firstCreatedAt = DateTime.UtcNow.AddMinutes(-10);
-        var secondCreatedAt = DateTime.UtcNow.AddMinutes(-5);
+        var firstCreatedAt = TestTime.UtcNow.AddMinutes(-10);
+        var secondCreatedAt = TestTime.UtcNow.AddMinutes(-5);
 
         _conversationRepositoryMock
             .Setup(x => x.GetUserConversationsAsync(userId, It.IsAny<CancellationToken>()))

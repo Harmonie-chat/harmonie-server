@@ -58,6 +58,7 @@ public sealed class AcceptInviteHandlerTests
             new Mock<IGuildNotifier>().Object,
             new Mock<IUserRepository>().Object,
             _unitOfWorkMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<AcceptInviteHandler>.Instance);
     }
 
@@ -79,7 +80,7 @@ public sealed class AcceptInviteHandlerTests
     {
         var details = new InviteAcceptDetails(
             _guildId, _creatorId, UsesCount: 0, MaxUses: null,
-            ExpiresAtUtc: DateTime.UtcNow.AddHours(-1));
+            ExpiresAtUtc: TestTime.UtcNow.AddHours(-1));
 
         _guildInviteRepositoryMock
             .Setup(x => x.GetAcceptDetailsByCodeAsync(InviteCode, It.IsAny<CancellationToken>()))
@@ -134,7 +135,7 @@ public sealed class AcceptInviteHandlerTests
     {
         var details = new InviteAcceptDetails(
             _guildId, _creatorId, UsesCount: 2, MaxUses: 10,
-            ExpiresAtUtc: DateTime.UtcNow.AddHours(24));
+            ExpiresAtUtc: TestTime.UtcNow.AddHours(24));
 
         _guildInviteRepositoryMock
             .Setup(x => x.GetAcceptDetailsByCodeAsync(InviteCode, It.IsAny<CancellationToken>()))

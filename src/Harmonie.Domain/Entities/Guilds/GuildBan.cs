@@ -34,7 +34,8 @@ public sealed class GuildBan
         GuildId guildId,
         UserId userId,
         string? reason,
-        UserId bannedBy)
+        UserId bannedBy,
+        DateTime createdAtUtc)
     {
         if (guildId is null)
             return Result.Failure<GuildBan>("Guild ID is required");
@@ -53,7 +54,7 @@ public sealed class GuildBan
             userId,
             reason,
             bannedBy,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
     public static GuildBan Rehydrate(

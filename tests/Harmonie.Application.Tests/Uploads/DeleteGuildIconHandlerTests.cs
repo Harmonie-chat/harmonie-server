@@ -53,6 +53,7 @@ public sealed class DeleteGuildIconHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<DeleteGuildIconHandler>.Instance);
     }
 

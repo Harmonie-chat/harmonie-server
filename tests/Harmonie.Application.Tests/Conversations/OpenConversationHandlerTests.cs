@@ -175,9 +175,9 @@ public sealed class OpenConversationHandlerTests
         var conversation = ApplicationTestBuilders.CreateConversation(callerUserId, targetUserId);
 
         var hiddenCaller = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, callerUserId);
-        hiddenCaller.Hide();
+        hiddenCaller.Hide(TestTime.UtcNow);
         var hiddenTarget = ApplicationTestBuilders.CreateConversationParticipant(conversation.Id, targetUserId);
-        hiddenTarget.Hide();
+        hiddenTarget.Hide(TestTime.UtcNow);
 
         _userRepositoryMock
             .Setup(x => x.GetManyByIdsAsync(
@@ -334,7 +334,7 @@ public sealed class OpenConversationHandlerTests
             language: null,
             status: UserStatus.Online,
             statusUpdatedAtUtc: null,
-            createdAtUtc: DateTime.UtcNow,
-            updatedAtUtc: DateTime.UtcNow);
+            createdAtUtc: TestTime.UtcNow,
+            updatedAtUtc: TestTime.UtcNow);
     }
 }

@@ -8,10 +8,12 @@ namespace Harmonie.Infrastructure.Persistence.Notifications;
 public sealed class NotificationDeviceRepository : INotificationDeviceRepository
 {
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public NotificationDeviceRepository(DbSession dbSession)
+    public NotificationDeviceRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task UpsertWebPushAsync(
@@ -48,7 +50,7 @@ public sealed class NotificationDeviceRepository : INotificationDeviceRepository
                                updated_at_utc = EXCLUDED.updated_at_utc
                            """;
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var connection = await _dbSession.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(
             sql,

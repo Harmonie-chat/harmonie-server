@@ -23,7 +23,7 @@ public sealed class Conversation : Entity<ConversationId>
         UpdatedAtUtc = null;
     }
 
-    public static Result<Conversation> CreateDirect(UserId firstUserId, UserId secondUserId)
+    public static Result<Conversation> CreateDirect(UserId firstUserId, UserId secondUserId, DateTime createdAtUtc)
     {
         if (firstUserId is null)
             return Result.Failure<Conversation>("First user ID is required");
@@ -38,10 +38,10 @@ public sealed class Conversation : Entity<ConversationId>
             ConversationId.New(),
             ConversationType.Direct,
             null,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
-    public static Result<Conversation> CreateGroup(string? name, IReadOnlyList<UserId> participantIds)
+    public static Result<Conversation> CreateGroup(string? name, IReadOnlyList<UserId> participantIds, DateTime createdAtUtc)
     {
         if (participantIds is null || participantIds.Count < 2)
             return Result.Failure<Conversation>("A group conversation requires at least 2 participants");
@@ -50,7 +50,7 @@ public sealed class Conversation : Entity<ConversationId>
             ConversationId.New(),
             ConversationType.Group,
             name,
-            DateTime.UtcNow));
+            createdAtUtc));
     }
 
     public static Conversation Rehydrate(

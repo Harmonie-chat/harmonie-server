@@ -47,6 +47,7 @@ public sealed class UpdateChannelHandlerTests
             _guildChannelRepositoryMock.Object,
             _guildNotifierMock.Object,
             _unitOfWorkMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<UpdateChannelHandler>.Instance);
     }
 
@@ -359,7 +360,8 @@ public sealed class UpdateChannelHandlerTests
             name,
             GuildChannelType.Text,
             isDefault: false,
-            position);
+            position,
+            TestTime.UtcNow);
 
         if (result.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");

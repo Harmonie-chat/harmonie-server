@@ -17,15 +17,18 @@ public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuild
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreateGuildInviteHandler(
         IGuildRepository guildRepository,
         IGuildInviteRepository guildInviteRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _guildRepository = guildRepository;
         _guildInviteRepository = guildInviteRepository;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<CreateGuildInviteResponse>> HandleAsync(
@@ -49,12 +52,18 @@ public sealed class CreateGuildInviteHandler : IAuthenticatedHandler<CreateGuild
         }
 
         GuildInvite? invite = null;
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         // Each attempt generates a fresh random code; a unique-constraint
         // collision on the code is retried with a new transaction scope.
         for (var attempt = 0; attempt < MaxCodeGenerationAttempts && invite is null; attempt++)
         {
-            var inviteResult = GuildInvite.Create(input.GuildId, currentUserId, input.MaxUses, input.ExpiresInHours);
+            var inviteResult = GuildInvite.Create(
+                input.GuildId,
+                currentUserId,
+                input.MaxUses,
+                input.ExpiresInHours,
+                nowUtc);
             if (inviteResult.IsFailure || inviteResult.Value is null)
             {
                 return ApplicationResponse<CreateGuildInviteResponse>.Fail(

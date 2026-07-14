@@ -21,6 +21,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
     private readonly IRealtimeGroupManager _realtimeGroupManager;
     private readonly IGuildNotifier _guildNotifier;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<BanMemberHandler> _logger;
 
     public BanMemberHandler(
@@ -31,6 +32,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         IRealtimeGroupManager realtimeGroupManager,
         IGuildNotifier guildNotifier,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<BanMemberHandler> logger)
     {
         _guildRepository = guildRepository;
@@ -40,6 +42,7 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
         _realtimeGroupManager = realtimeGroupManager;
         _guildNotifier = guildNotifier;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -87,7 +90,12 @@ public sealed class BanMemberHandler : IAuthenticatedHandler<BanMemberInput, Ban
                 "Only the guild owner can ban an admin");
         }
 
-        var banResult = GuildBan.Create(request.GuildId, request.TargetId, request.Reason, currentUserId);
+        var banResult = GuildBan.Create(
+            request.GuildId,
+            request.TargetId,
+            request.Reason,
+            currentUserId,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (banResult.IsFailure || banResult.Value is null)
         {
             return ApplicationResponse<BanMemberResponse>.Fail(

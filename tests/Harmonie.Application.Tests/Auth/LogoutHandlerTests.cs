@@ -25,7 +25,8 @@ public sealed class LogoutHandlerTests
 
         _handler = new LogoutHandler(
             _refreshTokenRepositoryMock.Object,
-            _jwtTokenServiceMock.Object);
+            _jwtTokenServiceMock.Object,
+            TestTime.CreateProvider());
     }
 
     [Fact]

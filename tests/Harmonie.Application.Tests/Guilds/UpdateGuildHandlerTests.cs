@@ -48,6 +48,7 @@ public sealed class UpdateGuildHandlerTests
                 NullLogger<UploadedFileCleanupService>.Instance),
             _unitOfWorkMock.Object,
             _guildNotifierMock.Object,
+            TestTime.CreateProvider(),
             NullLogger<UpdateGuildHandler>.Instance);
     }
 
@@ -137,7 +138,9 @@ public sealed class UpdateGuildHandlerTests
     public async Task HandleAsync_WhenIconIsCleared_ShouldSetIconPayloadToNull()
     {
         var guild = ApplicationTestBuilders.CreateGuild();
-        guild.UpdateIcon(Appearance.Create("#INITIAL", "shield", "#000000").Value!);
+        guild.UpdateIcon(
+            Appearance.Create("#INITIAL", "shield", "#000000").Value!,
+            TestTime.UtcNow);
 
         var ownerId = guild.OwnerUserId;
 

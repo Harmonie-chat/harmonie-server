@@ -10,13 +10,16 @@ public sealed class ListGuildInvitesHandler : IAuthenticatedHandler<GuildId, Lis
 {
     private readonly IGuildRepository _guildRepository;
     private readonly IGuildInviteRepository _guildInviteRepository;
+    private readonly TimeProvider _timeProvider;
 
     public ListGuildInvitesHandler(
         IGuildRepository guildRepository,
-        IGuildInviteRepository guildInviteRepository)
+        IGuildInviteRepository guildInviteRepository,
+        TimeProvider timeProvider)
     {
         _guildRepository = guildRepository;
         _guildInviteRepository = guildInviteRepository;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<ListGuildInvitesResponse>> HandleAsync(
@@ -41,7 +44,7 @@ public sealed class ListGuildInvitesHandler : IAuthenticatedHandler<GuildId, Lis
 
         var invites = await _guildInviteRepository.GetByGuildIdAsync(guildId, cancellationToken);
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var items = invites.Select(i => new ListGuildInvitesItemResponse(
             Code: i.Code,
             CreatorId: i.CreatorId.Value,

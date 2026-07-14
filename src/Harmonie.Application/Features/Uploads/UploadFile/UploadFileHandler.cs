@@ -22,6 +22,7 @@ public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, U
     private readonly IUploadedFileRepository _uploadedFileRepository;
     private readonly IObjectStorageService _objectStorageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UploadFileHandler> _logger;
 
     public UploadFileHandler(
@@ -29,12 +30,14 @@ public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, U
         IUploadedFileRepository uploadedFileRepository,
         IObjectStorageService objectStorageService,
         IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
         ILogger<UploadFileHandler> logger)
     {
         _userRepository = userRepository;
         _uploadedFileRepository = uploadedFileRepository;
         _objectStorageService = objectStorageService;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -51,14 +54,16 @@ public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, U
                 "Uploader was not found");
         }
 
-        var storageKey = BuildStorageKey(request.FileName);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        var storageKey = BuildStorageKey(request.FileName, nowUtc);
         var uploadFileResult = UploadedFile.Create(
             currentUserId,
             request.FileName,
             request.ContentType,
             request.SizeBytes,
             storageKey,
-            request.Purpose);
+            request.Purpose,
+            nowUtc);
 
         if (uploadFileResult.IsFailure || uploadFileResult.Value is null)
         {
@@ -105,11 +110,10 @@ public sealed class UploadFileHandler : IAuthenticatedHandler<UploadFileInput, U
         return ApplicationResponse<UploadFileResponse>.Ok(payload);
     }
 
-    private static string BuildStorageKey(string fileName)
+    private static string BuildStorageKey(string fileName, DateTime createdAtUtc)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        var now = DateTime.UtcNow;
-        return $"uploads/{now:yyyy/MM}/{Guid.NewGuid():N}{extension}";
+        return $"uploads/{createdAtUtc:yyyy/MM}/{Guid.NewGuid():N}{extension}";
     }
 
     private async Task DeleteStoredObjectSafelyAsync(string storageKey, CancellationToken cancellationToken)

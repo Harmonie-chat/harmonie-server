@@ -11,15 +11,18 @@ public sealed class UpdateUserStatusHandler
     private readonly IUserRepository _userRepository;
     private readonly IGuildMemberRepository _guildMemberRepository;
     private readonly IUserPresenceNotifier _userPresenceNotifier;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateUserStatusHandler(
         IUserRepository userRepository,
         IGuildMemberRepository guildMemberRepository,
-        IUserPresenceNotifier userPresenceNotifier)
+        IUserPresenceNotifier userPresenceNotifier,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository;
         _guildMemberRepository = guildMemberRepository;
         _userPresenceNotifier = userPresenceNotifier;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<UpdateUserStatusResponse>> HandleAsync(
@@ -47,7 +50,9 @@ public sealed class UpdateUserStatusHandler
                     statusResult.Error ?? "Status is invalid"));
         }
 
-        var result = user.UpdateStatus(statusResult.Value);
+        var result = user.UpdateStatus(
+            statusResult.Value,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (result.IsFailure)
         {
             return ApplicationResponse<UpdateUserStatusResponse>.Fail(

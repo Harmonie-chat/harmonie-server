@@ -17,6 +17,7 @@ public sealed class DeleteGuildIconHandler : IAuthenticatedHandler<DeleteGuildIc
     private readonly UploadedFileCleanupService _uploadedFileCleanupService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IGuildNotifier _guildNotifier;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<DeleteGuildIconHandler> _logger;
 
     public DeleteGuildIconHandler(
@@ -24,12 +25,14 @@ public sealed class DeleteGuildIconHandler : IAuthenticatedHandler<DeleteGuildIc
         UploadedFileCleanupService uploadedFileCleanupService,
         IUnitOfWork unitOfWork,
         IGuildNotifier guildNotifier,
+        TimeProvider timeProvider,
         ILogger<DeleteGuildIconHandler> logger)
     {
         _guildRepository = guildRepository;
         _uploadedFileCleanupService = uploadedFileCleanupService;
         _unitOfWork = unitOfWork;
         _guildNotifier = guildNotifier;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -63,7 +66,9 @@ public sealed class DeleteGuildIconHandler : IAuthenticatedHandler<DeleteGuildIc
                 "Guild icon was not found");
         }
 
-        var iconFileResult = ctx.Guild.UpdateIconFile(null);
+        var iconFileResult = ctx.Guild.UpdateIconFile(
+            null,
+            _timeProvider.GetUtcNow().UtcDateTime);
         if (iconFileResult.IsFailure)
         {
             return ApplicationResponse<bool>.Fail(

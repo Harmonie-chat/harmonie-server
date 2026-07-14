@@ -56,7 +56,8 @@ public sealed class MessageSendOrchestratorTests
             new MessageAttachmentResolver(_uploadedFileRepositoryMock.Object),
             _userRepositoryMock.Object,
             _messageNotificationOutboxRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            TestTime.CreateProvider());
     }
 
     private static MessageScope AnyScope() => new MessageScope.Channel(GuildChannelId.New());

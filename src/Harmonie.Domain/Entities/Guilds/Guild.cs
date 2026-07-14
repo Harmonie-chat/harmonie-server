@@ -39,7 +39,8 @@ public sealed class Guild : Entity<GuildId>
 
     public static Result<Guild> Create(
         GuildName name,
-        UserId ownerUserId)
+        UserId ownerUserId,
+        DateTime createdAtUtc)
     {
         if (name is null)
             return Result.Failure<Guild>("Guild name is required");
@@ -47,15 +48,14 @@ public sealed class Guild : Entity<GuildId>
         if (ownerUserId is null)
             return Result.Failure<Guild>("Owner user ID is required");
 
-        var now = DateTime.UtcNow;
         var guild = new Guild(
             GuildId.New(),
             name,
             ownerUserId,
             iconFileId: null,
             icon: Appearance.Empty,
-            now,
-            now);
+            createdAtUtc,
+            updatedAtUtc: createdAtUtc);
 
         return Result.Success(guild);
     }
@@ -83,21 +83,21 @@ public sealed class Guild : Entity<GuildId>
             updatedAtUtc);
     }
 
-    public Result UpdateName(GuildName newName)
+    public Result UpdateName(GuildName newName, DateTime updatedAtUtc)
     {
         if (Name == newName)
             return Result.Success();
 
         Name = newName;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
 
-    public Result UpdateIconFile(UploadedFileId? iconFileId)
+    public Result UpdateIconFile(UploadedFileId? iconFileId, DateTime updatedAtUtc)
     {
         IconFileId = iconFileId;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
 
         return Result.Success();
     }
@@ -105,10 +105,10 @@ public sealed class Guild : Entity<GuildId>
     /// <summary>
     /// Update the guild's icon appearance (color, name/icon, background).
     /// </summary>
-    public Result UpdateIcon(Appearance icon)
+    public Result UpdateIcon(Appearance icon, DateTime updatedAtUtc)
     {
         Icon = icon;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 }

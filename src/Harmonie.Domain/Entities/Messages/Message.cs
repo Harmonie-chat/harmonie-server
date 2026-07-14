@@ -48,6 +48,7 @@ public sealed class Message : Entity<MessageId>
         MessageScope scope,
         UserId authorUserId,
         MessageContent? content,
+        DateTime createdAtUtc,
         MessageId? replyToMessageId = null,
         IReadOnlyCollection<UserId>? mentionedUserIds = null)
     {
@@ -67,16 +68,16 @@ public sealed class Message : Entity<MessageId>
             authorUserId,
             replyToMessageId,
             content,
-            DateTime.UtcNow,
+            createdAtUtc,
             updatedAtUtc: null,
             deletedAtUtc: null,
             mentionedUserIds: mentions.ToArray()));
     }
 
-    public Result UpdateContent(MessageContent newContent)
+    public Result UpdateContent(MessageContent newContent, DateTime updatedAtUtc)
     {
         Content = newContent;
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
@@ -85,7 +86,7 @@ public sealed class Message : Entity<MessageId>
     /// Enforces domain invariants: distinct IDs, max count.
     /// Pass null or empty to clear all mentions.
     /// </summary>
-    public Result ReplaceMentions(IReadOnlyCollection<UserId>? mentionedUserIds)
+    public Result ReplaceMentions(IReadOnlyCollection<UserId>? mentionedUserIds, DateTime updatedAtUtc)
     {
         var mentions = mentionedUserIds ?? Array.Empty<UserId>();
         var validationError = ValidateMentions(mentions);
@@ -93,7 +94,7 @@ public sealed class Message : Entity<MessageId>
             return Result.Failure(validationError);
 
         MentionedUserIds = mentions.ToArray();
-        MarkAsUpdated();
+        MarkAsUpdated(updatedAtUtc);
         return Result.Success();
     }
 
@@ -108,13 +109,13 @@ public sealed class Message : Entity<MessageId>
         return null;
     }
 
-    public Result Delete()
+    public Result Delete(DateTime deletedAtUtc)
     {
         if (DeletedAtUtc is not null)
             return Result.Failure("Message is already deleted");
 
-        DeletedAtUtc = DateTime.UtcNow;
-        MarkAsUpdated();
+        DeletedAtUtc = deletedAtUtc;
+        MarkAsUpdated(deletedAtUtc);
         return Result.Success();
     }
 

@@ -11,11 +11,14 @@ namespace Harmonie.Application.Features.Auth.LogoutAll;
 public sealed class LogoutAllHandler : IAuthenticatedHandler<Unit, LogoutAllResponse>
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly TimeProvider _timeProvider;
 
     public LogoutAllHandler(
-        IRefreshTokenRepository refreshTokenRepository)
+        IRefreshTokenRepository refreshTokenRepository,
+        TimeProvider timeProvider)
     {
         _refreshTokenRepository = refreshTokenRepository;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ApplicationResponse<LogoutAllResponse>> HandleAsync(
@@ -25,7 +28,7 @@ public sealed class LogoutAllHandler : IAuthenticatedHandler<Unit, LogoutAllResp
     {
         await _refreshTokenRepository.RevokeAllActiveAsync(
             currentUserId,
-            DateTime.UtcNow,
+            _timeProvider.GetUtcNow().UtcDateTime,
             RefreshTokenRevocationReasons.LogoutAll,
             cancellationToken);
 

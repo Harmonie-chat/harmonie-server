@@ -87,7 +87,13 @@ public sealed class LiveKitRoomServiceLiveIntegrationTests
         bool isDefault,
         int position)
     {
-        var channelResult = GuildChannel.Create(guildId, name, type, isDefault, position);
+        var channelResult = GuildChannel.Create(
+            guildId,
+            name,
+            type,
+            isDefault,
+            position,
+            new DateTime(2026, 7, 14, 12, 0, 0, DateTimeKind.Utc));
         if (channelResult.IsFailure || channelResult.Value is null)
             throw new InvalidOperationException("Failed to create channel for tests.");
 

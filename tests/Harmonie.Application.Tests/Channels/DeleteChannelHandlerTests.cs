@@ -158,7 +158,8 @@ public sealed class DeleteChannelHandlerTests
             name,
             GuildChannelType.Text,
             isDefault: isDefault,
-            position: 0);
+            position: 0,
+            createdAtUtc: TestTime.UtcNow);
 
         if (result.IsFailure)
             throw new InvalidOperationException("Failed to create channel for tests.");

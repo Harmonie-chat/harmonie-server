@@ -10,10 +10,12 @@ namespace Harmonie.Infrastructure.Persistence.Messages;
 internal sealed class LinkPreviewRepository : ILinkPreviewRepository
 {
     private readonly DbSession _dbSession;
+    private readonly TimeProvider _timeProvider;
 
-    public LinkPreviewRepository(DbSession dbSession)
+    public LinkPreviewRepository(DbSession dbSession, TimeProvider timeProvider)
     {
         _dbSession = dbSession;
+        _timeProvider = timeProvider;
     }
 
     public async Task<IReadOnlyList<MessageLinkPreview>> GetByMessageIdsAsync(
@@ -83,7 +85,7 @@ internal sealed class LinkPreviewRepository : ILinkPreviewRepository
             new
             {
                 Url = url,
-                MinFetchedAt = DateTime.UtcNow - maxAge
+                MinFetchedAt = _timeProvider.GetUtcNow().UtcDateTime - maxAge
             },
             transaction: _dbSession.Transaction,
             cancellationToken: cancellationToken);
