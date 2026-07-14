@@ -2,6 +2,7 @@ using FluentAssertions;
 using Harmonie.Application.Interfaces.Notifications;
 using Harmonie.Application.Services.Notifications;
 using Harmonie.Workers.Workers.Notifications;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -36,6 +37,7 @@ public sealed class NotificationCleanupProcessorTests
                 deviceCalls.Add((cutoffUtc, batchSize)))
             .ReturnsAsync(0);
 
+        var nowUtc = new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero);
         var processor = CreateProcessor(
             cleanupRepositoryMock.Object,
             new NotificationCleanupOptions
@@ -44,8 +46,8 @@ public sealed class NotificationCleanupProcessorTests
                 ProcessedOutboxRetentionDays = 8,
                 FailedOutboxRetentionDays = 31,
                 ExpiredDeviceRetentionDays = 3
-            });
-        var beforeProcessingUtc = DateTime.UtcNow;
+            },
+            nowUtc);
 
         await processor.ProcessAsync(TestContext.Current.CancellationToken);
 
@@ -53,17 +55,17 @@ public sealed class NotificationCleanupProcessorTests
             .ContainSingle(call => call.Status == MessageNotificationOutboxStatuses.Processed)
             .Which;
         processedCall.BatchSize.Should().Be(250);
-        processedCall.CutoffUtc.Should().BeCloseTo(beforeProcessingUtc.AddDays(-8), TimeSpan.FromSeconds(1));
+        processedCall.CutoffUtc.Should().Be(nowUtc.UtcDateTime.AddDays(-8));
 
         var failedCall = outboxCalls.Should()
             .ContainSingle(call => call.Status == MessageNotificationOutboxStatuses.Failed)
             .Which;
         failedCall.BatchSize.Should().Be(250);
-        failedCall.CutoffUtc.Should().BeCloseTo(beforeProcessingUtc.AddDays(-31), TimeSpan.FromSeconds(1));
+        failedCall.CutoffUtc.Should().Be(nowUtc.UtcDateTime.AddDays(-31));
 
         var deviceCall = deviceCalls.Should().ContainSingle().Which;
         deviceCall.BatchSize.Should().Be(250);
-        deviceCall.CutoffUtc.Should().BeCloseTo(beforeProcessingUtc.AddDays(-3), TimeSpan.FromSeconds(1));
+        deviceCall.CutoffUtc.Should().Be(nowUtc.UtcDateTime.AddDays(-3));
     }
 
     [Fact]
@@ -122,6 +124,38 @@ public sealed class NotificationCleanupProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_WhenLaterCleanupFails_ShouldRetainCompletedStatusLog()
+    {
+        var cleanupRepositoryMock = new Mock<INotificationCleanupRepository>();
+        cleanupRepositoryMock
+            .SetupSequence(repository => repository.DeleteOutboxBatchAsync(
+                MessageNotificationOutboxStatuses.Processed,
+                It.IsAny<DateTime>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(2)
+            .ReturnsAsync(0);
+        cleanupRepositoryMock
+            .Setup(repository => repository.DeleteOutboxBatchAsync(
+                MessageNotificationOutboxStatuses.Failed,
+                It.IsAny<DateTime>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Failed cleanup unavailable."));
+        var logger = new RecordingLogger<NotificationCleanupProcessor>();
+        var processor = CreateProcessor(
+            cleanupRepositoryMock.Object,
+            new NotificationCleanupOptions(),
+            logger: logger);
+
+        Func<Task> act = () => processor.ProcessAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        logger.Messages.Should().ContainSingle(message =>
+            message.Contains("deleted 2 outbox rows with status processed", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ProcessAsync_WhenNoRowsAreEligible_ShouldPerformOneNoOpBatchPerCleanupTarget()
     {
         var cleanupRepositoryMock = new Mock<INotificationCleanupRepository>();
@@ -159,11 +193,38 @@ public sealed class NotificationCleanupProcessorTests
 
     private static NotificationCleanupProcessor CreateProcessor(
         INotificationCleanupRepository cleanupRepository,
-        NotificationCleanupOptions options)
+        NotificationCleanupOptions options,
+        DateTimeOffset? nowUtc = null,
+        ILogger<NotificationCleanupProcessor>? logger = null)
     {
         return new NotificationCleanupProcessor(
             cleanupRepository,
             Options.Create(options),
-            NullLogger<NotificationCleanupProcessor>.Instance);
+            new FixedTimeProvider(nowUtc ?? new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero)),
+            logger ?? NullLogger<NotificationCleanupProcessor>.Instance);
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
     }
 }

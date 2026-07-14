@@ -4,6 +4,7 @@ using Harmonie.Infrastructure;
 using Harmonie.Workers.Workers.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Harmonie.Workers;
 
@@ -13,6 +14,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddNotificationApplicationServices();
         services.AddPersistence(configuration);
         services.AddNotificationDeliveryInfrastructure(configuration);

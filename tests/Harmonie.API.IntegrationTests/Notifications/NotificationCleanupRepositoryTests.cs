@@ -23,16 +23,29 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
     {
         var user = await AuthTestHelper.RegisterAsync(_client);
         var (_, channelId) = await ChannelTestHelper.CreateGuildAndChannelAsync(_client, user.AccessToken);
-        var firstOldProcessedMessage = await ChannelTestHelper.SendChannelMessageAsync(_client, channelId, "first old processed cleanup", user.AccessToken);
-        var secondOldProcessedMessage = await ChannelTestHelper.SendChannelMessageAsync(_client, channelId, "second old processed cleanup", user.AccessToken);
-        var recentProcessedMessage = await ChannelTestHelper.SendChannelMessageAsync(_client, channelId, "recent processed cleanup", user.AccessToken);
-        var oldFailedMessage = await ChannelTestHelper.SendChannelMessageAsync(_client, channelId, "old failed cleanup", user.AccessToken);
+        var message = await ChannelTestHelper.SendChannelMessageAsync(
+            _client,
+            channelId,
+            "notification cleanup repository",
+            user.AccessToken);
+        var firstOldProcessedJobId = Guid.NewGuid();
+        var secondOldProcessedJobId = Guid.NewGuid();
+        var cutoffProcessedJobId = Guid.NewGuid();
+        var recentProcessedJobId = Guid.NewGuid();
+        var oldFailedJobId = Guid.NewGuid();
         var cutoffUtc = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        await SetOutboxStatusAsync(firstOldProcessedMessage.MessageId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(-2));
-        await SetOutboxStatusAsync(secondOldProcessedMessage.MessageId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(-1));
-        await SetOutboxStatusAsync(recentProcessedMessage.MessageId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(1));
-        await SetOutboxStatusAsync(oldFailedMessage.MessageId, MessageNotificationOutboxStatuses.Failed, cutoffUtc.AddDays(-1));
+        await DeleteOutboxUntilEmptyAsync(MessageNotificationOutboxStatuses.Processed, cutoffUtc);
+        await DeleteOutboxUntilEmptyAsync(MessageNotificationOutboxStatuses.Failed, cutoffUtc);
+        await ReplaceOutboxWithCleanupJobsAsync(
+            message.MessageId,
+            [
+                (firstOldProcessedJobId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(-2)),
+                (secondOldProcessedJobId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(-1)),
+                (cutoffProcessedJobId, MessageNotificationOutboxStatuses.Processed, cutoffUtc),
+                (recentProcessedJobId, MessageNotificationOutboxStatuses.Processed, cutoffUtc.AddDays(1)),
+                (oldFailedJobId, MessageNotificationOutboxStatuses.Failed, cutoffUtc.AddDays(-1))
+            ]);
 
         var firstProcessedBatch = await DeleteOutboxBatchAsync(
             MessageNotificationOutboxStatuses.Processed,
@@ -55,10 +68,11 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
         secondProcessedBatch.Should().Be(1);
         thirdProcessedBatch.Should().Be(0);
         failedBatch.Should().Be(1);
-        (await OutboxJobExistsAsync(firstOldProcessedMessage.MessageId)).Should().BeFalse();
-        (await OutboxJobExistsAsync(secondOldProcessedMessage.MessageId)).Should().BeFalse();
-        (await OutboxJobExistsAsync(oldFailedMessage.MessageId)).Should().BeFalse();
-        (await OutboxJobExistsAsync(recentProcessedMessage.MessageId)).Should().BeTrue();
+        (await OutboxJobExistsAsync(firstOldProcessedJobId)).Should().BeFalse();
+        (await OutboxJobExistsAsync(secondOldProcessedJobId)).Should().BeFalse();
+        (await OutboxJobExistsAsync(oldFailedJobId)).Should().BeFalse();
+        (await OutboxJobExistsAsync(cutoffProcessedJobId)).Should().BeTrue();
+        (await OutboxJobExistsAsync(recentProcessedJobId)).Should().BeTrue();
     }
 
     [Fact]
@@ -67,11 +81,14 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
         var user = await AuthTestHelper.RegisterAsync(_client);
         var oldFirstDeviceId = Guid.NewGuid();
         var oldSecondDeviceId = Guid.NewGuid();
+        var cutoffDeviceId = Guid.NewGuid();
         var recentDeviceId = Guid.NewGuid();
         var cutoffUtc = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        await DeleteExpiredDevicesUntilEmptyAsync(cutoffUtc);
         await InsertDeviceAsync(oldFirstDeviceId, user.UserId, cutoffUtc.AddDays(-2));
         await InsertDeviceAsync(oldSecondDeviceId, user.UserId, cutoffUtc.AddDays(-1));
+        await InsertDeviceAsync(cutoffDeviceId, user.UserId, cutoffUtc);
         await InsertDeviceAsync(recentDeviceId, user.UserId, cutoffUtc.AddDays(1));
 
         var firstBatch = await DeleteExpiredDevicesBatchAsync(cutoffUtc, batchSize: 1);
@@ -83,7 +100,50 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
         thirdBatch.Should().Be(0);
         (await NotificationDeviceExistsAsync(oldFirstDeviceId)).Should().BeFalse();
         (await NotificationDeviceExistsAsync(oldSecondDeviceId)).Should().BeFalse();
+        (await NotificationDeviceExistsAsync(cutoffDeviceId)).Should().BeTrue();
         (await NotificationDeviceExistsAsync(recentDeviceId)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteExpiredDevicesBatchAsync_WhenOldestRowIsLocked_ShouldDeleteAnotherEligibleRow()
+    {
+        var user = await AuthTestHelper.RegisterAsync(_client);
+        var lockedDeviceId = Guid.NewGuid();
+        var unlockedDeviceId = Guid.NewGuid();
+        var cutoffUtc = new DateTime(1800, 1, 3, 0, 0, 0, DateTimeKind.Utc);
+        await DeleteExpiredDevicesUntilEmptyAsync(cutoffUtc);
+        await InsertDeviceAsync(lockedDeviceId, user.UserId, cutoffUtc.AddDays(-2));
+        await InsertDeviceAsync(unlockedDeviceId, user.UserId, cutoffUtc.AddDays(-1));
+
+        await using var lockingScope = _factory.Services.CreateAsyncScope();
+        var lockingSession = lockingScope.ServiceProvider.GetRequiredService<DbSession>();
+        await lockingSession.BeginTransactionAsync(TestContext.Current.CancellationToken);
+        var lockingConnection = await lockingSession.GetOpenConnectionAsync(TestContext.Current.CancellationToken);
+        await using var lockCommand = lockingConnection.CreateCommand();
+        lockCommand.CommandText = "SELECT id FROM notification_devices WHERE id = @DeviceId FOR UPDATE";
+        lockCommand.Parameters.AddWithValue("DeviceId", lockedDeviceId);
+        await lockCommand.ExecuteScalarAsync(TestContext.Current.CancellationToken);
+
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+
+            await using var cleanupScope = _factory.Services.CreateAsyncScope();
+            var repository = cleanupScope.ServiceProvider.GetRequiredService<INotificationCleanupRepository>();
+            var deletedCount = await repository.DeleteExpiredDevicesBatchAsync(
+                cutoffUtc,
+                batchSize: 1,
+                cancellationToken: timeout.Token);
+
+            deletedCount.Should().Be(1);
+            (await NotificationDeviceExistsAsync(lockedDeviceId)).Should().BeTrue();
+            (await NotificationDeviceExistsAsync(unlockedDeviceId)).Should().BeFalse();
+        }
+        finally
+        {
+            await lockingSession.RollbackAsync(TestContext.Current.CancellationToken);
+        }
     }
 
     private async Task<int> DeleteOutboxBatchAsync(string status, DateTime processedBeforeUtc, int batchSize)
@@ -107,26 +167,77 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
             TestContext.Current.CancellationToken);
     }
 
-    private async Task SetOutboxStatusAsync(Guid messageId, string status, DateTime processedAtUtc)
+    private async Task DeleteOutboxUntilEmptyAsync(string status, DateTime cutoffUtc)
+    {
+        while (await DeleteOutboxBatchAsync(status, cutoffUtc, batchSize: 100) > 0)
+        {
+        }
+    }
+
+    private async Task DeleteExpiredDevicesUntilEmptyAsync(DateTime cutoffUtc)
+    {
+        while (await DeleteExpiredDevicesBatchAsync(cutoffUtc, batchSize: 100) > 0)
+        {
+        }
+    }
+
+    private async Task ReplaceOutboxWithCleanupJobsAsync(
+        Guid messageId,
+        IReadOnlyList<(Guid Id, string Status, DateTime ProcessedAtUtc)> jobs)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
         var connection = await dbSession.GetOpenConnectionAsync(TestContext.Current.CancellationToken);
+        await dbSession.BeginTransactionAsync(TestContext.Current.CancellationToken);
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-                              UPDATE message_notification_outbox
-                              SET status = @Status,
-                                  processed_at_utc = @ProcessedAtUtc,
-                                  locked_until_utc = NULL
-                              WHERE message_id = @MessageId
-                              """;
-        command.Parameters.AddWithValue("Status", status);
-        command.Parameters.AddWithValue("ProcessedAtUtc", processedAtUtc);
-        command.Parameters.AddWithValue("MessageId", messageId);
+        try
+        {
+            await using var deleteCommand = connection.CreateCommand();
+            deleteCommand.Transaction = dbSession.Transaction;
+            deleteCommand.CommandText = "DELETE FROM message_notification_outbox WHERE message_id = @MessageId";
+            deleteCommand.Parameters.AddWithValue("MessageId", messageId);
+            await deleteCommand.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 
-        var rows = await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-        rows.Should().Be(1);
+            foreach (var job in jobs)
+            {
+                await using var insertCommand = connection.CreateCommand();
+                insertCommand.Transaction = dbSession.Transaction;
+                insertCommand.CommandText = """
+                                            INSERT INTO message_notification_outbox (
+                                                id,
+                                                message_id,
+                                                status,
+                                                attempts,
+                                                next_attempt_at_utc,
+                                                locked_until_utc,
+                                                last_error,
+                                                created_at_utc,
+                                                processed_at_utc)
+                                            VALUES (
+                                                @Id,
+                                                @MessageId,
+                                                @Status,
+                                                1,
+                                                @ProcessedAtUtc,
+                                                NULL,
+                                                NULL,
+                                                @ProcessedAtUtc,
+                                                @ProcessedAtUtc)
+                                            """;
+                insertCommand.Parameters.AddWithValue("Id", job.Id);
+                insertCommand.Parameters.AddWithValue("MessageId", messageId);
+                insertCommand.Parameters.AddWithValue("Status", job.Status);
+                insertCommand.Parameters.AddWithValue("ProcessedAtUtc", job.ProcessedAtUtc);
+                await insertCommand.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+            }
+
+            await dbSession.CommitAsync(TestContext.Current.CancellationToken);
+        }
+        catch
+        {
+            await dbSession.RollbackAsync(TestContext.Current.CancellationToken);
+            throw;
+        }
     }
 
     private async Task InsertDeviceAsync(Guid deviceId, Guid userId, DateTime expiresAtUtc)
@@ -168,15 +279,15 @@ public sealed class NotificationCleanupRepositoryTests : IClassFixture<HarmonieW
         rows.Should().Be(1);
     }
 
-    private async Task<bool> OutboxJobExistsAsync(Guid messageId)
+    private async Task<bool> OutboxJobExistsAsync(Guid jobId)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
         var connection = await dbSession.GetOpenConnectionAsync(TestContext.Current.CancellationToken);
 
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT EXISTS (SELECT 1 FROM message_notification_outbox WHERE message_id = @MessageId)";
-        command.Parameters.AddWithValue("MessageId", messageId);
+        command.CommandText = "SELECT EXISTS (SELECT 1 FROM message_notification_outbox WHERE id = @JobId)";
+        command.Parameters.AddWithValue("JobId", jobId);
 
         var result = await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
         result.Should().BeOfType<bool>();

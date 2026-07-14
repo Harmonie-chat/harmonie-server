@@ -23,6 +23,7 @@ Console.WriteLine("Starting database migration...");
 var upgrader = DeployChanges.To
     .PostgresqlDatabase(connectionString)
     .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
+    .WithoutTransaction()
     .LogToConsole()
     .Build();
 
