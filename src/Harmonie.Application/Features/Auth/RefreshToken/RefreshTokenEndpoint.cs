@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Harmonie.Application.Features.Auth.RefreshToken;
 
 /// <summary>
-/// Endpoint for refreshing JWT access tokens.
+/// Endpoint for refreshing an access token from the HttpOnly refresh cookie.
 /// </summary>
 public static class RefreshTokenEndpoint
 {
@@ -19,7 +19,7 @@ public static class RefreshTokenEndpoint
             .WithName("RefreshToken")
             .WithTags("Auth")
             .WithSummary("Refresh access token")
-            .WithDescription("Rotates refresh token and returns a new access token without requiring a new login.")
+            .WithDescription("Rotates the HttpOnly refresh cookie and returns a new access token.")
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -29,38 +29,31 @@ public static class RefreshTokenEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [FromBody] RefreshTokenRequest request,
-        [FromServices] IHandler<RefreshTokenRequest, RefreshTokenResponse> handler,
+        [FromServices] IHandler<RefreshTokenRequest, AuthSessionResult<RefreshTokenResponse>> handler,
         [FromServices] IValidator<RefreshTokenRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var cookieRefreshToken = RefreshTokenCookie.Read(httpContext);
-        var effectiveRequest = string.IsNullOrWhiteSpace(request.RefreshToken)
-            && !string.IsNullOrWhiteSpace(cookieRefreshToken)
-                ? new RefreshTokenRequest(cookieRefreshToken)
-                : request;
-
-        var validationError = await effectiveRequest.ValidateAsync(validator, cancellationToken);
+        var request = new RefreshTokenRequest(RefreshTokenCookie.Read(httpContext) ?? string.Empty);
+        var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
         {
             RefreshTokenCookie.Delete(httpContext);
             return ApplicationResponse<RefreshTokenResponse>.Fail(validationError).ToHttpResult(httpContext);
         }
 
-        var response = await handler.HandleAsync(effectiveRequest, cancellationToken);
-        if (response.Success)
-        {
-            RefreshTokenCookie.Write(
-                httpContext,
-                response.Data.RefreshToken,
-                response.Data.RefreshTokenExpiresAt);
-        }
-        else
+        var result = await handler.HandleAsync(request, cancellationToken);
+        if (!result.Success)
         {
             RefreshTokenCookie.Delete(httpContext);
+            return ApplicationResponse<RefreshTokenResponse>.Fail(result.Error).ToHttpResult(httpContext);
         }
 
-        return response.ToHttpResult(httpContext);
+        RefreshTokenCookie.Write(
+            httpContext,
+            result.Data.RefreshToken,
+            result.Data.RefreshTokenExpiresAt);
+
+        return ApplicationResponse<RefreshTokenResponse>.Ok(result.Data.Response).ToHttpResult(httpContext);
     }
 }

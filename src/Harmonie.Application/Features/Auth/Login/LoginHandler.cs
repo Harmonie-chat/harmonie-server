@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Common;
 using Harmonie.Application.Interfaces.Users;
@@ -10,7 +11,7 @@ namespace Harmonie.Application.Features.Auth.Login;
 /// <summary>
 /// Handler for user login business logic
 /// </summary>
-public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
+public sealed class LoginHandler : IHandler<LoginRequest, AuthSessionResult<LoginResponse>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
@@ -35,7 +36,7 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
         _timeProvider = timeProvider;
     }
 
-    public async Task<ApplicationResponse<LoginResponse>> HandleAsync(
+    public async Task<ApplicationResponse<AuthSessionResult<LoginResponse>>> HandleAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -50,18 +51,18 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
             user = await _userRepository.GetByUsernameAsync(usernameResult.Value, cancellationToken);
 
         if (user is null)
-            return ApplicationResponse<LoginResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<LoginResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidCredentials,
                 "Invalid email/username or password");
 
         if (!user.IsActive)
-            return ApplicationResponse<LoginResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<LoginResponse>>.Fail(
                 ApplicationErrorCodes.Auth.UserInactive,
                 $"User with ID '{user.Id}' is inactive and cannot perform this operation");
 
         // Verify password
         if (!_passwordHasher.VerifyPassword(user.Email, user.PasswordHash, request.Password))
-            return ApplicationResponse<LoginResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<LoginResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidCredentials,
                 "Invalid email/username or password");
 
@@ -88,16 +89,18 @@ public sealed class LoginHandler : IHandler<LoginRequest, LoginResponse>
             cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        var payload = new LoginResponse(
+        var response = new LoginResponse(
             UserId: user.Id.Value,
             Email: user.Email,
             Username: user.Username,
             AccessToken: accessToken,
-            RefreshToken: refreshToken,
-            ExpiresAt: accessTokenExpiresAt,
-            RefreshTokenExpiresAt: refreshTokenExpiresAt
-        );
+            ExpiresAt: accessTokenExpiresAt);
 
-        return ApplicationResponse<LoginResponse>.Ok(payload);
+        var result = new AuthSessionResult<LoginResponse>(
+            response,
+            refreshToken,
+            refreshTokenExpiresAt);
+
+        return ApplicationResponse<AuthSessionResult<LoginResponse>>.Ok(result);
     }
 }

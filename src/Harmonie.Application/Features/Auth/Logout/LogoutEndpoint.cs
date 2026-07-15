@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Harmonie.Application.Features.Auth.Logout;
 
 /// <summary>
-/// Endpoint for logging out current authenticated session.
+/// Endpoint for logging out the current authenticated session.
 /// </summary>
 public static class LogoutEndpoint
 {
@@ -20,7 +20,7 @@ public static class LogoutEndpoint
             .WithTags("Auth")
             .RequireAuthorization()
             .WithSummary("Logout current session")
-            .WithDescription("Revokes the provided refresh token for the authenticated user.")
+            .WithDescription("Revokes the refresh token from the HttpOnly cookie for the authenticated user.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -29,27 +29,20 @@ public static class LogoutEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        [FromBody] LogoutRequest request,
         [FromServices] IAuthenticatedHandler<LogoutRequest, LogoutResponse> handler,
         [FromServices] IValidator<LogoutRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var cookieRefreshToken = RefreshTokenCookie.Read(httpContext);
-        var effectiveRequest = string.IsNullOrWhiteSpace(request.RefreshToken)
-            && !string.IsNullOrWhiteSpace(cookieRefreshToken)
-                ? new LogoutRequest(cookieRefreshToken)
-                : request;
-
+        var request = new LogoutRequest(RefreshTokenCookie.Read(httpContext) ?? string.Empty);
         RefreshTokenCookie.Delete(httpContext);
 
-        var validationError = await effectiveRequest.ValidateAsync(validator, cancellationToken);
+        var validationError = await request.ValidateAsync(validator, cancellationToken);
         if (validationError is not null)
             return ApplicationResponse<LogoutResponse>.Fail(validationError).ToHttpResult(httpContext);
 
         var currentUserId = httpContext.GetRequiredAuthenticatedUserId();
-
-        var response = await handler.HandleAsync(effectiveRequest, currentUserId, cancellationToken);
+        var response = await handler.HandleAsync(request, currentUserId, cancellationToken);
         if (!response.Success)
             return response.ToHttpResult(httpContext);
 

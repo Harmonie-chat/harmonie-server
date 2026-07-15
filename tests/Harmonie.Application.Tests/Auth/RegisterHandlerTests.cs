@@ -95,9 +95,9 @@ public sealed class RegisterHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.Email.Should().Be("test@harmonie.chat");
-        response.Data.Username.Should().Be("testuser");
-        response.Data.AccessToken.Should().Be("access_token");
+        response.Data!.Response.Email.Should().Be("test@harmonie.chat");
+        response.Data.Response.Username.Should().Be("testuser");
+        response.Data.Response.AccessToken.Should().Be("access_token");
         response.Data.RefreshToken.Should().Be("refresh_token");
 
         _unitOfWorkMock.Verify(
@@ -338,8 +338,8 @@ public sealed class RegisterHandlerTests
 
         // Assert
         response.Success.Should().BeTrue();
-        response.Data!.Avatar.Should().BeNull();
-        response.Data.Theme.Should().Be("default");
+        response.Data!.Response.Avatar.Should().BeNull();
+        response.Data.Response.Theme.Should().Be("default");
     }
 
     [Fact]
@@ -364,11 +364,11 @@ public sealed class RegisterHandlerTests
 
         // Assert
         response.Success.Should().BeTrue();
-        response.Data!.Avatar.Should().NotBeNull();
-        response.Data.Avatar!.Color.Should().Be("#ff0000");
-        response.Data.Avatar.Icon.Should().Be("star");
-        response.Data.Avatar.Bg.Should().Be("#0000ff");
-        response.Data.Theme.Should().Be("dark");
+        response.Data!.Response.Avatar.Should().NotBeNull();
+        response.Data.Response.Avatar!.Color.Should().Be("#ff0000");
+        response.Data.Response.Avatar.Icon.Should().Be("star");
+        response.Data.Response.Avatar.Bg.Should().Be("#0000ff");
+        response.Data.Response.Theme.Should().Be("dark");
     }
 
     [Fact]
@@ -392,11 +392,11 @@ public sealed class RegisterHandlerTests
 
         // Assert
         response.Success.Should().BeTrue();
-        response.Data!.Avatar.Should().NotBeNull();
-        response.Data.Avatar!.Color.Should().Be("#ff0000");
-        response.Data.Avatar.Icon.Should().BeNull();
-        response.Data.Avatar.Bg.Should().BeNull();
-        response.Data.Theme.Should().Be("default");
+        response.Data!.Response.Avatar.Should().NotBeNull();
+        response.Data.Response.Avatar!.Color.Should().Be("#ff0000");
+        response.Data.Response.Avatar.Icon.Should().BeNull();
+        response.Data.Response.Avatar.Bg.Should().BeNull();
+        response.Data.Response.Theme.Should().Be("default");
     }
 
     private void SetupSuccessfulTokenMocks()

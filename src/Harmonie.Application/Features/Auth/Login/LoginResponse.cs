@@ -1,15 +1,11 @@
-using System.Text.Json.Serialization;
-
 namespace Harmonie.Application.Features.Auth.Login;
 
 /// <summary>
-/// Response for successful login with authentication tokens
+/// Response for successful login with an access token.
 /// </summary>
 public sealed record LoginResponse(
     Guid UserId,
     string Email,
     string Username,
     string AccessToken,
-    string RefreshToken,
-    DateTime ExpiresAt,
-    [property: JsonIgnore] DateTime RefreshTokenExpiresAt);
+    DateTime ExpiresAt);

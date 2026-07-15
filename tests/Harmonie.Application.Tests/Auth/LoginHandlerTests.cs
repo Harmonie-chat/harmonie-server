@@ -88,9 +88,9 @@ public sealed class LoginHandlerTests
         response.Success.Should().BeTrue();
         response.Error.Should().BeNull();
         response.Data.Should().NotBeNull();
-        response.Data!.Email.Should().Be(user.Email.Value);
-        response.Data.Username.Should().Be(user.Username.Value);
-        response.Data.AccessToken.Should().Be("access_token");
+        response.Data!.Response.Email.Should().Be(user.Email.Value);
+        response.Data.Response.Username.Should().Be(user.Username.Value);
+        response.Data.Response.AccessToken.Should().Be("access_token");
         response.Data.RefreshToken.Should().Be("refresh_token");
 
         _unitOfWorkMock.Verify(x => x.BeginAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -143,7 +143,7 @@ public sealed class LoginHandlerTests
         // Assert
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.Username.Should().Be("testuser");
+        response.Data!.Response.Username.Should().Be("testuser");
         _userRepositoryMock.Verify(x => x.GetByUsernameAsync(It.IsAny<Username>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

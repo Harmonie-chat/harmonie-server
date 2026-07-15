@@ -1,18 +1,15 @@
-using System.Text.Json.Serialization;
 using Harmonie.Application.Features.Users;
 
 namespace Harmonie.Application.Features.Auth.Register;
 
 /// <summary>
-/// Response for successful user registration with authentication tokens
+/// Response for successful user registration with an access token.
 /// </summary>
 public sealed record RegisterResponse(
     Guid UserId,
     string Email,
     string Username,
     string AccessToken,
-    string RefreshToken,
     DateTime ExpiresAt,
     AvatarAppearanceDto? Avatar,
-    string Theme,
-    [property: JsonIgnore] DateTime RefreshTokenExpiresAt);
+    string Theme);
