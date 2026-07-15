@@ -5,7 +5,6 @@ using Harmonie.API.IntegrationTests.Common;
 using Harmonie.Application.Common;
 using Harmonie.Application.Common.Auth;
 using Harmonie.Application.Features.Auth.Login;
-using Harmonie.Application.Features.Auth.Logout;
 using Harmonie.Application.Features.Auth.RefreshToken;
 using Harmonie.Application.Features.Auth.Register;
 using Harmonie.Application.Features.Users;
@@ -48,7 +47,8 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         result!.Email.Should().Be(request.Email);
         result.Username.Should().Be(request.Username);
         result.AccessToken.Should().NotBeNullOrEmpty();
-        result.RefreshToken.Should().NotBeNullOrEmpty();
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().NotContain("\"refreshToken\"");
     }
 
     [Fact]
@@ -99,6 +99,8 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         result!.Email.Should().Be(registerRequest.Email);
         result.AccessToken.Should().NotBeNullOrEmpty();
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().NotContain("\"refreshToken\"");
     }
 
     [Fact]
@@ -130,34 +132,27 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
     }
 
     [Fact]
-    public async Task RefreshToken_WithValidToken_ReturnsNewTokens()
+    public async Task RefreshToken_WithCookie_ReturnsNewAccessToken()
     {
-        // Arrange - First register a user to get initial tokens
         var registerRequest = new RegisterRequest(
             Email: $"test{Guid.NewGuid()}@harmonie.chat",
             Username: $"testuser{Guid.NewGuid():N}"[..20],
             Password: "Test123!@#");
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/auth/register",
+            registerRequest,
+            TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
-        registerPayload.Should().NotBeNull();
+        var response = await SendRefreshAsync(GetIssuedRefreshCookie(registerResponse));
 
-        var refreshRequest = new RefreshTokenRequest(registerPayload!.RefreshToken);
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshRequest, TestContext.Current.CancellationToken);
-
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
-
         result!.AccessToken.Should().NotBeNullOrEmpty();
-        result.RefreshToken.Should().NotBeNullOrEmpty();
-        result.RefreshToken.Should().NotBe(registerPayload.RefreshToken);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().NotContain("\"refreshToken\"");
     }
 
     [Fact]
@@ -175,10 +170,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var initialCookie = GetIssuedRefreshCookie(registerResponse);
 
-        using var refreshRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
-        {
-            Content = JsonContent.Create(new RefreshTokenRequest(string.Empty))
-        };
+        using var refreshRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh");
         refreshRequest.Headers.Add("Cookie", $"{RefreshTokenCookie.Name}={initialCookie}");
 
         var refreshResponse = await _client.SendAsync(
@@ -201,30 +193,21 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
-        registerPayload.Should().NotBeNull();
+        var registerCookie = GetIssuedRefreshCookie(registerResponse);
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/auth/login",
             new LoginRequest(registerRequest.Email, registerRequest.Password),
             TestContext.Current.CancellationToken);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
-        loginPayload.Should().NotBeNull();
+        var loginCookie = GetIssuedRefreshCookie(loginResponse);
 
-        var firstRefreshResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload!.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var firstRefreshResponse = await SendRefreshAsync(registerCookie);
         firstRefreshResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var firstRefreshPayload = await firstRefreshResponse.Content.ReadFromJsonAsync<RefreshTokenResponse>(TestContext.Current.CancellationToken);
-        firstRefreshPayload.Should().NotBeNull();
+        var firstRefreshCookie = GetIssuedRefreshCookie(firstRefreshResponse);
 
         // Act - reuse rotated token
-        var reuseResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var reuseResponse = await SendRefreshAsync(registerCookie);
 
         // Assert - reuse is treated as security incident
         reuseResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -233,20 +216,14 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         reuseError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         // The associated active descendant session is revoked
-        var descendantResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(firstRefreshPayload!.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var descendantResponse = await SendRefreshAsync(firstRefreshCookie);
         descendantResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var descendantError = await descendantResponse.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         descendantError.Should().NotBeNull();
         descendantError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
         // Unrelated active session remains valid
-        var unrelatedResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(loginPayload!.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var unrelatedResponse = await SendRefreshAsync(loginCookie);
         unrelatedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -284,20 +261,15 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
+        var refreshCookie = GetIssuedRefreshCookie(registerResponse);
 
         // Act - Logout current session
-        var logoutResponse = await _client.SendAuthorizedPostAsync(
-            "/api/auth/logout",
-            new LogoutRequest(registerPayload!.RefreshToken),
-            registerPayload.AccessToken);
+        var logoutResponse = await SendLogoutAsync(refreshCookie, registerPayload!.AccessToken);
 
         // Assert
         logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var refreshResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var refreshResponse = await SendRefreshAsync(refreshCookie);
 
         refreshResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
@@ -323,10 +295,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
             TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
 
-        using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout")
-        {
-            Content = JsonContent.Create(new LogoutRequest(string.Empty))
-        };
+        using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
         logoutRequest.Headers.Authorization = new("Bearer", registerPayload!.AccessToken);
         logoutRequest.Headers.Add("Cookie", $"{RefreshTokenCookie.Name}={GetIssuedRefreshCookie(registerResponse)}");
 
@@ -360,14 +329,11 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         userBResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var userAPayload = await userAResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
-        var userBPayload = await userBResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         userAPayload.Should().NotBeNull();
-        userBPayload.Should().NotBeNull();
 
         // Act - user A tries to revoke user B refresh token
-        var logoutResponse = await _client.SendAuthorizedPostAsync(
-            "/api/auth/logout",
-            new LogoutRequest(userBPayload!.RefreshToken),
+        var logoutResponse = await SendLogoutAsync(
+            GetIssuedRefreshCookie(userBResponse),
             userAPayload!.AccessToken);
 
         // Assert
@@ -381,11 +347,11 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
     [Fact]
     public async Task Logout_WithoutAuthentication_ReturnsUnauthorized()
     {
-        // Arrange
-        var request = new LogoutRequest("any_refresh_token");
-
         // Act
-        var response = await _client.PostAsJsonAsync("/api/auth/logout", request, TestContext.Current.CancellationToken);
+        var response = await _client.PostAsync(
+            "/api/auth/logout",
+            content: null,
+            TestContext.Current.CancellationToken);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -405,15 +371,14 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
 
         var registerPayload = await registerResponse.Content.ReadFromJsonAsync<RegisterResponse>(TestContext.Current.CancellationToken);
         registerPayload.Should().NotBeNull();
+        var registerCookie = GetIssuedRefreshCookie(registerResponse);
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/auth/login",
             new LoginRequest(registerRequest.Email, registerRequest.Password),
             TestContext.Current.CancellationToken);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
-        loginPayload.Should().NotBeNull();
+        var loginCookie = GetIssuedRefreshCookie(loginResponse);
 
         // Act
         var logoutAllResponse = await _client.SendAuthorizedPostNoBodyAsync(
@@ -423,10 +388,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         // Assert
         logoutAllResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var refreshWithRegisterTokenResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(registerPayload.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var refreshWithRegisterTokenResponse = await SendRefreshAsync(registerCookie);
         refreshWithRegisterTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var refreshWithRegisterTokenError =
@@ -434,10 +396,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         refreshWithRegisterTokenError.Should().NotBeNull();
         refreshWithRegisterTokenError!.Code.Should().Be(ApplicationErrorCodes.Auth.RefreshTokenReuseDetected);
 
-        var refreshWithLoginTokenResponse = await _client.PostAsJsonAsync(
-            "/api/auth/refresh",
-            new RefreshTokenRequest(loginPayload!.RefreshToken),
-            TestContext.Current.CancellationToken);
+        var refreshWithLoginTokenResponse = await SendRefreshAsync(loginCookie);
         refreshWithLoginTokenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var refreshWithLoginTokenError =
@@ -457,7 +416,7 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
     }
 
     [Fact]
-    public async Task Logout_WithEmptyRefreshToken_ReturnsBadRequest()
+    public async Task Logout_WithoutRefreshCookie_ReturnsBadRequest()
     {
         // Arrange
         var registerRequest = new RegisterRequest(
@@ -472,9 +431,8 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         registerPayload.Should().NotBeNull();
 
         // Act
-        var response = await _client.SendAuthorizedPostAsync(
+        var response = await _client.SendAuthorizedPostNoBodyAsync(
             "/api/auth/logout",
-            new LogoutRequest(string.Empty),
             registerPayload!.AccessToken);
 
         // Assert
@@ -483,6 +441,23 @@ public sealed class AuthEndpointsTests : IClassFixture<HarmonieWebApplicationFac
         var error = await response.Content.ReadFromJsonAsync<ApplicationError>(TestContext.Current.CancellationToken);
         error.Should().NotBeNull();
         error!.Code.Should().Be(ApplicationErrorCodes.Common.ValidationFailed);
+    }
+
+    private async Task<HttpResponseMessage> SendRefreshAsync(string refreshCookie)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh");
+        request.Headers.Add("Cookie", $"{RefreshTokenCookie.Name}={refreshCookie}");
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendLogoutAsync(string refreshCookie, string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
+        request.Headers.Authorization = new("Bearer", accessToken);
+        request.Headers.Add("Cookie", $"{RefreshTokenCookie.Name}={refreshCookie}");
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
     private static string GetIssuedRefreshCookie(HttpResponseMessage response)

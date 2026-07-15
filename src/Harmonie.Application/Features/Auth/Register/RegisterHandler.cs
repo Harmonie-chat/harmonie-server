@@ -1,4 +1,5 @@
 using Harmonie.Application.Common;
+using Harmonie.Application.Common.Auth;
 using Harmonie.Application.Features.Users;
 using Harmonie.Application.Interfaces.Auth;
 using Harmonie.Application.Interfaces.Common;
@@ -12,7 +13,7 @@ namespace Harmonie.Application.Features.Auth.Register;
 /// <summary>
 /// Handler for user registration business logic
 /// </summary>
-public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse>
+public sealed class RegisterHandler : IHandler<RegisterRequest, AuthSessionResult<RegisterResponse>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
@@ -37,7 +38,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         _timeProvider = timeProvider;
     }
 
-    public async Task<ApplicationResponse<RegisterResponse>> HandleAsync(
+    public async Task<ApplicationResponse<AuthSessionResult<RegisterResponse>>> HandleAsync(
         RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -45,7 +46,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure || emailResult.Value is null)
         {
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
                 EndpointExtensions.SingleValidationError(
@@ -57,7 +58,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var usernameResult = Username.Create(request.Username);
         if (usernameResult.IsFailure || usernameResult.Value is null)
         {
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Common.ValidationFailed,
                 "Request validation failed",
                 EndpointExtensions.SingleValidationError(
@@ -70,12 +71,12 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var duplicates = await _userRepository.CheckDuplicatesAsync(emailResult.Value, usernameResult.Value, cancellationToken);
 
         if (duplicates.EmailExists)
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateEmail,
                 $"A user with email '{emailResult.Value}' already exists");
 
         if (duplicates.UsernameExists)
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateUsername,
                 $"A user with username '{usernameResult.Value}' already exists");
 
@@ -91,7 +92,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
             nowUtc);
 
         if (userResult.IsFailure || userResult.Value is null)
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Common.DomainRuleViolation,
                 userResult.Error ?? "Unable to create user");
 
@@ -102,7 +103,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         {
             var appearanceResult = Appearance.Create(request.Avatar.Color, request.Avatar.Icon, request.Avatar.Bg);
             if (appearanceResult.IsFailure || appearanceResult.Value is null)
-                return ApplicationResponse<RegisterResponse>.Fail(
+                return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
@@ -118,7 +119,7 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         {
             var themeResult = user.UpdateTheme(request.Theme, nowUtc);
             if (themeResult.IsFailure)
-                return ApplicationResponse<RegisterResponse>.Fail(
+                return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                     ApplicationErrorCodes.Common.ValidationFailed,
                     "Request validation failed",
                     EndpointExtensions.SingleValidationError(
@@ -145,12 +146,12 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
         var addResult = await _userRepository.TryAddAsync(user, cancellationToken);
 
         if (addResult == UserAddResult.DuplicateEmail)
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateEmail,
                 $"A user with email '{emailResult.Value}' already exists");
 
         if (addResult == UserAddResult.DuplicateUsername)
-            return ApplicationResponse<RegisterResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Fail(
                 ApplicationErrorCodes.Auth.DuplicateUsername,
                 $"A user with username '{usernameResult.Value}' already exists");
 
@@ -165,18 +166,20 @@ public sealed class RegisterHandler : IHandler<RegisterRequest, RegisterResponse
             ? new AvatarAppearanceDto(user.Avatar.Color, user.Avatar.Glyph, user.Avatar.Bg)
             : null;
 
-        var payload = new RegisterResponse(
+        var response = new RegisterResponse(
             UserId: user.Id.Value,
             Email: user.Email,
             Username: user.Username,
             AccessToken: accessToken,
-            RefreshToken: refreshToken,
             ExpiresAt: accessTokenExpiresAt,
             Avatar: avatar,
-            Theme: user.Theme,
-            RefreshTokenExpiresAt: refreshTokenExpiresAt
-        );
+            Theme: user.Theme);
 
-        return ApplicationResponse<RegisterResponse>.Ok(payload);
+        var result = new AuthSessionResult<RegisterResponse>(
+            response,
+            refreshToken,
+            refreshTokenExpiresAt);
+
+        return ApplicationResponse<AuthSessionResult<RegisterResponse>>.Ok(result);
     }
 }

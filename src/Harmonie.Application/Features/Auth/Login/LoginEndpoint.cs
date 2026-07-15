@@ -18,12 +18,6 @@ public static class LoginEndpoint
         app.MapPost("/api/auth/login", HandleAsync)
             .WithName("Login")
             .WithTags("Auth")
-            /*.WithOpenApi(operation =>
-            {
-                operation.Summary = "Login to user account";
-                operation.Description = "Authenticates user with email/username and password. Returns JWT tokens.";
-                return operation;
-            })*/
             .Produces<LoginResponse>(StatusCodes.Status200OK)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -33,7 +27,7 @@ public static class LoginEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] LoginRequest request,
-        [FromServices] IHandler<LoginRequest, LoginResponse> handler,
+        [FromServices] IHandler<LoginRequest, AuthSessionResult<LoginResponse>> handler,
         [FromServices] IValidator<LoginRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -42,15 +36,15 @@ public static class LoginEndpoint
         if (validationError is not null)
             return ApplicationResponse<LoginResponse>.Fail(validationError).ToHttpResult(httpContext);
 
-        var response = await handler.HandleAsync(request, cancellationToken);
-        if (response.Success)
-        {
-            RefreshTokenCookie.Write(
-                httpContext,
-                response.Data.RefreshToken,
-                response.Data.RefreshTokenExpiresAt);
-        }
+        var result = await handler.HandleAsync(request, cancellationToken);
+        if (!result.Success)
+            return ApplicationResponse<LoginResponse>.Fail(result.Error).ToHttpResult(httpContext);
 
-        return response.ToHttpResult(httpContext);
+        RefreshTokenCookie.Write(
+            httpContext,
+            result.Data.RefreshToken,
+            result.Data.RefreshTokenExpiresAt);
+
+        return ApplicationResponse<LoginResponse>.Ok(result.Data.Response).ToHttpResult(httpContext);
     }
 }

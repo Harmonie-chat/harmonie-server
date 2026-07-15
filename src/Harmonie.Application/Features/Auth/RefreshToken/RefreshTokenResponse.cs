@@ -1,12 +1,8 @@
-using System.Text.Json.Serialization;
-
 namespace Harmonie.Application.Features.Auth.RefreshToken;
 
 /// <summary>
-/// Response with new tokens
+/// Response with a refreshed access token.
 /// </summary>
 public sealed record RefreshTokenResponse(
     string AccessToken,
-    string RefreshToken,
-    DateTime ExpiresAt,
-    [property: JsonIgnore] DateTime RefreshTokenExpiresAt);
+    DateTime ExpiresAt);

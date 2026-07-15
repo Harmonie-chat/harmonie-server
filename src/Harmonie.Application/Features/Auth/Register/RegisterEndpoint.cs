@@ -20,7 +20,7 @@ public static class RegisterEndpoint
             .WithName("Register")
             .WithTags("Auth")
             .WithSummary("Register a new user account")
-            .WithDescription("Creates a new user with email, username, and password. Returns JWT tokens for authentication.")
+            .WithDescription("Creates a user and returns an access token. The refresh token is issued as an HttpOnly cookie.")
             .Produces<RegisterResponse>(StatusCodes.Status201Created)
             .ProducesErrors(
                 ApplicationErrorCodes.Common.ValidationFailed,
@@ -31,7 +31,7 @@ public static class RegisterEndpoint
 
     private static async Task<IResult> HandleAsync(
         [FromBody] RegisterRequest request,
-        [FromServices] IHandler<RegisterRequest, RegisterResponse> handler,
+        [FromServices] IHandler<RegisterRequest, AuthSessionResult<RegisterResponse>> handler,
         [FromServices] IValidator<RegisterRequest> validator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -40,15 +40,17 @@ public static class RegisterEndpoint
         if (validationError is not null)
             return ApplicationResponse<RegisterResponse>.Fail(validationError).ToHttpResult(httpContext);
 
-        var response = await handler.HandleAsync(request, cancellationToken);
-        if (response.Success)
-        {
-            RefreshTokenCookie.Write(
-                httpContext,
-                response.Data.RefreshToken,
-                response.Data.RefreshTokenExpiresAt);
-        }
+        var result = await handler.HandleAsync(request, cancellationToken);
+        if (!result.Success)
+            return ApplicationResponse<RegisterResponse>.Fail(result.Error).ToHttpResult(httpContext);
 
-        return response.ToCreatedHttpResult(data => $"/api/users/{data.UserId}", httpContext);
+        RefreshTokenCookie.Write(
+            httpContext,
+            result.Data.RefreshToken,
+            result.Data.RefreshTokenExpiresAt);
+
+        return ApplicationResponse<RegisterResponse>
+            .Ok(result.Data.Response)
+            .ToCreatedHttpResult(data => $"/api/users/{data.UserId}", httpContext);
     }
 }

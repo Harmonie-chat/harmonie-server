@@ -8,7 +8,7 @@ namespace Harmonie.Application.Features.Auth.RefreshToken;
 /// <summary>
 /// Handler for refresh token flow with token rotation.
 /// </summary>
-public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshTokenResponse>
+public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, AuthSessionResult<RefreshTokenResponse>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
@@ -27,7 +27,7 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
         _timeProvider = timeProvider;
     }
 
-    public async Task<ApplicationResponse<RefreshTokenResponse>> HandleAsync(
+    public async Task<ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>> HandleAsync(
         RefreshTokenRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -36,7 +36,7 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
         var session = await _refreshTokenRepository.GetByTokenHashAsync(refreshTokenHash, cancellationToken);
 
         if (session is null)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
 
@@ -44,18 +44,18 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
             return await HandleReuseDetectedAsync(session, nowUtc, cancellationToken);
 
         if (session.ExpiresAtUtc <= nowUtc)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
 
         var user = await _userRepository.GetByIdAsync(session.UserId, cancellationToken);
         if (user is null)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
 
         if (!user.IsActive)
-            return ApplicationResponse<RefreshTokenResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
                 ApplicationErrorCodes.Auth.UserInactive,
                 $"User with ID '{user.Id}' is inactive and cannot perform this operation");
 
@@ -80,21 +80,24 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
             if (latestSession?.RevokedAtUtc is not null)
                 return await HandleReuseDetectedAsync(latestSession, nowUtc, cancellationToken);
 
-            return ApplicationResponse<RefreshTokenResponse>.Fail(
+            return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
                 ApplicationErrorCodes.Auth.InvalidRefreshToken,
                 "Refresh token is invalid or expired");
         }
 
-        var payload = new RefreshTokenResponse(
+        var response = new RefreshTokenResponse(
             AccessToken: accessToken,
-            RefreshToken: newRefreshToken,
-            ExpiresAt: accessTokenExpiresAt,
-            RefreshTokenExpiresAt: refreshTokenExpiresAt);
+            ExpiresAt: accessTokenExpiresAt);
 
-        return ApplicationResponse<RefreshTokenResponse>.Ok(payload);
+        var result = new AuthSessionResult<RefreshTokenResponse>(
+            response,
+            newRefreshToken,
+            refreshTokenExpiresAt);
+
+        return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Ok(result);
     }
 
-    private async Task<ApplicationResponse<RefreshTokenResponse>> HandleReuseDetectedAsync(
+    private async Task<ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>> HandleReuseDetectedAsync(
         RefreshTokenSession reusedSession,
         DateTime revokedAtUtc,
         CancellationToken cancellationToken)
@@ -120,7 +123,7 @@ public sealed class RefreshTokenHandler : IHandler<RefreshTokenRequest, RefreshT
                 cancellationToken);
         }
 
-        return ApplicationResponse<RefreshTokenResponse>.Fail(
+        return ApplicationResponse<AuthSessionResult<RefreshTokenResponse>>.Fail(
             ApplicationErrorCodes.Auth.RefreshTokenReuseDetected,
             "Refresh token reuse detected; associated sessions were revoked");
     }

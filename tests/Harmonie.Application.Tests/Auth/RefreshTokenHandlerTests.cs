@@ -95,7 +95,7 @@ public sealed class RefreshTokenHandlerTests
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
         response.Error.Should().BeNull();
-        response.Data!.AccessToken.Should().Be("new_access_token");
+        response.Data!.Response.AccessToken.Should().Be("new_access_token");
         response.Data.RefreshToken.Should().Be("new_refresh_token");
 
         _refreshTokenRepositoryMock.Verify(x => x.RotateAsync(
