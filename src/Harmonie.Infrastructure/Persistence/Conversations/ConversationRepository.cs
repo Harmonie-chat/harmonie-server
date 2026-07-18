@@ -213,10 +213,20 @@ public sealed class ConversationRepository : IConversationRepository
                            INNER JOIN conversations c ON c.id = cp1.conversation_id
                            INNER JOIN conversation_participants cp2 ON cp2.conversation_id = c.id
                            INNER JOIN users u ON u.id = cp2.user_id
+                           LEFT JOIN LATERAL (
+                               SELECT m.created_at_utc AS last_message_at_utc
+                               FROM messages m
+                               WHERE m.conversation_id = c.id
+                                 AND m.deleted_at_utc IS NULL
+                               ORDER BY m.created_at_utc DESC, m.id DESC
+                               LIMIT 1
+                           ) lm ON TRUE
                            WHERE cp1.user_id = @UserId
                              AND cp1.hidden_at_utc IS NULL
                              AND u.deleted_at IS NULL
-                           ORDER BY c.created_at_utc DESC, c.id ASC, cp2.user_id ASC;
+                           ORDER BY COALESCE(lm.last_message_at_utc, c.created_at_utc) DESC,
+                                    c.id ASC,
+                                    cp2.user_id ASC;
 
                            SELECT DISTINCT m.conversation_id AS "ConversationId"
                            FROM messages m

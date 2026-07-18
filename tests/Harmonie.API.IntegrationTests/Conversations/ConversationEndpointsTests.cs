@@ -191,6 +191,137 @@ public sealed class ConversationEndpointsTests : IClassFixture<HarmonieWebApplic
     }
 
     [Fact]
+    public async Task ListConversations_ShouldOrderByLatestReceivedOrSentMessage()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var targetOne = await AuthTestHelper.RegisterAsync(_client);
+        var targetTwo = await AuthTestHelper.RegisterAsync(_client);
+        var firstConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetOne.UserId);
+        var secondConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetTwo.UserId);
+
+        await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            secondConversationId,
+            "older received message",
+            targetTwo.AccessToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            firstConversationId,
+            "newer received message",
+            targetOne.AccessToken);
+
+        var receivedListResponse = await _client.SendAuthorizedGetAsync(
+            "/api/conversations",
+            caller.AccessToken);
+        var receivedList = await receivedListResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(
+            TestContext.Current.CancellationToken);
+
+        receivedListResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        receivedList.Should().NotBeNull();
+        receivedList!.Conversations.Select(c => c.ConversationId)
+            .Should().Equal(firstConversationId, secondConversationId);
+
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            secondConversationId,
+            "newest sent message",
+            caller.AccessToken);
+
+        var sentListResponse = await _client.SendAuthorizedGetAsync(
+            "/api/conversations",
+            caller.AccessToken);
+        var sentList = await sentListResponse.Content.ReadFromJsonAsync<ListConversationsResponse>(
+            TestContext.Current.CancellationToken);
+
+        sentListResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        sentList.Should().NotBeNull();
+        sentList!.Conversations.Select(c => c.ConversationId)
+            .Should().Equal(secondConversationId, firstConversationId);
+    }
+
+    [Fact]
+    public async Task ListConversations_WithoutMessages_ShouldOrderByCreationDate()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var targetOne = await AuthTestHelper.RegisterAsync(_client);
+        var targetTwo = await AuthTestHelper.RegisterAsync(_client);
+        var olderConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetOne.UserId);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        var newerConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetTwo.UserId);
+
+        var response = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var payload = await response.Content.ReadFromJsonAsync<ListConversationsResponse>(
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        payload.Should().NotBeNull();
+        payload!.Conversations.Select(c => c.ConversationId)
+            .Should().Equal(newerConversationId, olderConversationId);
+    }
+
+    [Fact]
+    public async Task ListConversations_ShouldIgnoreDeletedMessagesWhenOrdering()
+    {
+        var caller = await AuthTestHelper.RegisterAsync(_client);
+        var targetOne = await AuthTestHelper.RegisterAsync(_client);
+        var targetTwo = await AuthTestHelper.RegisterAsync(_client);
+        var firstConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetOne.UserId);
+        var secondConversationId = await ConversationTestHelper.OpenConversationAsync(
+            _client,
+            caller.AccessToken,
+            targetTwo.UserId);
+
+        await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            firstConversationId,
+            "older visible message",
+            caller.AccessToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            secondConversationId,
+            "newer visible message",
+            targetTwo.AccessToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        var deletedMessage = await ConversationTestHelper.SendConversationMessageAsync(
+            _client,
+            firstConversationId,
+            "newest deleted message",
+            caller.AccessToken);
+
+        var deleteResponse = await _client.SendAuthorizedDeleteAsync(
+            $"/api/conversations/{firstConversationId}/messages/{deletedMessage.MessageId}",
+            caller.AccessToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var response = await _client.SendAuthorizedGetAsync("/api/conversations", caller.AccessToken);
+        var payload = await response.Content.ReadFromJsonAsync<ListConversationsResponse>(
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        payload.Should().NotBeNull();
+        payload!.Conversations.Select(c => c.ConversationId)
+            .Should().Equal(secondConversationId, firstConversationId);
+    }
+
+    [Fact]
     public async Task ListConversations_WhenUserHasNoConversations_ShouldReturnEmptyArray()
     {
         var caller = await AuthTestHelper.RegisterAsync(_client);
